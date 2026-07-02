@@ -34,6 +34,9 @@
     <div class="mb-14 fade-in fade-in-delay-2">
       <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Validation Results</p>
       <h3 class="text-lg font-light text-white mb-6">{{ t('backtest.overview') }}</h3>
+      <div class="mb-5 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <p class="text-xs leading-relaxed text-[var(--muted)]">{{ t('backtest.twoAxisNote') }}</p>
+      </div>
 
       <div class="overflow-hidden rounded-xl border border-[var(--border)]">
         <table class="w-full text-sm">
@@ -42,9 +45,9 @@
               <th class="text-left px-5 py-3 font-medium">{{ t('backtest.event') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.time') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.damageLevel') }}</th>
-              <th class="text-center px-3 py-3 font-medium">{{ t('backtest.peakGfcri') }}</th>
+              <th class="text-center px-3 py-3 font-medium">{{ t('backtest.peakPressure') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.leadTime') }}</th>
-              <th class="text-center px-3 py-3 font-medium">{{ t('backtest.peakLevel') }}</th>
+              <th class="text-center px-3 py-3 font-medium">{{ t('backtest.pressureBand') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.result') }}</th>
             </tr>
           </thead>
@@ -101,11 +104,12 @@
                           <strong :style="damageTextStyle(c.name)">D{{ damageLevel(c.name) }}</strong>
                         </div>
                         <div class="terminal-metric">
-                          <span>{{ t('backtest.peakGfcri') }}</span>
+                          <span>{{ t('backtest.peakPressure') }}</span>
                           <strong :style="alertTextStyle(c.peakAlert)">{{ c.peakGfcri }}</strong>
                         </div>
                       </div>
                     </div>
+                    <p class="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">{{ t('backtest.damageVsPressureNote') }}</p>
                     <div class="mt-4 grid gap-3 lg:grid-cols-2">
                       <div v-for="item in damageMetrics(c.name)" :key="item.label" class="rounded-lg border border-[var(--border)] p-3">
                         <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ damageMetricLabel(item) }}</p>
