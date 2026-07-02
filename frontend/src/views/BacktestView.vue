@@ -41,6 +41,7 @@
             <tr class="bg-[var(--card)] text-[var(--muted)] text-xs uppercase tracking-wider">
               <th class="text-left px-5 py-3 font-medium">{{ t('backtest.event') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.time') }}</th>
+              <th class="text-center px-3 py-3 font-medium">{{ t('backtest.damageLevel') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.peakGfcri') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.leadTime') }}</th>
               <th class="text-center px-3 py-3 font-medium">{{ t('backtest.peakLevel') }}</th>
@@ -56,6 +57,12 @@
                 {{ tx(c.name) }}
               </td>
               <td class="text-center px-3 py-4 text-[var(--muted)]">{{ c.year }}</td>
+              <td class="text-center px-3 py-4">
+                <span class="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                      :style="damageBadgeStyle(c.name)">
+                  D{{ damageLevel(c.name) }} · {{ damageLabel(damageProfile(c.name)) }}
+                </span>
+              </td>
               <td class="text-center px-3 py-4">
                 <span class="font-mono text-base" :style="{ color: alertColor(c.peakAlert) }">{{ c.peakGfcri }}</span>
               </td>
@@ -75,10 +82,40 @@
             </tr>
             <!-- Expanded detail row -->
             <tr v-if="selectedCrisis === i">
-              <td colspan="6" class="px-5 py-5 bg-white/[0.01]">
-                <div class="max-w-3xl">
+              <td colspan="7" class="px-5 py-5 bg-white/[0.01]">
+                <div class="max-w-5xl">
                   <p class="text-xs text-[var(--muted)] mb-4">{{ backtestText(c.description) }}</p>
+
+                  <div class="mb-5 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)] mb-1">{{ t('backtest.realizedDamage') }}</p>
+                        <h4 class="text-sm text-white font-medium">
+                          D{{ damageLevel(c.name) }} · {{ damageLabel(damageProfile(c.name)) }}
+                        </h4>
+                        <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">{{ damageSummary(damageProfile(c.name)) }}</p>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2 sm:min-w-[260px]">
+                        <div class="terminal-metric">
+                          <span>{{ t('backtest.damageLevel') }}</span>
+                          <strong :style="damageTextStyle(c.name)">D{{ damageLevel(c.name) }}</strong>
+                        </div>
+                        <div class="terminal-metric">
+                          <span>{{ t('backtest.peakGfcri') }}</span>
+                          <strong :style="alertTextStyle(c.peakAlert)">{{ c.peakGfcri }}</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-4 grid gap-3 lg:grid-cols-2">
+                      <div v-for="item in damageMetrics(c.name)" :key="item.label" class="rounded-lg border border-[var(--border)] p-3">
+                        <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ damageMetricLabel(item) }}</p>
+                        <p class="mt-1 text-xs leading-relaxed text-white">{{ damageMetricValue(item) }}</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Monthly timeline with bars -->
+                  <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)] mb-3">{{ t('backtest.timeline') }}</p>
                   <div class="space-y-2">
                     <div v-for="(ev, j) in c.timeline" :key="j"
                          class="flex items-center gap-3 py-1.5"
@@ -376,6 +413,266 @@ const BACKTEST_TEXT_EN: Record<string, string> = {
   '硅谷银行倒闭': 'Silicon Valley Bank failed.',
 }
 
+type DamageMetric = {
+  label: string
+  labelEn: string
+  value: string
+  valueEn: string
+}
+
+type DamageProfile = {
+  level: number
+  label: string
+  labelEn: string
+  summary: string
+  summaryEn: string
+  metrics: DamageMetric[]
+}
+
+const DEFAULT_DAMAGE_PROFILE: DamageProfile = {
+  level: 1,
+  label: '市场调整',
+  labelEn: 'Market Correction',
+  summary: '主要损害集中在资产价格和风险偏好，实体经济损害有限。',
+  summaryEn: 'Damage was mostly concentrated in asset prices and risk appetite, with limited real-economy damage.',
+  metrics: [
+    { label: '市场损害', labelEn: 'Market Damage', value: '局部资产价格回撤', valueEn: 'Localized asset-price drawdown.' },
+  ],
+}
+
+const DAMAGE_PROFILES: Record<string, DamageProfile> = {
+  '1929 大萧条': {
+    level: 5,
+    label: '萧条或结构性损害',
+    labelEn: 'Depression / Structural Damage',
+    summary: '股市、银行系统、就业和实体经济同时遭受长期结构性损害，是最高等级的历史损害样本。',
+    summaryEn: 'Equities, banks, employment, and the real economy suffered long-duration structural damage, making this the highest-damage historical reference.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: '道琼斯从峰值下跌约 89%，熊市持续近三年。', valueEn: 'The Dow fell roughly 89% from peak to trough and the bear market lasted almost three years.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '美国实际 GDP 深度收缩，工业生产大幅下滑。', valueEn: 'US real GDP contracted deeply and industrial production collapsed.' },
+      { label: '就业损害', labelEn: 'Labor Damage', value: '失业率升至约 25%。', valueEn: 'Unemployment rose to roughly 25%.' },
+      { label: '银行损害', labelEn: 'Banking Damage', value: '数千家银行倒闭，全国银行假日和金融体系重组。', valueEn: 'Thousands of banks failed, leading to a national bank holiday and financial-system restructuring.' },
+    ],
+  },
+  '1971 尼克松冲击': {
+    level: 2,
+    label: '区域或制度性市场损害',
+    labelEn: 'Regional / Institutional Market Damage',
+    summary: '主要损害是全球货币制度断裂和美元信用重定价，实体经济损害低于典型衰退危机。',
+    summaryEn: 'Damage centered on the breakdown of the global monetary regime and repricing of dollar credibility, with less direct real-economy damage than a recession crisis.',
+    metrics: [
+      { label: '制度损害', labelEn: 'Institutional Damage', value: '美元与黄金脱钩，布雷顿森林体系实质瓦解。', valueEn: 'The dollar was detached from gold and Bretton Woods effectively broke down.' },
+      { label: '汇率损害', labelEn: 'FX Damage', value: '主要货币进入重估和浮动阶段。', valueEn: 'Major currencies entered a revaluation and floating-rate phase.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '伴随美国衰退和通胀压力，但不是系统性金融崩溃。', valueEn: 'Accompanied by US recession and inflation pressure, but not a systemic financial collapse.' },
+    ],
+  },
+  '1973 石油危机': {
+    level: 3,
+    label: '宏观衰退损害',
+    labelEn: 'Macro Recession Damage',
+    summary: '能源供给冲击造成全球滞胀、股市深度回撤和实体经济衰退。',
+    summaryEn: 'The energy supply shock created global stagflation, deep equity losses, and real-economy recession damage.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: 'S&P 500 从高点下跌约 48%。', valueEn: 'The S&P 500 fell roughly 48% from peak to trough.' },
+      { label: '通胀损害', labelEn: 'Inflation Damage', value: '油价数倍上涨，通胀失控。', valueEn: 'Oil prices multiplied and inflation became difficult to control.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '美国和多国经济进入衰退，实际收入和需求受损。', valueEn: 'The US and other economies entered recession, damaging real income and demand.' },
+    ],
+  },
+  '1980 沃尔克紧缩': {
+    level: 3,
+    label: '宏观衰退损害',
+    labelEn: 'Macro Recession Damage',
+    summary: '极端加息压制通胀，但代价是深度衰退、失业上升和拉美债务危机。',
+    summaryEn: 'Extreme rate hikes broke inflation, but caused deep recession, higher unemployment, and Latin American debt stress.',
+    metrics: [
+      { label: '利率冲击', labelEn: 'Rate Shock', value: '联邦基金利率一度接近 20%。', valueEn: 'Fed funds approached 20%.' },
+      { label: '就业损害', labelEn: 'Labor Damage', value: '美国失业率升至约 10.8%。', valueEn: 'US unemployment rose to around 10.8%.' },
+      { label: '外债损害', labelEn: 'External Debt Damage', value: '高美元利率触发拉美债务危机。', valueEn: 'High dollar rates helped trigger the Latin American debt crisis.' },
+    ],
+  },
+  '1987 黑色星期一': {
+    level: 1,
+    label: '市场调整',
+    labelEn: 'Market Correction',
+    summary: '损害集中在股票市场的极速下跌，政策流动性支持后未演化为实体经济衰退。',
+    summaryEn: 'Damage was concentrated in a violent equity-market crash and did not turn into a broad recession after liquidity support.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: '道琼斯单日下跌 22.6%。', valueEn: 'The Dow fell 22.6% in one day.' },
+      { label: '系统损害', labelEn: 'System Damage', value: '市场微观结构和组合保险策略暴露脆弱性。', valueEn: 'Market structure and portfolio-insurance fragility were exposed.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '未造成持续宏观衰退。', valueEn: 'It did not cause a sustained macro recession.' },
+    ],
+  },
+  '1992 ERM 危机': {
+    level: 2,
+    label: '区域或市场损害',
+    labelEn: 'Regional / Market Damage',
+    summary: '损害集中在欧洲汇率机制、英镑和部分欧洲货币体系，对全球实体经济冲击有限。',
+    summaryEn: 'Damage centered on the European Exchange Rate Mechanism, sterling, and parts of the European currency system, with limited global real-economy damage.',
+    metrics: [
+      { label: '汇率损害', labelEn: 'FX Damage', value: '英镑退出 ERM，多国货币被迫重估。', valueEn: 'Sterling exited the ERM and several currencies were forced to reprice.' },
+      { label: '政策损害', labelEn: 'Policy Damage', value: '固定汇率政策可信度受损。', valueEn: 'The credibility of fixed-exchange-rate policy was damaged.' },
+      { label: '全球损害', labelEn: 'Global Damage', value: '全球信用和经济损害有限。', valueEn: 'Global credit and economic damage was limited.' },
+    ],
+  },
+  '1994 全球债市大屠杀': {
+    level: 2,
+    label: '区域或市场损害',
+    labelEn: 'Regional / Market Damage',
+    summary: '主要损害来自全球债券重估、杠杆机构亏损和墨西哥比索危机。',
+    summaryEn: 'Damage came from global bond repricing, leveraged losses, and the Mexican peso crisis.',
+    metrics: [
+      { label: '债券损害', labelEn: 'Bond Damage', value: '全球债券收益率快速上行，债券组合大幅亏损。', valueEn: 'Global bond yields rose sharply and bond portfolios suffered losses.' },
+      { label: '机构损害', labelEn: 'Institutional Damage', value: '橙县因衍生品和利率风险破产。', valueEn: 'Orange County went bankrupt because of derivatives and rate risk.' },
+      { label: '外部损害', labelEn: 'External Damage', value: '墨西哥比索危机爆发。', valueEn: 'The Mexican peso crisis erupted.' },
+    ],
+  },
+  '1997 亚洲金融危机': {
+    level: 3,
+    label: '宏观衰退损害',
+    labelEn: 'Macro Recession Damage',
+    summary: '亚洲多国货币、银行、企业资产负债表和经济增长遭受实质损害，并外溢至俄罗斯和 LTCM。',
+    summaryEn: 'Multiple Asian economies suffered real damage across currencies, banks, corporate balance sheets, and growth, with spillovers to Russia and LTCM.',
+    metrics: [
+      { label: '汇率损害', labelEn: 'FX Damage', value: '泰铢、韩元、印尼盾等大幅贬值。', valueEn: 'The Thai baht, Korean won, Indonesian rupiah and others depreciated sharply.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '韩国、印尼、泰国等经济体出现深度衰退或增长骤降。', valueEn: 'South Korea, Indonesia, Thailand and others experienced deep recession or sharp growth collapse.' },
+      { label: '金融损害', labelEn: 'Financial Damage', value: '银行和企业外债压力爆发，IMF 救助介入。', valueEn: 'Bank and corporate external-debt stress erupted, requiring IMF assistance.' },
+      { label: '传染损害', labelEn: 'Contagion Damage', value: '风险外溢至俄罗斯违约和 LTCM 危机。', valueEn: 'Stress spilled into Russia default and the LTCM crisis.' },
+    ],
+  },
+  '2000 互联网泡沫': {
+    level: 3,
+    label: '宏观衰退损害',
+    labelEn: 'Macro Recession Damage',
+    summary: '科技股泡沫破裂导致股市深度回撤、企业破产和美国经济衰退。',
+    summaryEn: 'The tech bubble collapse caused deep equity losses, corporate failures, and US recession.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: '纳斯达克从高点下跌约 78%，S&P 500 下跌约 50%。', valueEn: 'Nasdaq fell roughly 78% and the S&P 500 fell roughly 50%.' },
+      { label: '企业损害', labelEn: 'Corporate Damage', value: '安然、世通等企业丑闻和破产冲击信心。', valueEn: 'Enron, WorldCom and other corporate failures damaged confidence.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '美国进入 2001 年衰退。', valueEn: 'The US entered the 2001 recession.' },
+    ],
+  },
+  '2008 全球金融危机': {
+    level: 4,
+    label: '系统性金融损害',
+    labelEn: 'Systemic Financial Damage',
+    summary: '银行、信用、房地产、就业和全球贸易同步受损，是现代系统性金融危机基准。',
+    summaryEn: 'Banks, credit, housing, jobs, and global trade were damaged simultaneously, making this the benchmark modern systemic financial crisis.',
+    metrics: [
+      { label: '银行损害', labelEn: 'Banking Damage', value: '雷曼破产，Bear Stearns、AIG 等被救助或接管。', valueEn: 'Lehman failed while Bear Stearns, AIG and others required rescue or takeover.' },
+      { label: '信用损害', labelEn: 'Credit Damage', value: '信用市场冻结，利差飙升。', valueEn: 'Credit markets froze and spreads surged.' },
+      { label: '就业损害', labelEn: 'Labor Damage', value: '美国失业率升至约 10%。', valueEn: 'US unemployment rose to around 10%.' },
+      { label: '政策损害', labelEn: 'Policy Damage', value: 'TARP、QE、零利率等非常规救助出台。', valueEn: 'TARP, QE, zero-rate policy and extraordinary support were deployed.' },
+    ],
+  },
+  '2010 欧债危机': {
+    level: 3,
+    label: '宏观衰退损害',
+    labelEn: 'Macro Recession Damage',
+    summary: '主权信用、银行体系和欧元区增长受到实质损害，但未演化为全球系统性银行崩溃。',
+    summaryEn: 'Sovereign credit, banks, and Eurozone growth suffered material damage, but it did not become a global banking collapse.',
+    metrics: [
+      { label: '主权信用损害', labelEn: 'Sovereign Credit Damage', value: '希腊、爱尔兰、葡萄牙、西班牙、意大利等出现主权压力。', valueEn: 'Greece, Ireland, Portugal, Spain, Italy and others came under sovereign stress.' },
+      { label: '银行损害', labelEn: 'Banking Damage', value: '欧洲银行资本和融资压力上升。', valueEn: 'European banks faced higher capital and funding pressure.' },
+      { label: '政策损害', labelEn: 'Policy Damage', value: '欧盟救助机制和 ECB 非常规承诺介入。', valueEn: 'EU rescue mechanisms and ECB extraordinary commitments were required.' },
+    ],
+  },
+  '2015 中国股灾': {
+    level: 2,
+    label: '区域或市场损害',
+    labelEn: 'Regional / Market Damage',
+    summary: '中国股市和人民币冲击造成区域市场损害和全球风险偏好下行，但全球实体经济损害有限。',
+    summaryEn: 'China equity and RMB shocks caused regional market damage and global risk-off pressure, but limited global real-economy damage.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: 'A 股从高点快速下跌并触发熔断。', valueEn: 'A-shares fell sharply from the peak and triggered circuit breakers.' },
+      { label: '汇率损害', labelEn: 'FX Damage', value: '811 汇改后人民币贬值引发全球重定价。', valueEn: 'The August 11 RMB reform triggered depreciation and global repricing.' },
+      { label: '传导损害', labelEn: 'Transmission Damage', value: '商品、港股、新兴市场风险偏好承压。', valueEn: 'Commodities, Hong Kong equities, and EM risk appetite came under pressure.' },
+    ],
+  },
+  '2018 加息+圣诞暴跌': {
+    level: 1,
+    label: '市场调整',
+    labelEn: 'Market Correction',
+    summary: '主要损害集中在美股估值和风险偏好，经济没有进入深度衰退。',
+    summaryEn: 'Damage was mainly equity valuation and risk appetite, without a deep recession.',
+    metrics: [
+      { label: '股市损害', labelEn: 'Equity Damage', value: 'S&P 500 接近熊市区间，科技股领跌。', valueEn: 'The S&P 500 neared bear-market territory, led by technology stocks.' },
+      { label: '流动性损害', labelEn: 'Liquidity Damage', value: '加息和缩表导致金融条件收紧。', valueEn: 'Rate hikes and balance-sheet runoff tightened financial conditions.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '未造成明显宏观衰退。', valueEn: 'No clear macro recession resulted.' },
+    ],
+  },
+  '2020 新冠恐慌': {
+    level: 4,
+    label: '系统性金融损害',
+    labelEn: 'Systemic Financial Damage',
+    summary: '疫情冲击导致全球停摆、市场熔断、就业骤降和政策极限救助，虽恢复较快但损害强度极高。',
+    summaryEn: 'The pandemic caused global shutdowns, market circuit breakers, job losses, and extreme policy rescue. Recovery was fast, but damage intensity was severe.',
+    metrics: [
+      { label: '市场损害', labelEn: 'Market Damage', value: '全球股市熔断，VIX 升至 82。', valueEn: 'Global circuit breakers hit and VIX reached 82.' },
+      { label: '就业损害', labelEn: 'Labor Damage', value: '美国失业率一度升至约 14.7%。', valueEn: 'US unemployment briefly rose to around 14.7%.' },
+      { label: '经济损害', labelEn: 'Economic Damage', value: '全球经济活动骤停，服务业和贸易急剧收缩。', valueEn: 'Global activity stopped abruptly, with services and trade contracting sharply.' },
+      { label: '政策损害', labelEn: 'Policy Damage', value: '零利率、无限 QE 和大规模财政救助同时启动。', valueEn: 'Zero rates, unlimited QE, and large fiscal support were launched together.' },
+    ],
+  },
+  '2022 暴力加息': {
+    level: 1,
+    label: '市场调整',
+    labelEn: 'Market Correction',
+    summary: '损害主要集中在股债估值、美元融资和部分金融机构，经济损害相对滞后且不均衡。',
+    summaryEn: 'Damage was concentrated in equity/bond valuation, dollar funding, and some financial institutions; real-economy damage was more lagged and uneven.',
+    metrics: [
+      { label: '股债损害', labelEn: 'Equity/Bond Damage', value: '股债双杀，长久期资产和科技股大幅回撤。', valueEn: 'Stocks and bonds sold off together; long-duration assets and technology shares fell sharply.' },
+      { label: '汇率损害', labelEn: 'FX Damage', value: '美元大幅走强，新兴市场和非美货币承压。', valueEn: 'The dollar surged, pressuring EM and non-US currencies.' },
+      { label: '金融损害', labelEn: 'Financial Damage', value: '英国养老金危机和 2023 年 SVB 暴露利率风险。', valueEn: 'The UK pension crisis and 2023 SVB failure exposed rate-risk fragility.' },
+    ],
+  },
+}
+
+function damageProfile(name: string): DamageProfile {
+  return DAMAGE_PROFILES[name] || DEFAULT_DAMAGE_PROFILE
+}
+
+function damageLevel(name: string): number {
+  return damageProfile(name).level
+}
+
+function damageMetrics(name: string): DamageMetric[] {
+  return damageProfile(name).metrics
+}
+
+function damageBadgeStyle(name: string): Record<string, string> {
+  const color = damageColor(damageLevel(name))
+  return { background: color + '20', color }
+}
+
+function damageTextStyle(name: string): Record<string, string> {
+  return { color: damageColor(damageLevel(name)) }
+}
+
+function damageLabel(profile: DamageProfile): string {
+  return lang.value === 'zh' ? profile.label : profile.labelEn
+}
+
+function damageSummary(profile: DamageProfile): string {
+  return lang.value === 'zh' ? profile.summary : profile.summaryEn
+}
+
+function damageMetricLabel(metric: DamageMetric): string {
+  return lang.value === 'zh' ? metric.label : metric.labelEn
+}
+
+function damageMetricValue(metric: DamageMetric): string {
+  return lang.value === 'zh' ? metric.value : metric.valueEn
+}
+
+function damageColor(level: number): string {
+  if (level >= 5) return '#7f1d1d'
+  if (level >= 4) return '#ef4444'
+  if (level >= 3) return '#f97316'
+  if (level >= 2) return '#fbbf24'
+  if (level >= 1) return '#60a5fa'
+  return '#34d399'
+}
+
 function backtestText(text: string): string {
   if (lang.value === 'zh') return text
   return BACKTEST_TEXT_EN[text] || tx(text)
@@ -393,6 +690,10 @@ function alertColor(level: string): string {
     GREEN: '#34d399', YELLOW: '#fbbf24', ORANGE: '#f97316', RED: '#ef4444',
   }
   return map[level] || '#6b7280'
+}
+
+function alertTextStyle(level: string): Record<string, string> {
+  return { color: alertColor(level) }
 }
 
 const currentColor = computed(() => {
