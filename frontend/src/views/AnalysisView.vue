@@ -459,15 +459,15 @@ const nodeNames: Record<string, string> = {
 }
 
 const renderedNarrative = computed(() => {
-  const narr = lang.value === 'en' && enNarrative.value
-    ? enNarrative.value
+  const narr = lang.value === 'en'
+    ? englishJudgmentMarkdown.value
     : reportStore.latest?.llm_narrative
   return narr ? md.render(narr) : ''
 })
 
 const truncatedNarrative = computed(() => {
-  const narr = lang.value === 'en' && enNarrative.value
-    ? enNarrative.value
+  const narr = lang.value === 'en'
+    ? englishJudgmentMarkdown.value
     : reportStore.latest?.llm_narrative
   if (!narr) return ''
   const paragraphs = narr.split('\n\n').filter((p: string) => p.trim())
@@ -495,17 +495,7 @@ const englishFullReportMarkdown = computed(() => {
   lines.push('')
 
   lines.push(`## Key Judgment`)
-  if (enNarrative.value.trim()) {
-    lines.push(enNarrative.value.trim())
-  } else {
-    const active = activeChains.value.length
-    const anomalies = anomalousNodes.value.length
-    lines.push(
-      `GFCRI is at ${risk.gfcri_value.toFixed(1)}, with ${active} active transmission ` +
-      `${active === 1 ? 'chain' : 'chains'} and ${anomalies} anomalous ` +
-      `${anomalies === 1 ? 'indicator' : 'indicators'}.`
-    )
-  }
+  lines.push(englishJudgmentMarkdown.value)
   lines.push('')
 
   const subDetails = risk.sub_index_details || {}
@@ -576,6 +566,37 @@ const englishFullReportMarkdown = computed(() => {
 
   return lines.join('\n')
 })
+
+const englishJudgmentMarkdown = computed(() => {
+  const clean = enNarrative.value.trim()
+  if (clean && !containsCjk(clean)) return clean
+
+  const risk = riskStore.latest
+  if (!risk) return 'No risk data is available.'
+
+  const active = activeChains.value.length
+  const anomalies = anomalousNodes.value.length
+  const driver = topNodeContributions.value[0]?.name || 'no dominant single indicator'
+  const chain = activeChains.value[0] ? tx(activeChains.value[0].name) : 'no active transmission channel'
+  const hidden = hiddenRisk.value
+
+  const lines = [
+    `GFCRI is at **${risk.gfcri_value.toFixed(1)} / 100** (${t(`alert.${risk.alert_level}`)}). The main driver is **${driver}**, with **${active}** active transmission ${active === 1 ? 'channel' : 'channels'} and **${anomalies}** anomalous ${anomalies === 1 ? 'indicator' : 'indicators'}.`,
+    '',
+    `The leading active channel is **${chain}**. Signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**, indicating ${active >= 2 ? 'stress is appearing across multiple channels' : 'risk remains relatively concentrated'}.`,
+  ]
+
+  if (hidden.status !== 'none' || hidden.undercurrent > 0) {
+    lines.push('')
+    lines.push(`Hidden-risk scan is **${hidden.statusLabel}**: deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the hidden-risk boost is **+${hidden.undercurrent.toFixed(1)}**.`)
+  }
+
+  return lines.join('\n')
+})
+
+function containsCjk(text: string): boolean {
+  return /[\u3400-\u9fff]/.test(text)
+}
 
 const sortedChains = computed(() => {
   const chains = riskStore.latest?.chain_details
