@@ -7,20 +7,30 @@
       <!-- Personalized Risk Watch (P2) -->
       <RiskWatch />
 
-      <!-- Section 1: AI Narrative — Free users see truncated version -->
-      <div class="mb-12 fade-in" v-if="reportStore.latest?.llm_narrative">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">AI Analysis</p>
-        <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-8 card-hover">
-          <div v-if="isPro" class="prose prose-invert prose-sm max-w-none" v-html="renderedNarrative"></div>
-          <div v-else>
-            <div class="prose prose-invert prose-sm max-w-none" v-html="truncatedNarrative"></div>
-            <div class="relative mt-4">
-              <div class="h-24 bg-gradient-to-b from-transparent to-[var(--card)]"></div>
-              <div class="text-center -mt-8">
-                <span class="text-xs text-[var(--accent)]">{{ t("analysis.upgradeHint") }}</span>
+      <!-- Section 1: Judgment + Trend -->
+      <div class="mb-12 fade-in grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(420px,1.12fr)]">
+        <div v-if="reportStore.latest?.llm_narrative" class="min-w-0">
+          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">AI Analysis</p>
+          <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 lg:p-7 card-hover">
+            <div v-if="isPro" class="prose prose-invert prose-sm max-w-none judgment-markdown" v-html="renderedNarrative"></div>
+            <div v-else>
+              <div class="prose prose-invert prose-sm max-w-none judgment-markdown" v-html="truncatedNarrative"></div>
+              <div class="relative mt-4">
+                <div class="h-20 bg-gradient-to-b from-transparent to-[var(--card)]"></div>
+                <div class="text-center -mt-8">
+                  <span class="text-xs text-[var(--accent)]">{{ t("analysis.upgradeHint") }}</span>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div v-if="riskStore.history.length > 1" class="min-w-0">
+          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Historical Trend</p>
+          <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.trend') }}</h2>
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover">
+            <v-chart :option="trendChartOption" style="height: 320px" autoresize />
           </div>
         </div>
       </div>
@@ -118,13 +128,6 @@
           </div>
           <div v-else class="prose prose-invert prose-sm max-w-none" v-html="renderedMarkdown"></div>
         </div>
-      </div>
-
-      <!-- Section 5: GFCRI Trend -->
-      <div class="mb-12 fade-in" v-if="riskStore.history.length > 1">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Historical Trend</p>
-        <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.trend') }}</h2>
-        <v-chart :option="trendChartOption" style="height: 250px" autoresize />
       </div>
 
       <!-- Section 6: Share & Export -->
@@ -446,3 +449,25 @@ const trendChartOption = computed(() => {
   }
 })
 </script>
+
+<style scoped>
+.judgment-markdown :deep(h1),
+.judgment-markdown :deep(h2),
+.judgment-markdown :deep(h3) {
+  font-size: 15px;
+  line-height: 1.45;
+  margin-top: 0.8em;
+  margin-bottom: 0.45em;
+}
+
+.judgment-markdown :deep(p),
+.judgment-markdown :deep(li) {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.judgment-markdown :deep(ul),
+.judgment-markdown :deep(ol) {
+  padding-left: 1.2em;
+}
+</style>
