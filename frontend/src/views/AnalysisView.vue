@@ -35,6 +35,25 @@
         </div>
       </div>
 
+      <div v-if="lang === 'en'" class="mb-12 fade-in bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Alert Beta</p>
+            <h2 class="text-base font-medium text-white">{{ t('forward.alertSub') }}</h2>
+            <p class="terminal-copy mt-1">{{ t('forward.alertDesc') }}</p>
+          </div>
+          <div v-if="!subscribed" class="flex w-full gap-2 lg:max-w-sm">
+            <input v-model="alertEmail" type="email" placeholder="your@email.com"
+                   class="min-w-0 flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-white text-sm focus:border-[var(--accent)] focus:outline-none" />
+            <button @click="subscribe"
+                    class="px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/80 transition-colors">
+              {{ t('common.subscribe') }}
+            </button>
+          </div>
+          <p v-else class="text-sm text-[var(--green)]">✓ {{ t('forward.subscribed') }} {{ alertEmail }}</p>
+        </div>
+      </div>
+
       <!-- Section 2: Model Logic Breakdown -->
       <div class="mb-12 fade-in fade-in-delay-1">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Model Explainability</p>
@@ -318,23 +337,11 @@
       </div>
 
       <!-- Section 6: Share & Export -->
-      <div class="mb-12 fade-in">
+      <div v-if="lang === 'zh'" class="mb-12 fade-in">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Share & Export</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.share') }}</h2>
 
-        <div v-if="lang === 'en'" class="flex gap-3">
-          <button @click="copyText(englishFullReportMarkdown)"
-                  class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:text-white">
-            {{ copied ? t('analysis.copied') : t('analysis.copyBrief') }}
-          </button>
-          <a :href="'data:text/markdown;charset=utf-8,' + encodeURIComponent(englishFullReportMarkdown)"
-             download="gfcri-daily-risk-brief.md"
-             class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25">
-            {{ t('analysis.downloadMarkdown') }}
-          </a>
-        </div>
-
-        <div v-else class="flex gap-3">
+        <div class="flex gap-3">
           <button @click="activeExport = activeExport === 'wechat' ? '' : 'wechat'"
                   class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all"
                   :class="activeExport === 'wechat' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:text-white'">
@@ -420,6 +427,8 @@ const showFullReport = ref(false)
 const activeExport = ref('')
 const copied = ref(false)
 const expandedChainId = ref('')
+const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
+const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
 const enNarrative = ref('')
 
@@ -443,6 +452,13 @@ function copyText(text: string) {
   navigator.clipboard.writeText(text)
   copied.value = true
   setTimeout(() => copied.value = false, 2000)
+}
+
+function subscribe() {
+  if (alertEmail.value && alertEmail.value.includes('@')) {
+    localStorage.setItem('gfcri_alert_email', alertEmail.value)
+    subscribed.value = true
+  }
 }
 
 const nodeNames: Record<string, string> = {
