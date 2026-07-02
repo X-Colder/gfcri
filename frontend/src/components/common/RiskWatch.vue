@@ -13,7 +13,7 @@
       <p v-if="watchedIds.length === 0" class="text-xs text-[var(--muted)] mb-4">
         {{ t('watch.hint') }}
       </p>
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid gap-2 md:grid-cols-2">
         <label v-for="chain in chains" :key="chain.id"
                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors"
                :class="isWatched(chain.id) ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'">

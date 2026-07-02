@@ -75,5 +75,6 @@ const navItems = computed(() => [
   { path: '/forward', icon: '⚡', label: t('nav.forward') },
   { path: '/backtest', icon: '⏱', label: t('nav.backtest') },
   { path: '/industries', icon: '⬢', label: t('nav.industries') },
+  { path: '/methodology', icon: '◇', label: t('nav.methodology') },
 ])
 </script>

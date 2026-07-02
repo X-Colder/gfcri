@@ -34,7 +34,7 @@
           <span class="text-sm text-[var(--muted)] font-normal ml-2">{{ activeChains.length }} {{ t('analysis.chainActive') }} / {{ dormantChains.length }} {{ t('analysis.chainDormant') }}</span>
         </h2>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 lg:grid-cols-2">
           <div v-for="chain in sortedChains" :key="chain.id"
                class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover"
                :class="chain.active ? 'border-l-[3px]' : 'opacity-50'"
@@ -132,7 +132,19 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Share & Export</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.share') }}</h2>
 
-        <div class="flex gap-3">
+        <div v-if="lang === 'en'" class="flex gap-3">
+          <button @click="copyText(englishFullReportMarkdown)"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:text-white">
+            {{ copied ? t('analysis.copied') : t('analysis.copyBrief') }}
+          </button>
+          <a :href="'data:text/markdown;charset=utf-8,' + encodeURIComponent(englishFullReportMarkdown)"
+             download="gfcri-daily-risk-brief.md"
+             class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25">
+            {{ t('analysis.downloadMarkdown') }}
+          </a>
+        </div>
+
+        <div v-else class="flex gap-3">
           <button @click="activeExport = activeExport === 'wechat' ? '' : 'wechat'"
                   class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all"
                   :class="activeExport === 'wechat' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:text-white'">
@@ -151,7 +163,7 @@
         </div>
 
         <!-- WeChat Preview -->
-        <div v-if="activeExport === 'wechat' && socialContent.wechat" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+        <div v-if="lang === 'zh' && activeExport === 'wechat' && socialContent.wechat" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
           <div class="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
             <span class="text-xs text-[var(--muted)]">{{ lang === 'zh' ? '微信公众号文章预览' : 'WeChat Article Preview' }}</span>
             <a :href="'data:text/html;charset=utf-8,' + encodeURIComponent(socialContent.wechat)"
@@ -166,7 +178,7 @@
         </div>
 
         <!-- Zsxq Preview -->
-        <div v-if="activeExport === 'zsxq' && socialContent.zsxq" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+        <div v-if="lang === 'zh' && activeExport === 'zsxq' && socialContent.zsxq" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-[var(--muted)]">{{ lang === 'zh' ? '知识星球帖子' : 'Zsxq Post' }}</span>
             <button @click="copyText(socialContent.zsxq)" class="text-xs text-[var(--accent)] hover:text-white transition-colors">
@@ -177,7 +189,7 @@
         </div>
 
         <!-- Card Preview -->
-        <div v-if="activeExport === 'card' && socialContent.cardUrl" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex justify-center">
+        <div v-if="lang === 'zh' && activeExport === 'card' && socialContent.cardUrl" class="mt-4 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex justify-center">
           <img :src="socialContent.cardUrl" alt="Share Card" class="max-w-[400px] rounded-xl shadow-lg" />
         </div>
       </div>

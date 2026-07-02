@@ -20,11 +20,12 @@
 
       <!-- Section 1: Crisis Distance — How far from crisis? -->
       <div class="mb-12 fade-in" v-if="crisisData">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Crisis Distance</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Threshold Monitor</p>
         <h3 class="text-lg font-light text-white mb-6">{{ t('forward.crisis') }}</h3>
+        <p class="text-xs text-[var(--muted)] mb-5 max-w-2xl">{{ t('forward.crisisHelp') }}</p>
 
         <!-- Overall + 3 tiers -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid gap-4 mb-6 md:grid-cols-2 xl:grid-cols-4">
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 text-center card-hover">
             <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-2">{{ t('forward.overall') }}</p>
             <p class="text-4xl font-extralight font-mono" :style="{ color: distColor(crisisData.overall_distance) }">
@@ -80,7 +81,7 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Test</p>
         <h3 class="text-lg font-light text-white mb-6">{{ t('forward.stress') }}</h3>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 lg:grid-cols-2">
           <div v-for="sr in sortedStress" :key="sr.scenario_name"
                class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover"
                :class="sr.gfcri_delta > 10 ? 'border-l-[3px] border-l-[var(--red)]' : sr.gfcri_delta > 5 ? 'border-l-[3px] border-l-[var(--orange)]' : ''">
@@ -132,7 +133,7 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Policy Buffer</p>
         <h3 class="text-lg font-light text-white mb-6">{{ t('forward.policy') }}</h3>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div v-for="p in crisisData.policies" :key="p.name"
                class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 card-hover">
             <div class="flex items-center justify-between mb-2">
@@ -152,7 +153,7 @@
       <!-- Alert Subscription (P1) -->
       <div class="mt-12 fade-in">
         <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 card-hover max-w-lg mx-auto text-center">
-          <p class="text-[10px] text-[var(--muted)] uppercase tracking-[3px] mb-3">Alert Subscription</p>
+          <p class="text-[10px] text-[var(--muted)] uppercase tracking-[3px] mb-3">Alert Beta</p>
           <h3 class="text-white font-medium mb-2">{{ t('forward.alertSub') }}</h3>
           <p class="text-xs text-[var(--muted)] mb-5">{{ t('forward.alertDesc') }}</p>
           <div v-if="!subscribed" class="flex gap-2 max-w-sm mx-auto">

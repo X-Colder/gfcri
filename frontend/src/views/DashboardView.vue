@@ -7,8 +7,53 @@
 
     <template v-else-if="riskStore.latest">
 
+      <section class="terminal-section dashboard-brief fade-in">
+        <div class="brief-header">
+          <div>
+            <p class="terminal-kicker">{{ t('dash.eyebrow') }}</p>
+            <h1 class="terminal-title">{{ t('dash.title') }}</h1>
+            <p class="terminal-copy mt-2">{{ t('dash.subtitle') }}</p>
+          </div>
+          <div class="brief-meta">
+            <div class="terminal-metric">
+              <span>{{ t('dash.latestObservation') }}</span>
+              <strong>{{ riskStore.latest.index_date }}</strong>
+            </div>
+            <div class="terminal-metric">
+              <span>{{ t('dash.dataCadence') }}</span>
+              <strong>06:00 UTC</strong>
+            </div>
+            <div class="terminal-metric">
+              <span>{{ t('dash.modelVersion') }}</span>
+              <strong>GFCRI v1</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="brief-grid">
+          <div class="risk-score-panel">
+            <p class="terminal-kicker">GFCRI</p>
+            <div class="risk-score-row">
+              <span class="risk-score" :style="{ color: getAlertColor(riskStore.latest.alert_level) }">
+                {{ riskStore.latest.gfcri_value.toFixed(1) }}
+              </span>
+              <span class="risk-alert" :style="{ color: getAlertColor(riskStore.latest.alert_level), borderColor: getAlertColor(riskStore.latest.alert_level) }">
+                {{ t('alert.' + riskStore.latest.alert_level) }}
+              </span>
+            </div>
+            <p class="terminal-copy">{{ heroSummary }}</p>
+          </div>
+
+          <div class="driver-panel">
+            <p class="terminal-kicker">{{ t('dash.primaryDriver') }}</p>
+            <p class="driver-name">{{ primaryDriver }}</p>
+            <p class="terminal-copy mt-2">{{ t('dash.methodologyShort') }}</p>
+          </div>
+        </div>
+      </section>
+
       <!-- ── Hero Section ── -->
-      <div class="hero-section fade-in" ref="heroRef">
+      <div class="hero-section fade-in fade-in-delay-1" ref="heroRef">
 
         <!-- Eyebrow label -->
         <p class="eyebrow">{{ t('dash.eyebrow') }}</p>
@@ -73,7 +118,7 @@
 
       <!-- ── Signal Cards ── -->
       <Paywall :blurred="!isPro" :title="t('dash.anomalous')" :description="t('common.upgradeDesc')">
-      <div class="cards-grid fade-in fade-in-delay-1">
+      <div class="cards-grid fade-in fade-in-delay-2">
 
         <!-- Anomalous Indicators -->
         <div
@@ -124,7 +169,7 @@
       </Paywall>
 
       <!-- ── Global Risk Network Globe ── -->
-      <div class="fade-in fade-in-delay-2" style="margin-bottom: 48px;">
+      <div class="fade-in fade-in-delay-3" style="margin-bottom: 32px;">
         <GlobeNetwork />
       </div>
 
@@ -143,8 +188,9 @@
           <span class="trust-dot" aria-hidden="true">·</span>
           <span class="trust-item">AKShare</span>
           <span class="trust-dot" aria-hidden="true">·</span>
-          <span class="trust-item">Claude AI</span>
+          <span class="trust-item">AI-assisted narrative</span>
         </div>
+        <p class="trust-note">{{ t('dash.methodologyShort') }}</p>
       </div>
 
     </template>
@@ -228,6 +274,15 @@ const topChain = computed(() => {
   return active.length > 0 ? tx(active[0].name) : t('dash.noActiveChain')
 })
 
+const primaryDriver = computed(() => {
+  const nc = riskStore.latest?.node_contributions
+  if (!nc) return t('dash.noDriver')
+  const item = Object.entries(nc)
+    .sort((a: any, b: any) => Math.abs(b[1].zscore || 0) - Math.abs(a[1].zscore || 0))[0]
+  if (!item) return t('dash.noDriver')
+  return tx((item[1] as any).display_name || item[0])
+})
+
 const heroSummary = computed(() => {
   const ac = activeChainCount.value
   const an = anomalyCount.value
@@ -246,13 +301,76 @@ const heroSummary = computed(() => {
   isolation: isolate;
 }
 
+.dashboard-brief {
+  margin-bottom: 24px;
+}
+
+.brief-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.brief-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.brief-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.risk-score-panel,
+.driver-panel {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.risk-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 8px 0 10px;
+}
+
+.risk-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.risk-alert {
+  border: 1px solid;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.driver-name {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
 /* ── Noise overlay ── */
 .noise-overlay {
   pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 9999;
-  opacity: 0.025;
+  opacity: 0.012;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-size: 128px 128px;
   mix-blend-mode: overlay;
@@ -263,7 +381,7 @@ const heroSummary = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 72px 0 64px;
+  padding: 28px 0 32px;
   text-align: center;
 }
 
@@ -272,19 +390,19 @@ const heroSummary = computed(() => {
   letter-spacing: 7px;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 32px;
+  margin-bottom: 18px;
   font-family: 'JetBrains Mono', monospace;
 }
 
 /* Score ring */
 .score-ring-wrapper {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 150px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .score-ring {
@@ -294,6 +412,11 @@ const heroSummary = computed(() => {
   height: 100%;
 }
 
+.score-ring circle,
+.score-ring line {
+  vector-effect: non-scaling-stroke;
+}
+
 .ring-arc {
   transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
   filter: drop-shadow(0 0 6px currentColor);
@@ -301,12 +424,11 @@ const heroSummary = computed(() => {
 
 .score-glow {
   position: absolute;
-  width: 140px;
-  height: 140px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
-  opacity: 0.12;
-  animation: glow-pulse 3s ease-in-out infinite;
+  opacity: 0.06;
 }
 
 @keyframes glow-pulse {
@@ -316,14 +438,13 @@ const heroSummary = computed(() => {
 
 .score-number {
   position: relative;
-  font-size: 88px;
+  font-size: 54px;
   line-height: 1;
   font-weight: 200;
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: -2px;
+  letter-spacing: 0;
   transition: color 0.4s ease;
-  text-shadow: 0 0 40px currentColor;
-  animation: glow-pulse 3s ease-in-out infinite;
+  text-shadow: none;
 }
 
 /* Alert badge */
@@ -340,7 +461,6 @@ const heroSummary = computed(() => {
   border-radius: 50%;
   background-color: var(--dot-color);
   box-shadow: 0 0 6px var(--dot-color);
-  animation: dot-pulse 2s ease-in-out infinite;
 }
 
 @keyframes dot-pulse {
@@ -350,7 +470,7 @@ const heroSummary = computed(() => {
 
 .alert-label {
   font-size: 11px;
-  letter-spacing: 5px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   font-family: 'JetBrains Mono', monospace;
   transition: color 0.4s ease;
@@ -361,7 +481,7 @@ const heroSummary = computed(() => {
   color: var(--muted);
   font-weight: 300;
   line-height: 1.7;
-  max-width: 480px;
+  max-width: 620px;
   margin: 0 auto 12px;
 }
 
@@ -376,7 +496,7 @@ const heroSummary = computed(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-bottom: 48px;
+  margin-bottom: 28px;
 }
 
 .signal-card {
@@ -385,7 +505,7 @@ const heroSummary = computed(() => {
   background: var(--card);
   border: 1px solid var(--border);
   border-left: 2px solid var(--card-accent);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 24px;
   transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
   cursor: default;
@@ -393,10 +513,7 @@ const heroSummary = computed(() => {
 
 .signal-card:hover {
   border-color: color-mix(in srgb, var(--card-accent) 40%, var(--border));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--card-accent) 12%, transparent),
-    0 8px 32px color-mix(in srgb, var(--card-accent) 8%, transparent),
-    inset 0 0 40px color-mix(in srgb, var(--card-accent) 3%, transparent);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.18);
   transform: translateY(-2px);
 }
 
@@ -513,7 +630,7 @@ const heroSummary = computed(() => {
 /* ── Trust Bar ── */
 .trust-bar {
   text-align: center;
-  padding: 40px 0;
+  padding: 28px 0 36px;
 }
 
 .trust-separator {
@@ -527,7 +644,6 @@ const heroSummary = computed(() => {
     rgba(129,140,248,0.12) 80%,
     transparent 100%
   );
-  animation: sep-shimmer 6s ease-in-out infinite;
 }
 
 @keyframes sep-shimmer {
@@ -564,6 +680,14 @@ const heroSummary = computed(() => {
   color: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
+.trust-note {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-size: 11px;
+  line-height: 1.6;
+  max-width: 720px;
+  margin: 14px auto 0;
+}
+
 .trust-dot {
   font-size: 11px;
   color: color-mix(in srgb, var(--muted) 20%, transparent);
@@ -590,5 +714,17 @@ const heroSummary = computed(() => {
 
 @keyframes fadeUp {
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 960px) {
+  .brief-header,
+  .brief-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .brief-meta,
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

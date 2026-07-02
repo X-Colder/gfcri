@@ -1,8 +1,13 @@
 import { ref, computed } from 'vue'
 
-const currentLang = ref<'zh' | 'en'>(
-  (typeof window !== 'undefined' && localStorage.getItem('gfcri_lang') as any) || 'zh'
-)
+function getInitialLang(): 'zh' | 'en' {
+  if (typeof window === 'undefined') return 'en'
+  const stored = localStorage.getItem('gfcri_lang')
+  if (stored === 'zh' || stored === 'en') return stored
+  return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
+const currentLang = ref<'zh' | 'en'>(getInitialLang())
 
 const messages: Record<string, Record<string, string>> = {
   // Nav
@@ -11,6 +16,7 @@ const messages: Record<string, Record<string, string>> = {
   'nav.forward': { zh: '前瞻预警', en: 'Forward Look' },
   'nav.backtest': { zh: '历史验证', en: 'Backtest' },
   'nav.industries': { zh: '行业研究', en: 'Industries' },
+  'nav.methodology': { zh: '方法与信任', en: 'Methodology' },
   // Auth
   'auth.login': { zh: '登录', en: 'Sign In' },
   'auth.register': { zh: '注册', en: 'Sign Up' },
@@ -57,22 +63,31 @@ const messages: Record<string, Record<string, string>> = {
   'alert.green': { zh: '正常', en: 'Normal' },
   'alert.yellow': { zh: '关注', en: 'Elevated' },
   'alert.orange': { zh: '警告', en: 'Warning' },
-  'alert.red': { zh: '危险', en: 'Danger' },
+  'alert.red': { zh: '危险', en: 'Critical Stress' },
   // Dashboard
-  'dash.eyebrow': { zh: 'Global Financial Crisis Risk Index', en: 'Global Financial Crisis Risk Index' },
+  'dash.eyebrow': { zh: 'Global Financial Crisis Risk Index', en: 'Systemic Macro Risk Monitor' },
   'dash.anomalous': { zh: '异常指标', en: 'Anomalous Indicators' },
-  'dash.chains': { zh: '活跃传导链', en: 'Active Chains' },
-  'dash.coherence': { zh: '共振系数', en: 'Coherence' },
-  'dash.multiChain': { zh: '多链共振放大风险', en: 'Multi-chain resonance amplifying risk' },
-  'dash.independent': { zh: '传导链独立运行', en: 'Chains operating independently' },
+  'dash.chains': { zh: '活跃传导链', en: 'Active Transmission Channels' },
+  'dash.coherence': { zh: '信号一致性', en: 'Signal Coherence' },
+  'dash.multiChain': { zh: '多条风险通道同步升温', en: 'Multiple risk channels are moving together' },
+  'dash.independent': { zh: '风险通道相对分散', en: 'Risk channels remain relatively dispersed' },
   'dash.noActiveChain': { zh: '无活跃传导链', en: 'No active chains' },
-  'dash.powered': { zh: '实时数据驱动', en: 'Powered by Real-Time Data' },
+  'dash.powered': { zh: '每日更新的市场与宏观数据', en: 'Updated daily from market and macro data' },
   'dash.indicatorCount': { zh: '38 个指标', en: '38 indicators' },
-  'dash.chainCount': { zh: '12 条传导链', en: '12 transmission chains' },
+  'dash.chainCount': { zh: '12 条传导链', en: '12 transmission channels' },
   'dash.summary.high': { zh: '{an} 个指标异常、{ac} 条传导链同时活跃——多条风险通道正在共振', en: '{an} indicators anomalous, {ac} chains active — multiple risk channels resonating' },
   'dash.summary.chains': { zh: '{ac} 条风险传导链同时活跃，风险正在多个渠道扩散', en: '{ac} risk chains active, risk spreading through multiple channels' },
   'dash.summary.anomaly': { zh: '{an} 个市场指标偏离正常范围，需要保持关注', en: '{an} indicators deviating from normal range, attention needed' },
   'dash.summary.normal': { zh: '全球金融系统运行在正常参数范围内', en: 'Global financial system operating within normal parameters' },
+  'dash.title': { zh: '全球宏观风险监测', en: 'Global Macro Risk Monitor' },
+  'dash.subtitle': { zh: '跟踪系统性压力、风险传导链和历史压力阈值，辅助识别宏观风险是否正在累积。', en: 'Track systemic stress, transmission channels, and historical stress thresholds to understand whether macro risk is building.' },
+  'dash.latestObservation': { zh: '最新观测', en: 'Latest observation' },
+  'dash.modelVersion': { zh: '模型版本', en: 'Model version' },
+  'dash.dataCadence': { zh: '更新频率', en: 'Data cadence' },
+  'dash.dailyCadence': { zh: '每日 06:00 UTC', en: 'Daily at 06:00 UTC' },
+  'dash.methodologyShort': { zh: 'GFCRI 结合异常检测、绝对压力水平和传导链一致性评分。结果是风险监测信号，不构成投资建议。', en: 'GFCRI combines anomaly detection, absolute stress levels, and transmission-channel coherence. It is a monitoring signal, not investment advice.' },
+  'dash.primaryDriver': { zh: '主要驱动', en: 'Primary driver' },
+  'dash.noDriver': { zh: '暂无显著驱动', en: 'No dominant driver' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
@@ -113,16 +128,20 @@ const messages: Record<string, Record<string, string>> = {
   'analysis.direction': { zh: '方向', en: 'Direction' },
   'analysis.high': { zh: '偏高 ↑', en: 'High ↑' },
   'analysis.low': { zh: '偏低 ↓', en: 'Low ↓' },
-  'analysis.report': { zh: '完整日报', en: 'Full Report' },
+  'analysis.report': { zh: '完整日报', en: 'Daily Risk Brief' },
   'analysis.trend': { zh: 'GFCRI 趋势', en: 'GFCRI Trend' },
-  'analysis.share': { zh: '分享与导出', en: 'Share & Export' },
-  'analysis.unlockChain': { zh: '解锁传导链分析', en: 'Unlock Chain Analysis' },
-  'analysis.unlockChainDesc': { zh: '查看 12 条风险传导链的实时状态和压力评分', en: 'View real-time status of 12 risk transmission chains' },
-  'analysis.unlockAnomaly': { zh: '解锁异常指标详情', en: 'Unlock Anomaly Details' },
-  'analysis.unlockAnomalyDesc': { zh: '查看哪些市场指标偏离正常范围', en: 'See which market indicators deviate from normal' },
+  'analysis.share': { zh: '分享与导出', en: 'Export & Briefing' },
+  'analysis.unlockChain': { zh: '查看今日风险驱动', en: "Inspect today's risk drivers" },
+  'analysis.unlockChainDesc': { zh: 'Pro 展示今日 GFCRI 背后的活跃传导链、异常指标、压力场景和机构版简报。', en: "Pro shows the active transmission channels, outlier signals, stress scenarios, and institutional briefing behind today's GFCRI." },
+  'analysis.unlockAnomaly': { zh: '查看异常信号详情', en: 'Inspect outlier signals' },
+  'analysis.unlockAnomalyDesc': { zh: '查看哪些市场和宏观指标偏离正常区间，以及这些偏离如何影响风险指数。', en: 'See which market and macro indicators are outside normal ranges and how they affect the risk index.' },
+  'analysis.copyBrief': { zh: '复制简报', en: 'Copy Brief' },
+  'analysis.downloadMarkdown': { zh: '下载 Markdown', en: 'Download Markdown' },
+  'analysis.copied': { zh: '已复制', en: 'Copied' },
   // Forward
-  'forward.title': { zh: '前瞻预警', en: 'Forward Looking' },
-  'forward.crisis': { zh: '距离危机有多远？', en: 'How far from crisis?' },
+  'forward.title': { zh: '前瞻风险监测', en: 'Forward Risk Monitor' },
+  'forward.crisis': { zh: '历史压力阈值接近度', en: 'Crisis Proximity' },
+  'forward.crisisHelp': { zh: '数值越高，越接近历史压力阈值；数值越低，缓冲越充足。', en: 'Higher values indicate closer proximity to historical stress thresholds; lower values indicate more buffer.' },
   'forward.overall': { zh: '综合距离', en: 'Overall' },
   'forward.global': { zh: '全球系统性', en: 'Global Systemic' },
   'forward.usCore': { zh: '美国核心', en: 'US Core' },
@@ -141,18 +160,18 @@ const messages: Record<string, Record<string, string>> = {
   'forward.hasBuffer': { zh: '有缓冲', en: 'Buffer' },
   'forward.neutral': { zh: '中性', en: 'Neutral' },
   'forward.warning': { zh: '预警', en: 'Warning' },
-  'forward.alertSub': { zh: '预警订阅', en: 'Alert Subscription' },
-  'forward.alertDesc': { zh: '当风险指数突变或关键指标突破阈值时，第一时间通知你', en: 'Get notified when risk index spikes or key indicators breach thresholds' },
-  'forward.subscribed': { zh: '已订阅，预警将发送至', en: 'Subscribed, alerts will be sent to' },
-  'forward.unlockTitle': { zh: '解锁前瞻预警', en: 'Unlock Forward Look' },
-  'forward.unlockDesc': { zh: '危机距离仪表盘、压力测试场景、全球经济体健康排行 — 完整的前瞻性分析', en: 'Crisis distance, stress tests, economy rankings — complete forward analysis' },
+  'forward.alertSub': { zh: '预警内测', en: 'Alert Beta' },
+  'forward.alertDesc': { zh: '留下邮箱，自动化 GFCRI 邮件预警上线后第一时间通知你。', en: "Join the alert beta. We'll notify you when automated GFCRI email alerts are available." },
+  'forward.subscribed': { zh: '已加入内测名单：', en: 'Joined beta list:' },
+  'forward.unlockTitle': { zh: '解锁前瞻风险监测', en: 'Unlock Forward Risk Monitor' },
+  'forward.unlockDesc': { zh: '查看历史压力阈值接近度、压力测试场景、全球经济体健康排行和政策缓冲能力。', en: 'Access stress-threshold proximity, stress scenarios, economy health rankings, and policy-buffer analysis.' },
   'forward.tier1': { zh: '第一层：全球系统性（权重50%）', en: 'Tier 1: Global systemic (50% weight)' },
   'forward.tier2': { zh: '第二层：美国核心（权重30%）', en: 'Tier 2: US core (30% weight)' },
   'forward.tier3': { zh: '第三层：区域传导（权重20%）', en: 'Tier 3: Regional transmission (20% weight)' },
   // Backtest
   'backtest.subtitle.zh': { zh: '我们用 15 次历史金融危机的真实数据（最早追溯到 1929 年大萧条）回测了 GFCRI 模型。', en: 'We backtested GFCRI against 15 historical financial crises using real data dating back to the 1929 Great Depression.' },
   'backtest.subtitle2': { zh: '15 次全部检测到，14 次提前数月预警。', en: 'All 15 detected. 14 warned months in advance.' },
-  'backtest.title': { zh: 'GFCRI 能预测危机吗？', en: 'Can GFCRI Predict a Crisis?' },
+  'backtest.title': { zh: 'GFCRI 能提前识别压力条件吗？', en: 'Can GFCRI identify crisis conditions early?' },
   'backtest.overview': { zh: '历次危机回测总览', en: 'Crisis Backtest Overview' },
   'backtest.missed': { zh: '漏检', en: 'Missed' },
   'backtest.early': { zh: '最长提前月数', en: 'Max Lead Months' },
@@ -311,6 +330,17 @@ const messages: Record<string, Record<string, string>> = {
   'analogy.current': { zh: '当前', en: 'Current' },
   'analogy.closestTo': { zh: '最接近', en: 'is closest to' },
   'analogy.then': { zh: '当时', en: 'then' },
+  // Trust / methodology
+  'trust.title': { zh: '方法、数据与限制', en: 'Methodology, Data & Limitations' },
+  'trust.subtitle': { zh: 'GFCRI 旨在成为透明、可审计的宏观风险监测工具，而不是黑箱预测器。', en: 'GFCRI is designed as a transparent, auditable macro risk monitor, not a black-box prediction engine.' },
+  'trust.methodology': { zh: '方法概要', en: 'Methodology' },
+  'trust.methodologyBody': { zh: 'GFCRI 将 38 个市场与宏观指标映射到 12 条风险传导链，结合异常检测、绝对压力水平、链路激活状态和信号一致性生成 0-100 的风险指数。', en: 'GFCRI maps 38 market and macro indicators into 12 risk-transmission channels, combining anomaly detection, absolute stress levels, chain activation, and signal coherence into a 0-100 risk index.' },
+  'trust.sources': { zh: '数据来源', en: 'Data Sources' },
+  'trust.sourcesBody': { zh: '系统使用 FRED、yfinance、OECD、AKShare 及公开市场数据。数据可能存在延迟、修订或临时不可用。', en: 'The system uses FRED, yfinance, OECD, AKShare, and public market data. Data can be delayed, revised, or temporarily unavailable.' },
+  'trust.limitations': { zh: '模型限制', en: 'Model Limitations' },
+  'trust.limitationsBody': { zh: '历史相似度不代表未来会重复；压力测试是情景分析，不是概率预测；指数无法覆盖所有政策、地缘政治或流动性事件。', en: 'Historical similarity does not mean history will repeat; stress tests are scenario analyses, not probability forecasts; the index cannot capture every policy, geopolitical, or liquidity event.' },
+  'trust.disclaimer': { zh: '免责声明', en: 'Disclaimer' },
+  'trust.disclaimerBody': { zh: 'GFCRI 仅用于信息和风险监测目的，不构成投资建议、交易建议或任何金融产品推荐。', en: 'GFCRI is provided for informational and risk-monitoring purposes only. It is not investment advice, trading advice, or a recommendation to buy or sell any financial product.' },
 }
 
 const textMap: Record<string, string> = {
