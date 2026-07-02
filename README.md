@@ -128,6 +128,16 @@ Coherence Multiplier = 1 + 0.05 x max(0, active_chain_count - 1)
 
 GFCRI includes a hidden-risk layer for cases where headline market volatility looks calm but deeper structural indicators are stressed. Examples include elevated credit spreads, banking stress, dollar pressure, or high absolute stress levels that z-score has become desensitized to.
 
+### 7. Trade Dependency Spillover
+
+GFCRI now includes a first-pass cross-economy trade dependency layer. It uses a transparent `static-v1` dependency matrix to estimate how stress in one economy can transmit to trade-exposed partners through sectors such as semiconductors, commodities, energy imports, consumer demand, and regional manufacturing chains.
+
+```text
+Trade Spillover = source economy pressure x export dependency x sector criticality x substitution difficulty
+```
+
+The trade layer appears as `SI_TRADE_SPILLOVER` for explainability and contributes an additive boost of up to 8 GFCRI points. It does not dilute the original market-stress sub-indices. This first version is intentionally static and auditable; a later version should replace the matrix with UN Comtrade, OECD TiVA, IMF DOTS, or comparable official trade-flow data.
+
 ## What GFCRI Is Not
 
 GFCRI is not an investment recommendation engine and does not predict the exact timing of financial crises. It is a monitoring and explanation system.
@@ -244,7 +254,13 @@ cd frontend
 ./node_modules/.bin/vite build
 ```
 
+Trade-spillover historical comparison:
+
+```bash
+python3 scripts/backtest_trade_spillover.py all
+python3 scripts/backtest_trade_spillover.py "1997" --verbose
+```
+
 ## Disclaimer
 
 GFCRI is provided for informational and risk-monitoring purposes only. It is not investment advice, trading advice, or a recommendation to buy or sell any financial product. Historical analogies and stress-test scenarios do not guarantee future outcomes.
-

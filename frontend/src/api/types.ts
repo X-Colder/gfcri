@@ -14,6 +14,8 @@ export interface RiskIndex {
   node_contributions: Record<string, any> | null
   divergence?: Record<string, any> | null
   undercurrent_boost?: number | null
+  trade_spillover?: Record<string, any> | null
+  trade_spillover_boost?: number | null
 }
 
 export interface DailyState {

@@ -19,3 +19,5 @@ class RiskIndexResponse(BaseModel):
     node_contributions: Optional[dict[str, Any]] = None
     divergence: Optional[dict[str, Any]] = None
     undercurrent_boost: Optional[float] = None
+    trade_spillover: Optional[dict[str, Any]] = None
+    trade_spillover_boost: Optional[float] = None

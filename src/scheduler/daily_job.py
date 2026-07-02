@@ -369,6 +369,8 @@ def run_daily_analysis():
             node_contributions=gfcri_result.get("node_contributions"),
             divergence=gfcri_result.get("divergence"),
             undercurrent_boost=gfcri_result.get("undercurrent_boost", 0),
+            trade_spillover=gfcri_result.get("trade_spillover"),
+            trade_spillover_boost=gfcri_result.get("trade_spillover_boost", 0),
         )
 
         save_daily_report(

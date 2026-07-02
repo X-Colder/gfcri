@@ -198,12 +198,16 @@ def save_risk_index(
     node_contributions: Optional[dict] = None,
     divergence: Optional[dict] = None,
     undercurrent_boost: float = 0.0,
+    trade_spillover: Optional[dict] = None,
+    trade_spillover_boost: float = 0.0,
 ):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS divergence JSONB")
             cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS undercurrent_boost NUMERIC(6, 2)")
+            cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS trade_spillover JSONB")
+            cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS trade_spillover_boost NUMERIC(6, 2)")
             cur.execute(
                 """
                 INSERT INTO daily_risk_index
@@ -211,8 +215,8 @@ def save_risk_index(
                      si_rates, si_fx, si_equity, si_credit, si_sentiment,
                      sub_index_details, active_chains, chain_details,
                      coherence_multiplier, node_contributions, divergence,
-                     undercurrent_boost)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     undercurrent_boost, trade_spillover, trade_spillover_boost)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (index_date) DO UPDATE SET
                     gfcri_value = EXCLUDED.gfcri_value,
                     alert_level = EXCLUDED.alert_level,
@@ -227,7 +231,9 @@ def save_risk_index(
                     coherence_multiplier = EXCLUDED.coherence_multiplier,
                     node_contributions = EXCLUDED.node_contributions,
                     divergence = EXCLUDED.divergence,
-                    undercurrent_boost = EXCLUDED.undercurrent_boost
+                    undercurrent_boost = EXCLUDED.undercurrent_boost,
+                    trade_spillover = EXCLUDED.trade_spillover,
+                    trade_spillover_boost = EXCLUDED.trade_spillover_boost
                 """,
                 (
                     index_date,
@@ -245,6 +251,8 @@ def save_risk_index(
                     Json(node_contributions),
                     Json(divergence),
                     undercurrent_boost,
+                    Json(trade_spillover),
+                    trade_spillover_boost,
                 ),
             )
         conn.commit()

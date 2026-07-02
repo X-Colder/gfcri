@@ -146,8 +146,8 @@ const formulas = [
   },
   {
     name: 'Final GFCRI',
-    formula: 'GFCRI = weighted base x signal coherence + hidden risk boost',
-    note: 'Adds synchronization and hidden-risk effects to the weighted base score.',
+    formula: 'GFCRI = weighted base x signal coherence + hidden risk boost + trade spillover boost',
+    note: 'Adds synchronization, hidden-risk, and cross-economy trade-spillover effects to the weighted base score.',
   },
 ]
 
@@ -161,6 +161,7 @@ const weights = [
   { id: 'SI_BANKING', name: tx('银行与房产'), weight: '8%', nodes: 'kre, vnq' },
   { id: 'SI_COMMODITY', name: tx('商品与贸易'), weight: '10%', nodes: 'oil_wti, copper, gold, natgas, wheat, dram, nand, bdry' },
   { id: 'SI_SENTIMENT', name: tx('情绪与风险偏好'), weight: '12%', nodes: 'vix, recession_prob, btc, consumer_stress, eem' },
+  { id: 'SI_TRADE_SPILLOVER', name: tx('贸易依赖传导'), weight: 'Additive, max +8 pts', nodes: 'static-v1 trade dependency matrix' },
 ]
 
 const thresholds = [

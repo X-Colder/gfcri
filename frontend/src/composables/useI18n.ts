@@ -92,8 +92,9 @@ const messages: Record<string, Record<string, string>> = {
   'dash.weightedBase': { zh: '加权基础分', en: 'Weighted Base' },
   'dash.coherenceEffect': { zh: '一致性放大', en: 'Coherence Effect' },
   'dash.hiddenRiskBoost': { zh: '隐藏风险加分', en: 'Hidden Risk Boost' },
+  'dash.tradeBoost': { zh: '贸易传导加分', en: 'Trade Spillover Boost' },
   'dash.finalScore': { zh: '最终分数', en: 'Final Score' },
-  'dash.scoreFormula': { zh: '最终 GFCRI = 加权基础分 × 信号一致性 + 隐藏风险加分', en: 'Final GFCRI = weighted base score x signal coherence + hidden risk boost' },
+  'dash.scoreFormula': { zh: '最终 GFCRI = 加权基础分 × 信号一致性 + 隐藏风险加分 + 贸易传导加分', en: 'Final GFCRI = weighted base score x signal coherence + hidden risk boost + trade spillover boost' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
@@ -653,6 +654,7 @@ const textMap: Record<string, string> = {
   '信用与违约': 'Credit & Default',
   '银行与房产': 'Banks & Real Estate',
   '商品与贸易': 'Commodities & Trade',
+  '贸易依赖传导': 'Trade Dependency Spillover',
   '情绪与风险偏好': 'Sentiment & Risk Appetite',
   '情绪与避险': 'Sentiment & Safe-Haven Demand',
   '央行加息冲击波': 'Central Bank Hike Shockwave',

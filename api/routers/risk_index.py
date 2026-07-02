@@ -6,6 +6,24 @@ from api.models.risk_index import RiskIndexResponse
 router = APIRouter(prefix="/risk-index", tags=["risk-index"])
 
 
+def _trade_spillover(data: dict):
+    if data.get("trade_spillover"):
+        return data.get("trade_spillover")
+    sub = data.get("sub_index_details") or {}
+    trade = sub.get("SI_TRADE_SPILLOVER") or {}
+    return trade.get("trade_spillover")
+
+
+def _trade_spillover_boost(data: dict):
+    if data.get("trade_spillover_boost") is not None:
+        return float(data["trade_spillover_boost"])
+    sub = data.get("sub_index_details") or {}
+    trade = sub.get("SI_TRADE_SPILLOVER") or {}
+    if trade.get("trade_spillover_boost") is not None:
+        return float(trade["trade_spillover_boost"])
+    return None
+
+
 @router.get("/latest", response_model=RiskIndexResponse)
 def latest_risk_index():
     data = get_latest_risk_index()
@@ -27,6 +45,8 @@ def latest_risk_index():
         node_contributions=data.get("node_contributions"),
         divergence=data.get("divergence"),
         undercurrent_boost=float(data["undercurrent_boost"]) if data.get("undercurrent_boost") is not None else None,
+        trade_spillover=_trade_spillover(data),
+        trade_spillover_boost=_trade_spillover_boost(data),
     )
 
 
@@ -50,6 +70,8 @@ def risk_index_history(limit: int = Query(default=30, ge=1, le=365)):
             node_contributions=r.get("node_contributions"),
             divergence=r.get("divergence"),
             undercurrent_boost=float(r["undercurrent_boost"]) if r.get("undercurrent_boost") is not None else None,
+            trade_spillover=_trade_spillover(r),
+            trade_spillover_boost=_trade_spillover_boost(r),
         )
         for r in rows
     ]

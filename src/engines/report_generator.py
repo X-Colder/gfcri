@@ -67,6 +67,7 @@ _SI_PLAIN_NAME = {
     "SI_BANKING": "银行与房地产",
     "SI_CONSUMER": "消费者与实体经济",
     "SI_COMMODITY": "商品与贸易",
+    "SI_TRADE_SPILLOVER": "贸易依赖传导",
     "SI_SENTIMENT": "市场情绪与避险",
 }
 

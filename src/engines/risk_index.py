@@ -17,6 +17,8 @@ from typing import Any, TYPE_CHECKING
 
 from loguru import logger
 
+from src.engines.trade_dependency import TradeDependencyEngine
+
 if TYPE_CHECKING:
     from src.models.graph import MacroRiskCausalGraph
 
@@ -155,6 +157,11 @@ SUB_INDEX_CONFIG: dict[str, dict[str, Any]] = {
         "nodes": ["vix", "us_recession_prob", "btc", "consumer_stress", "eem"],
         "weight": 0.12,
     },
+    "SI_TRADE_SPILLOVER": {
+        "name": "贸易依赖传导",
+        "nodes": [],
+        "weight": 0.0,
+    },
 }
 
 RISK_CHAINS: list[dict[str, Any]] = [
@@ -241,16 +248,13 @@ class GFCRIEngine:
 
     def __init__(self, graph: "MacroRiskCausalGraph") -> None:
         self.graph = graph
+        self.trade_engine = TradeDependencyEngine()
 
     def compute(self) -> dict[str, Any]:
         sub_indices = {}
         for si_id, config in SUB_INDEX_CONFIG.items():
-            sub_indices[si_id] = self._compute_sub_index(si_id, config)
-
-        gfcri_base = sum(
-            sub_indices[si_id]["score"] * config["weight"]
-            for si_id, config in SUB_INDEX_CONFIG.items()
-        )
+            if config["nodes"]:
+                sub_indices[si_id] = self._compute_sub_index(si_id, config)
 
         chain_results = [self._evaluate_chain(c) for c in RISK_CHAINS]
         active_count = sum(1 for c in chain_results if c["stress"] > 40)
@@ -258,11 +262,20 @@ class GFCRIEngine:
 
         node_contributions = self._compute_node_contributions()
         divergence = self._detect_divergence(node_contributions)
+        trade_spillover = self.trade_engine.compute(node_contributions)
+        trade_boost = self._compute_trade_spillover_boost(trade_spillover)
+        sub_indices["SI_TRADE_SPILLOVER"] = self._trade_sub_index(trade_spillover)
+
+        gfcri_base = sum(
+            sub_indices[si_id]["score"] * config["weight"]
+            for si_id, config in SUB_INDEX_CONFIG.items()
+            if si_id in sub_indices
+        )
 
         # Undercurrent boost: hidden risks that z-score misses must lift the score
         undercurrent = self._compute_undercurrent(node_contributions, divergence, active_count)
 
-        gfcri = min(100.0, max(0.0, gfcri_base * coherence + undercurrent))
+        gfcri = min(100.0, max(0.0, gfcri_base * coherence + undercurrent + trade_boost))
         alert_level = self._alert_level(gfcri)
 
         result = {
@@ -275,14 +288,45 @@ class GFCRIEngine:
             "node_contributions": node_contributions,
             "divergence": divergence,
             "undercurrent_boost": round(undercurrent, 2),
+            "trade_spillover": trade_spillover,
+            "trade_spillover_boost": round(trade_boost, 2),
         }
 
         logger.info(
             f"GFCRI computed: {gfcri:.1f}/100 ({alert_level}), "
             f"active_chains={active_count}, divergence={divergence['status']}, "
+            f"trade={trade_spillover['score']:.1f}/+{trade_boost:.1f}, "
             f"undercurrent=+{undercurrent:.1f}"
         )
         return result
+
+    @staticmethod
+    def _compute_trade_spillover_boost(trade_spillover: dict[str, Any]) -> float:
+        """Additive GFCRI boost from cross-economy trade spillover.
+
+        The static-v1 trade layer is deliberately capped. It should lift risk
+        when external exposure is visible, but it must not dominate direct
+        market stress before the trade matrix is validated with official data.
+        """
+        score = float(trade_spillover.get("score", 0.0))
+        if score <= 15:
+            return 0.0
+        return min(8.0, (score - 15.0) * 0.25)
+
+    def _trade_sub_index(self, trade_spillover: dict[str, Any]) -> dict[str, Any]:
+        top_link = trade_spillover.get("top_links", [{}])[0] if trade_spillover.get("top_links") else {}
+        affected_scores = trade_spillover.get("affected_node_scores", {})
+        return {
+            "score": round(float(trade_spillover.get("score", 0.0)), 2),
+            "name": "贸易依赖传导",
+            "mean_stress": round(float(trade_spillover.get("score", 0.0)) / 100.0, 4),
+            "mean_abs_stress": 0.0,
+            "transmission": round(float(trade_spillover.get("score", 0.0)) / 100.0, 4),
+            "node_scores": affected_scores,
+            "top_driver": top_link.get("affected_nodes", ["-"])[0] if top_link else "-",
+            "trade_spillover_boost": round(self._compute_trade_spillover_boost(trade_spillover), 2),
+            "trade_spillover": trade_spillover,
+        }
 
     def _compute_sub_index(
         self, si_id: str, config: dict[str, Any]

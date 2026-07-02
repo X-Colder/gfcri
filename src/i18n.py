@@ -89,6 +89,7 @@ SI_CN: dict[str, str] = {
     "SI_CREDIT": "信用与违约",
     "SI_BANKING": "银行与房产",
     "SI_COMMODITY": "商品与贸易",
+    "SI_TRADE_SPILLOVER": "贸易依赖传导",
     "SI_SENTIMENT": "情绪与避险",
 }
 

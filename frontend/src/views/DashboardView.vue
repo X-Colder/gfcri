@@ -74,6 +74,11 @@
               <span>{{ t('dash.hiddenRiskBoost') }}</span>
               <strong>+{{ scoreReceipt.hiddenBoost.toFixed(1) }}</strong>
             </div>
+            <div class="receipt-op">+</div>
+            <div class="receipt-step">
+              <span>{{ t('dash.tradeBoost') }}</span>
+              <strong>+{{ scoreReceipt.tradeBoost.toFixed(1) }}</strong>
+            </div>
             <div class="receipt-op">=</div>
             <div class="receipt-step receipt-final">
               <span>{{ t('dash.finalScore') }}</span>
@@ -236,6 +241,7 @@ const SUB_INDEX_WEIGHTS: Record<string, number> = {
   SI_BANKING: 0.08,
   SI_COMMODITY: 0.10,
   SI_SENTIMENT: 0.12,
+  SI_TRADE_SPILLOVER: 0,
 }
 
 const scoreReceipt = computed(() => {
@@ -247,6 +253,7 @@ const scoreReceipt = computed(() => {
     weightedBase,
     coherence: riskStore.latest?.coherence_multiplier || 1,
     hiddenBoost: riskStore.latest?.undercurrent_boost || 0,
+    tradeBoost: riskStore.latest?.trade_spillover_boost || 0,
   }
 })
 
@@ -358,7 +365,7 @@ const heroSummary = computed(() => {
 .receipt-grid {
   align-items: center;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px;
   margin-top: 14px;
 }
