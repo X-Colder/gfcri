@@ -93,6 +93,7 @@ def run_daily_analysis():
         # --- Phase 2.5: Crisis distance & stress test ---
         crisis_report = None
         stress_results = None
+        hidden_risk_report = None
         try:
             from src.engines.crisis_distance import CrisisDistanceEngine
 
@@ -128,9 +129,6 @@ def run_daily_analysis():
             if stress_results:
                 with open(os.path.join(output_dir, "stress_test_cache.json"), "w") as f:
                     json.dump(stress_results, f)
-            if hidden_risk_report:
-                with open(os.path.join(output_dir, "hidden_risk_cache.json"), "w") as f:
-                    json.dump(hidden_risk_report.to_dict(), f)
         except Exception as e:
             logger.debug(f"Cache write failed (non-fatal): {e}")
 
@@ -237,7 +235,6 @@ def run_daily_analysis():
         # --- Phase 5.8: Context signal derivation ---
         context_signals = []
         context_story_md = None
-        hidden_risk_report = None
         try:
             from src.engines.context_signals import ContextSignalEngine
             from src.engines.hidden_risk import HiddenRiskEngine

@@ -106,6 +106,16 @@ const messages: Record<string, Record<string, string>> = {
   'trade.additive': { zh: '加分项', en: 'Additive' },
   'trade.empty': { zh: '暂无显著贸易传导压力。', en: 'No material trade-spillover pressure detected.' },
   'trade.staticNote': { zh: '当前为 static-v1 依赖矩阵，用于可解释建模；后续应接入官方贸易流数据进行动态校准。', en: 'This uses the static-v1 dependency matrix for explainable modeling; it should later be calibrated with official trade-flow data.' },
+  // Crisis regime assessment
+  'regime.kicker': { zh: '危机参照系', en: 'Crisis Reference Frame' },
+  'regime.title': { zh: '当前风险状态', en: 'Current Risk Regime' },
+  'regime.score': { zh: '风险指数', en: 'Risk Index' },
+  'regime.progress': { zh: '等级进度', en: 'Level Progress' },
+  'regime.factorContribution': { zh: '因子贡献', en: 'Factor Contribution' },
+  'regime.weighted': { zh: '加权占比', en: 'Weighted Share' },
+  'regime.closest': { zh: '历史参照', en: 'Historical References' },
+  'regime.similarity': { zh: '相似度', en: 'Similarity' },
+  'regime.reference': { zh: '危机等级定义', en: 'Crisis Level Definitions' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },

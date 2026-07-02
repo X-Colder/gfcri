@@ -9,6 +9,7 @@ from api.dependencies import get_graph
 router = APIRouter(prefix="/crisis-distance", tags=["crisis-distance"])
 
 _cache: dict = {"result": None, "ts": 0}
+_compute_lock = asyncio.Lock()
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/output")
 
 
@@ -30,12 +31,43 @@ async def get_crisis_distance():
     if _cache["result"] and (now - _cache["ts"]) < 3600:
         return _cache["result"]
 
-    # 3. Compute on-demand (slow fallback)
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _compute)
-    _cache["result"] = result
-    _cache["ts"] = time.time()
-    return result
+    # 3. Compute on-demand (slow fallback). Single-flight prevents a browser
+    # refresh from launching duplicate market-data downloads.
+    async with _compute_lock:
+        cached = _read_file_cache(cache_file)
+        if cached is not None:
+            return cached
+        now = time.time()
+        if _cache["result"] and (now - _cache["ts"]) < 3600:
+            return _cache["result"]
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _compute)
+        _cache["result"] = result
+        _cache["ts"] = time.time()
+        _write_file_cache(cache_file, result)
+        return result
+
+
+def _read_file_cache(cache_file: str):
+    if os.path.exists(cache_file):
+        try:
+            mtime = os.path.getmtime(cache_file)
+            if time.time() - mtime < 86400:
+                with open(cache_file) as f:
+                    return json.load(f)
+        except Exception:
+            return None
+    return None
+
+
+def _write_file_cache(cache_file: str, result: dict):
+    try:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(result, f)
+    except Exception:
+        pass
 
 
 def _compute():

@@ -61,6 +61,8 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Model Explainability</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.modelLogic') }}</h2>
 
+        <CrisisRegimePanel class="mb-5" />
+
         <div class="mb-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
           <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div class="max-w-3xl">
@@ -419,6 +421,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import RiskWatch from '@/components/common/RiskWatch.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
+import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import client from '@/api/client'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])

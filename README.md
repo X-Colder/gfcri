@@ -138,6 +138,24 @@ Trade Spillover = source economy pressure x export dependency x sector criticali
 
 The trade layer appears as `SI_TRADE_SPILLOVER` for explainability and contributes an additive boost of up to 8 GFCRI points. It does not dilute the original market-stress sub-indices. This first version is intentionally static and auditable; a later version should replace the matrix with UN Comtrade, OECD TiVA, IMF DOTS, or comparable official trade-flow data.
 
+### 8. Crisis Reference Frame
+
+GFCRI now adds a crisis taxonomy layer on top of the raw index score. The goal is to make the score easier to interpret by mapping current conditions into crisis levels and historical regime references.
+
+```text
+Current Regime = GFCRI score level + factor contribution + historical archetype similarity
+```
+
+The first version defines five reference levels:
+
+- Normal Monitoring
+- Market Stress
+- Regional / Transmission Crisis
+- Macro Recession Crisis
+- Systemic Financial Crisis
+
+It also decomposes current stress into factor groups: capital markets, credit and banking, FX / dollar pressure, economic health, trade spillover, commodities, policy buffer, and signal coherence. Historical archetypes include 1997 Asian Financial Crisis, 2008 Global Financial Crisis, 2011 Eurozone Sovereign Crisis, 2015 China Shock, 2020 COVID Liquidity Shock, and 2022 Rate-Hike Shock.
+
 ## What GFCRI Is Not
 
 GFCRI is not an investment recommendation engine and does not predict the exact timing of financial crises. It is a monitoring and explanation system.

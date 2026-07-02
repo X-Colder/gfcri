@@ -87,6 +87,7 @@
           </div>
         </div>
 
+        <CrisisRegimePanel compact class="mt-4" />
         <TradeSpilloverPanel compact class="mt-4" />
       </section>
 
@@ -184,6 +185,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
+import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
