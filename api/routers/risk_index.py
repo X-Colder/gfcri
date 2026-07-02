@@ -25,6 +25,8 @@ def latest_risk_index():
         chain_details=data.get("chain_details"),
         coherence_multiplier=float(data["coherence_multiplier"]) if data.get("coherence_multiplier") else None,
         node_contributions=data.get("node_contributions"),
+        divergence=data.get("divergence"),
+        undercurrent_boost=float(data["undercurrent_boost"]) if data.get("undercurrent_boost") is not None else None,
     )
 
 
@@ -46,6 +48,8 @@ def risk_index_history(limit: int = Query(default=30, ge=1, le=365)):
             chain_details=r.get("chain_details"),
             coherence_multiplier=float(r["coherence_multiplier"]) if r.get("coherence_multiplier") else None,
             node_contributions=r.get("node_contributions"),
+            divergence=r.get("divergence"),
+            undercurrent_boost=float(r["undercurrent_boost"]) if r.get("undercurrent_boost") is not None else None,
         )
         for r in rows
     ]

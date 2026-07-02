@@ -17,3 +17,5 @@ class RiskIndexResponse(BaseModel):
     chain_details: Any = None
     coherence_multiplier: Optional[float] = None
     node_contributions: Optional[dict[str, Any]] = None
+    divergence: Optional[dict[str, Any]] = None
+    undercurrent_boost: Optional[float] = None

@@ -367,6 +367,8 @@ def run_daily_analysis():
             chain_details=gfcri_result["chains"],
             coherence_multiplier=gfcri_result["coherence_multiplier"],
             node_contributions=gfcri_result.get("node_contributions"),
+            divergence=gfcri_result.get("divergence"),
+            undercurrent_boost=gfcri_result.get("undercurrent_boost", 0),
         )
 
         save_daily_report(

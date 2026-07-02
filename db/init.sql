@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS daily_risk_index (
     chain_details       JSONB,
     coherence_multiplier NUMERIC(4, 2),
     node_contributions  JSONB,
+    divergence          JSONB,
+    undercurrent_boost  NUMERIC(6, 2),
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 

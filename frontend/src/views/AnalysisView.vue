@@ -40,6 +40,49 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Model Explainability</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.modelLogic') }}</h2>
 
+        <div class="mb-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
+          <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div class="max-w-3xl">
+              <div class="flex items-center gap-3">
+                <p class="text-sm text-white font-medium">{{ t('analysis.hiddenRisk') }}</p>
+                <span class="px-2 py-0.5 rounded-full border text-[10px] font-mono"
+                      :style="{ color: hiddenRiskColor, borderColor: hiddenRiskColor, backgroundColor: hiddenRiskColor + '18' }">
+                  {{ hiddenRisk.statusLabel }}
+                </span>
+              </div>
+              <p class="terminal-copy mt-2">{{ t('analysis.hiddenRiskDesc') }}</p>
+              <p class="text-xs text-[var(--muted)] mt-3">{{ hiddenRisk.primaryDetail }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[460px]">
+              <div class="terminal-metric">
+                <span>{{ t('analysis.undercurrentBoost') }}</span>
+                <strong :style="{ color: hiddenRiskColor }">+{{ hiddenRisk.undercurrent.toFixed(1) }}</strong>
+              </div>
+              <div class="terminal-metric">
+                <span>{{ t('analysis.surfaceStress') }}</span>
+                <strong>{{ hiddenRisk.surfaceAvgDisplay }}</strong>
+              </div>
+              <div class="terminal-metric">
+                <span>{{ t('analysis.deepStress') }}</span>
+                <strong>{{ hiddenRisk.deepAvgDisplay }}</strong>
+              </div>
+              <div class="terminal-metric">
+                <span>{{ t('analysis.gap') }}</span>
+                <strong>{{ hiddenRisk.gapDisplay }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-3 lg:grid-cols-2" v-if="hiddenRisk.items.length">
+            <div v-for="item in hiddenRisk.items" :key="item.title" class="rounded-lg border border-[var(--border)] bg-white/[0.015] p-3">
+              <p class="text-xs text-white font-medium">{{ item.title }}</p>
+              <p class="text-[11px] text-[var(--muted)] leading-relaxed mt-1">{{ item.detail }}</p>
+            </div>
+          </div>
+          <p v-else class="mt-4 text-xs text-[var(--muted)]">{{ t('analysis.hiddenNone') }}</p>
+          <p class="mt-4 text-[11px] text-[var(--accent)]">{{ t('analysis.hiddenWhyPro') }}</p>
+        </div>
+
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover min-w-0">
             <div class="flex items-center justify-between mb-3">
@@ -547,6 +590,43 @@ const sortedChains = computed(() => {
 const activeChains = computed(() => sortedChains.value.filter((c: any) => c.active))
 const dormantChains = computed(() => sortedChains.value.filter((c: any) => !c.active))
 
+const SURFACE_NODE_IDS = new Set(['vix', 'spx', 'kospi', 'hsi', 'sox', 'stoxx50'])
+const DEEP_NODE_IDS = new Set(['hyg', 'lqd', 'kre', 'vnq', 'dxy', 'ust_10y', 'oil_wti', 'krw_usd'])
+
+const hiddenRisk = computed(() => {
+  const risk = riskStore.latest
+  const divergence = risk?.divergence || null
+  const fallback = estimateDivergence()
+  const status = String(divergence?.status || fallback.status || 'none')
+  const surfaceAvg = Number(divergence?.surface_avg ?? fallback.surfaceAvg ?? 0)
+  const deepAvg = Number(divergence?.deep_avg ?? fallback.deepAvg ?? 0)
+  const gap = Number(divergence?.gap ?? fallback.gap ?? 0)
+  const undercurrent = Number(risk?.undercurrent_boost ?? fallback.undercurrent ?? 0)
+  const rawDetails = Array.isArray(divergence?.details) ? divergence.details : []
+  const items = rawDetails.length ? rawDetails.map(hiddenRiskDetail) : fallback.items
+  return {
+    status,
+    statusLabel: hiddenRiskStatusLabel(status),
+    surfaceAvg,
+    deepAvg,
+    gap,
+    undercurrent,
+    surfaceAvgDisplay: `${(surfaceAvg * 100).toFixed(0)}`,
+    deepAvgDisplay: `${(deepAvg * 100).toFixed(0)}`,
+    gapDisplay: `${(gap * 100).toFixed(0)}`,
+    primaryDetail: items[0]?.detail || t('analysis.hiddenNone'),
+    items,
+  }
+})
+
+const hiddenRiskColor = computed(() => {
+  const status = hiddenRisk.value.status
+  if (status === 'critical') return COLORS.red
+  if (status === 'significant') return COLORS.orange
+  if (status === 'mild') return COLORS.yellow
+  return COLORS.green
+})
+
 const anomalousNodes = computed(() => {
   const nc = riskStore.latest?.node_contributions
   if (!nc) return []
@@ -562,6 +642,82 @@ const anomalousNodes = computed(() => {
     }))
     .sort((a, b) => Math.abs(b.zscore) - Math.abs(a.zscore))
 })
+
+function estimateDivergence() {
+  const nc = riskStore.latest?.node_contributions || {}
+  const surface = Object.entries(nc)
+    .filter(([id, info]: [string, any]) => SURFACE_NODE_IDS.has(id) && info.abs_score !== null && info.abs_score !== undefined)
+    .map(([id, info]: [string, any]) => ({ id, score: Number(info.abs_score || 0), name: tx(info.display_name || nodeNames[id] || id) }))
+  const deep = Object.entries(nc)
+    .filter(([id, info]: [string, any]) => DEEP_NODE_IDS.has(id) && info.abs_score !== null && info.abs_score !== undefined)
+    .map(([id, info]: [string, any]) => ({ id, score: Number(info.abs_score || 0), name: tx(info.display_name || nodeNames[id] || id) }))
+
+  const surfaceAvg = avg(surface.map(x => x.score))
+  const deepAvg = avg(deep.map(x => x.score))
+  const gap = deepAvg - surfaceAvg
+  const stressedDeep = deep.filter(x => x.score > 0.35).sort((a, b) => b.score - a.score)
+  const calmSurface = surface.filter(x => x.score < 0.25).sort((a, b) => a.score - b.score)
+  const status = gap > 0.25 && deepAvg > 0.4 ? 'critical'
+    : gap > 0.15 && deepAvg > 0.3 ? 'significant'
+    : gap > 0.08 ? 'mild'
+    : 'none'
+  const items = stressedDeep.length ? [{
+    title: t('analysis.hiddenRisk'),
+    detail: lang.value === 'zh'
+      ? `${stressedDeep.slice(0, 3).map(x => `${x.name} ${(x.score * 100).toFixed(0)}`).join('、')} 处于高压${calmSurface.length ? '，而表面指标相对平静。' : '。'}`
+      : `${stressedDeep.slice(0, 3).map(x => `${x.name} ${(x.score * 100).toFixed(0)}`).join(', ')} ${calmSurface.length ? 'while headline indicators remain calmer.' : ''}`,
+  }] : []
+  return {
+    status,
+    surfaceAvg,
+    deepAvg,
+    gap,
+    undercurrent: status === 'critical' ? 12 : status === 'significant' ? 8 : status === 'mild' ? 3 : 0,
+    items,
+  }
+}
+
+function hiddenRiskStatusLabel(status: string): string {
+  if (status === 'critical') return 'Critical'
+  if (status === 'significant') return 'Significant'
+  if (status === 'mild') return 'Mild'
+  return 'None'
+}
+
+function hiddenRiskDetail(detail: any) {
+  const title = tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+  if (lang.value === 'zh') {
+    return { title, detail: detail.detail || '' }
+  }
+  if (detail.type === 'policy_mask') {
+    const unhealed = (detail.unhealed || []).slice(0, 3).map((x: any) => `${tx(x.label)} ${x.score}`).join(', ')
+    const healed = (detail.healed || []).slice(0, 3).map((x: any) => `${tx(x.label)} ${x.score}`).join(', ')
+    return {
+      title,
+      detail: `Policy-sensitive indicators have cooled, but structural stress remains. ${unhealed ? `Structural stress: ${unhealed}.` : ''}${healed ? ` Policy-sensitive calm: ${healed}.` : ''}`,
+    }
+  }
+  if (detail.type === 'surface_calm_deep_stress') {
+    const stressed = (detail.stressed_indicators || []).slice(0, 4).map((id: string) => tx(nodeNames[id] || id)).join(', ')
+    const calm = (detail.calm_indicators || []).slice(0, 4).map((id: string) => tx(nodeNames[id] || id)).join(', ')
+    return {
+      title,
+      detail: `Headline indicators look calmer than structural indicators. ${stressed ? `Deep-stress indicators: ${stressed}.` : ''}${calm ? ` Calmer headline indicators: ${calm}.` : ''}`,
+    }
+  }
+  if (detail.type === 'zscore_desensitized') {
+    const ids = (detail.desensitized_indicators || []).slice(0, 4).map((id: string) => tx(nodeNames[id] || id)).join(', ')
+    return {
+      title,
+      detail: `Some indicators remain dangerous by absolute level even though their recent rate of change has normalized. ${ids ? `Desensitized indicators: ${ids}.` : ''}`,
+    }
+  }
+  return { title, detail: tx(detail.detail || '') }
+}
+
+function avg(values: number[]): number {
+  return values.length ? values.reduce((s, x) => s + x, 0) / values.length : 0
+}
 
 const topNodeContributions = computed(() => {
   const nc = riskStore.latest?.node_contributions

@@ -196,18 +196,23 @@ def save_risk_index(
     chain_details: Optional[dict] = None,
     coherence_multiplier: float = 1.0,
     node_contributions: Optional[dict] = None,
+    divergence: Optional[dict] = None,
+    undercurrent_boost: float = 0.0,
 ):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS divergence JSONB")
+            cur.execute("ALTER TABLE daily_risk_index ADD COLUMN IF NOT EXISTS undercurrent_boost NUMERIC(6, 2)")
             cur.execute(
                 """
                 INSERT INTO daily_risk_index
                     (index_date, gfcri_value, alert_level,
                      si_rates, si_fx, si_equity, si_credit, si_sentiment,
                      sub_index_details, active_chains, chain_details,
-                     coherence_multiplier, node_contributions)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     coherence_multiplier, node_contributions, divergence,
+                     undercurrent_boost)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (index_date) DO UPDATE SET
                     gfcri_value = EXCLUDED.gfcri_value,
                     alert_level = EXCLUDED.alert_level,
@@ -220,7 +225,9 @@ def save_risk_index(
                     active_chains = EXCLUDED.active_chains,
                     chain_details = EXCLUDED.chain_details,
                     coherence_multiplier = EXCLUDED.coherence_multiplier,
-                    node_contributions = EXCLUDED.node_contributions
+                    node_contributions = EXCLUDED.node_contributions,
+                    divergence = EXCLUDED.divergence,
+                    undercurrent_boost = EXCLUDED.undercurrent_boost
                 """,
                 (
                     index_date,
@@ -236,6 +243,8 @@ def save_risk_index(
                     Json(chain_details),
                     coherence_multiplier,
                     Json(node_contributions),
+                    Json(divergence),
+                    undercurrent_boost,
                 ),
             )
         conn.commit()

@@ -12,6 +12,8 @@ export interface RiskIndex {
   chain_details: Record<string, any> | null
   coherence_multiplier: number | null
   node_contributions: Record<string, any> | null
+  divergence?: Record<string, any> | null
+  undercurrent_boost?: number | null
 }
 
 export interface DailyState {
