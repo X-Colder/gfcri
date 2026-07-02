@@ -9,8 +9,9 @@ import pandas as pd
 import numpy as np
 import requests
 import sys
+import os
 
-FRED_KEY = "25abae195da5a4815248927909aefa98"
+FRED_KEY = os.getenv("FRED_API_KEY", "")
 
 # ═══════════════════════════════════════════════════════════
 # Crisis definitions
