@@ -8,29 +8,51 @@
           <div class="mt-1 flex flex-wrap items-center gap-3">
             <h3 class="text-sm font-medium text-white">{{ t('regime.title') }}</h3>
             <span class="rounded-full border px-2 py-0.5 text-[10px] font-mono"
-                  :style="{ color: levelColor, borderColor: levelColor, backgroundColor: levelColor + '18' }">
-              L{{ assessment.level.level }} · {{ levelLabel(assessment.level) }}
+                  :style="{ color: damageColor, borderColor: damageColor, backgroundColor: damageColor + '18' }">
+              D{{ damage.level.level }} · {{ levelLabel(damage.level) }}
             </span>
           </div>
           <p class="terminal-copy mt-2">{{ assessment.interpretation }}</p>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:min-w-[260px]">
+        <div class="grid grid-cols-3 gap-2 sm:min-w-[390px]">
           <div class="terminal-metric">
-            <span>{{ t('regime.score') }}</span>
-            <strong :style="{ color: levelColor }">{{ Number(assessment.score || 0).toFixed(1) }}</strong>
+            <span>{{ t('regime.damage') }}</span>
+            <strong :style="{ color: damageColor }">{{ Number(damage.score || 0).toFixed(1) }}</strong>
           </div>
           <div class="terminal-metric">
-            <span>{{ t('regime.progress') }}</span>
-            <strong>{{ Number(assessment.level_progress || 0).toFixed(0) }}%</strong>
+            <span>{{ t('regime.pressure') }}</span>
+            <strong :style="{ color: pressureColor }">{{ Number(pressure.score || 0).toFixed(1) }}</strong>
+          </div>
+          <div class="terminal-metric">
+            <span>{{ t('regime.hidden') }}</span>
+            <strong :style="{ color: hiddenColor }">{{ Number(hidden.score || 0).toFixed(0) }}</strong>
           </div>
         </div>
       </div>
 
       <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.05]">
-        <div class="h-full rounded-full transition-all" :style="{ width: regimeWidth, backgroundColor: levelColor }"></div>
+        <div class="h-full rounded-full transition-all" :style="{ width: damageWidth, backgroundColor: damageColor }"></div>
       </div>
-      <div class="mt-2 grid grid-cols-5 gap-1 text-[9px] text-[var(--muted)]">
-        <span v-for="level in assessment.levels" :key="level.id" class="truncate">{{ levelLabel(level) }}</span>
+      <div class="mt-2 grid grid-cols-6 gap-1 text-[9px] text-[var(--muted)]">
+        <span v-for="level in damageLevels" :key="level.id" class="truncate">{{ levelLabel(level) }}</span>
+      </div>
+
+      <div class="mt-4 grid gap-3 lg:grid-cols-3">
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-3">
+          <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('regime.realizedDamage') }}</p>
+          <p class="mt-1 text-xs text-white">{{ levelLabel(damage.level) }}</p>
+          <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ damage.level?.economy_reference }}</p>
+        </div>
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-3">
+          <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('regime.forwardPressure') }}</p>
+          <p class="mt-1 text-xs text-white">{{ levelLabel(pressure.level) }}</p>
+          <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ pressure.level?.description }}</p>
+        </div>
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-3">
+          <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('regime.hiddenRisk') }}</p>
+          <p class="mt-1 text-xs text-white">{{ hiddenLabel }}</p>
+          <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ t('regime.hiddenNote') }}</p>
+        </div>
       </div>
 
       <div class="mt-5 grid gap-4" :class="compact ? 'xl:grid-cols-2' : 'xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]'">
@@ -73,7 +95,7 @@
       <div v-if="!compact" class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
         <p class="mb-3 text-xs font-medium text-white">{{ t('regime.reference') }}</p>
         <div class="grid gap-3 lg:grid-cols-2">
-          <div v-for="level in assessment.levels" :key="level.id" class="rounded-lg border border-[var(--border)] p-3">
+          <div v-for="level in damageLevels" :key="level.id" class="rounded-lg border border-[var(--border)] p-3">
             <p class="text-xs text-white">L{{ level.level }} · {{ levelLabel(level) }}</p>
             <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ level.market_reference }}</p>
             <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ level.economy_reference }}</p>
@@ -112,8 +134,15 @@ async function loadAssessment() {
 
 const visibleFactors = computed(() => (assessment.value?.factors || []).slice(0, 8))
 const visibleMatches = computed(() => (assessment.value?.matches || []).slice(0, 3))
-const levelColor = computed(() => factorColor(Number(assessment.value?.score || 0)))
-const regimeWidth = computed(() => `${Math.min(Number(assessment.value?.score || 0), 100)}%`)
+const damage = computed(() => assessment.value?.realized_damage || { score: 0, level: assessment.value?.level || {} })
+const pressure = computed(() => assessment.value?.forward_pressure || { score: assessment.value?.score || 0, level: {} })
+const hidden = computed(() => assessment.value?.hidden_risk || { score: 0, label: 'Low Hidden Risk', label_zh: '低隐藏风险' })
+const damageLevels = computed(() => assessment.value?.damage_levels || assessment.value?.levels || [])
+const damageColor = computed(() => factorColor(Number(damage.value?.score || 0)))
+const pressureColor = computed(() => factorColor(Number(pressure.value?.score || 0)))
+const hiddenColor = computed(() => factorColor(Number(hidden.value?.score || 0)))
+const damageWidth = computed(() => `${Math.min(Number(damage.value?.score || 0), 100)}%`)
+const hiddenLabel = computed(() => lang.value === 'zh' ? hidden.value?.label_zh || hidden.value?.label : hidden.value?.label)
 
 function factorColor(value: number): string {
   if (value >= 75) return COLORS.red

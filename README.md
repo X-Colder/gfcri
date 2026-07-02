@@ -140,21 +140,22 @@ The trade layer appears as `SI_TRADE_SPILLOVER` for explainability and contribut
 
 ### 8. Crisis Reference Frame
 
-GFCRI now adds a crisis taxonomy layer on top of the raw index score. The goal is to make the score easier to interpret by mapping current conditions into crisis levels and historical regime references.
+GFCRI now separates realized damage from forward-looking risk pressure. Crisis levels are anchored to actual damage, not to the GFCRI score itself.
 
 ```text
-Current Regime = GFCRI score level + factor contribution + historical archetype similarity
+Current Assessment = realized damage level + forward pressure + hidden risk + historical pressure-profile similarity
 ```
 
-The first version defines five reference levels:
+The first version defines six realized-damage levels:
 
-- Normal Monitoring
-- Market Stress
-- Regional / Transmission Crisis
-- Macro Recession Crisis
-- Systemic Financial Crisis
+- No Material Damage
+- Market Correction
+- Regional / Market Damage
+- Macro Recession Damage
+- Systemic Financial Damage
+- Depression / Structural Damage
 
-It also decomposes current stress into factor groups: capital markets, credit and banking, FX / dollar pressure, economic health, trade spillover, commodities, policy buffer, and signal coherence. Historical archetypes include 1997 Asian Financial Crisis, 2008 Global Financial Crisis, 2011 Eurozone Sovereign Crisis, 2015 China Shock, 2020 COVID Liquidity Shock, and 2022 Rate-Hike Shock.
+GFCRI remains the forward-pressure index. The realized-damage layer is deliberately conservative, so the system can say: "actual damage is still limited, but forward pressure and hidden risk are elevated." It also decomposes current stress into factor groups: capital markets, credit and banking, FX / dollar pressure, economic health, trade spillover, commodities, policy buffer, and signal coherence. Historical archetypes include 1997 Asian Financial Crisis, 2008 Global Financial Crisis, 2011 Eurozone Sovereign Crisis, 2015 China Shock, 2020 COVID Liquidity Shock, and 2022 Rate-Hike Shock.
 
 ## What GFCRI Is Not
 

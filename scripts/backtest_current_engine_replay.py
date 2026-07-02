@@ -64,7 +64,8 @@ class ReplayRow:
     raw_gfcri: float
     adjusted_gfcri: float
     legacy_gfcri: float | None
-    level: str
+    damage_level: str
+    pressure_level: str
     top_match: str
     top_match_similarity: float
     top_factor: str
@@ -217,7 +218,8 @@ def replay_crisis(crisis: dict[str, Any], verbose: bool = False) -> dict[str, An
             raw_gfcri=float(gfcri["gfcri"]),
             adjusted_gfcri=float(result["adjusted_gfcri"]),
             legacy_gfcri=float(result["legacy"]["gfcri"]) if result.get("legacy") else None,
-            level=regime["level"]["id"],
+            damage_level=regime["realized_damage"]["level"]["id"],
+            pressure_level=regime["forward_pressure"]["level"]["id"],
             top_match=top_match.get("name", "-"),
             top_match_similarity=float(top_match.get("similarity", 0)),
             top_factor=top_factor.get("id", "-"),
@@ -234,12 +236,13 @@ def replay_crisis(crisis: dict[str, Any], verbose: bool = False) -> dict[str, An
         print(f"\n{'=' * 110}")
         print(crisis["name"])
         print(f"{'=' * 110}")
-        print(f"{'Date':<9} {'Raw':>6} {'Adj':>6} {'Legacy':>7} {'Level':>20} {'Top Factor':>18} {'Match':>24} {'Sim':>5} {'Cov':>4} {'Tr+':>5}")
+        print(f"{'Date':<9} {'Raw':>6} {'Adj':>6} {'Legacy':>7} {'Damage':>20} {'Pressure':>20} {'Top Factor':>18} {'Match':>24} {'Sim':>5} {'Cov':>4} {'Tr+':>5}")
         print("-" * 110)
         for row in rows:
             legacy = f"{row.legacy_gfcri:.1f}" if row.legacy_gfcri is not None else "-"
             print(
-                f"{row.date:<9} {row.raw_gfcri:>6.1f} {row.adjusted_gfcri:>6.1f} {legacy:>7} {row.level[:20]:>20} "
+                f"{row.date:<9} {row.raw_gfcri:>6.1f} {row.adjusted_gfcri:>6.1f} {legacy:>7} "
+                f"{row.damage_level[:20]:>20} {row.pressure_level[:20]:>20} "
                 f"{row.top_factor[:18]:>18} {row.top_match[:24]:>24} "
                 f"{row.top_match_similarity:>5.0f} {row.coverage:>4} {row.trade_boost:>5.1f}"
             )
@@ -256,7 +259,8 @@ def replay_crisis(crisis: dict[str, Any], verbose: bool = False) -> dict[str, An
         "window_peak_gfcri": peak.adjusted_gfcri,
         "window_peak_raw_gfcri": peak.raw_gfcri,
         "window_peak_date": peak.date,
-        "window_peak_level": peak.level,
+        "window_peak_damage_level": peak.damage_level,
+        "window_peak_pressure_level": peak.pressure_level,
         "first_warning": first_warning,
         "first_orange": first_orange,
         "avg_coverage": sum(r.coverage for r in rows) / len(rows),
@@ -289,7 +293,7 @@ def main() -> None:
     print(f"{'=' * 132}")
     print(
         f"{'Crisis':<34} {'PeakEvent':>9} {'WinPeak':>8} {'PeakDate':>8} "
-        f"{'Level':>20} {'Warn':>12} {'Orange':>12} {'Cov':>5} {'Tr+':>5} {'TopFactor':>18}"
+        f"{'Damage':>20} {'Pressure':>20} {'Warn':>12} {'Orange':>12} {'Cov':>5} {'Tr+':>5} {'TopFactor':>18}"
     )
     print("-" * 132)
     for s in summaries:
@@ -297,7 +301,8 @@ def main() -> None:
         peak_event_text = f"{peak_event:.1f}" if peak_event is not None else "-"
         print(
             f"{s['crisis'][:33]:<34} {peak_event_text:>9} {s['window_peak_gfcri']:>8.1f} "
-            f"{s['window_peak_date']:>8} {s['window_peak_level'][:20]:>20} "
+            f"{s['window_peak_date']:>8} {s['window_peak_damage_level'][:20]:>20} "
+            f"{s['window_peak_pressure_level'][:20]:>20} "
             f"{months_before(s['peak_event'], s['first_warning']):>12} "
             f"{months_before(s['peak_event'], s['first_orange']):>12} "
             f"{s['avg_coverage']:>5.1f} {s['avg_trade_boost']:>5.1f} "

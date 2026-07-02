@@ -1,7 +1,13 @@
-"""Crisis taxonomy and regime assessment.
+"""Damage-based crisis taxonomy and forward-pressure assessment.
 
-This layer gives GFCRI an explicit reference frame: crisis levels, historical
-archetypes, factor contribution, and current-regime matching.
+This layer deliberately separates three concepts:
+
+1. Realized damage: what has already been damaged in markets/economy/credit.
+2. Forward pressure: GFCRI-style stress that may lead to future damage.
+3. Hidden risk: structural stress that may not yet be visible in realized damage.
+
+The crisis level is anchored to realized damage. GFCRI is not used to define
+whether a crisis has already happened.
 """
 
 from __future__ import annotations
@@ -29,7 +35,8 @@ class CrisisArchetype:
     id: str
     name: str
     name_zh: str
-    level_id: str
+    damage_level_id: str
+    pressure_phase: str
     peak_period: str
     description: str
     factors: dict[str, float]
@@ -59,62 +66,82 @@ FACTOR_LABELS: dict[str, dict[str, str]] = {
 }
 
 
-CRISIS_LEVELS: tuple[CrisisLevel, ...] = (
+DAMAGE_LEVELS: tuple[CrisisLevel, ...] = (
     CrisisLevel(
-        "normal",
+        "no_material_damage",
         0,
-        "Normal Monitoring",
-        "正常监测",
+        "No Material Damage",
+        "无显著损害",
         0,
-        25,
-        "Broad risk assets remain within normal drawdown ranges.",
-        "No broad evidence of economic damage.",
-        "Routine macro-financial monitoring.",
+        15,
+        "No broad drawdown or funding damage is visible.",
+        "No broad evidence of GDP, labor-market, consumption, or credit damage.",
+        "Pressure may exist, but realized damage is still limited.",
     ),
     CrisisLevel(
-        "market_stress",
+        "market_correction",
         1,
-        "Market Stress",
-        "市场压力",
-        25,
-        40,
-        "Equity drawdown around 10%-15%, volatility rising, credit spreads mildly wider.",
-        "Economic damage is usually limited, but funding and confidence start to tighten.",
-        "A tradable stress episode rather than a full macro crisis.",
+        "Market Correction",
+        "市场调整",
+        15,
+        30,
+        "Typical equity drawdown around 10%-15%; volatility rises but forced liquidation is limited.",
+        "Economic activity is not yet materially damaged.",
+        "Damage is mostly mark-to-market rather than macroeconomic.",
     ),
     CrisisLevel(
-        "regional_crisis",
+        "regional_market_damage",
         2,
-        "Regional / Transmission Crisis",
-        "区域或传导危机",
-        40,
-        55,
-        "Regional equity/FX/credit stress, often 20%-30% equity drawdowns in affected markets.",
-        "Trade, capital-flow, and currency pressure can spill into partner economies.",
-        "Stress is no longer isolated; transmission channels matter.",
+        "Regional / Market Damage",
+        "区域或市场损害",
+        30,
+        50,
+        "Affected markets may draw down 20%-30%; FX, rates, or credit stress becomes visible regionally.",
+        "Damage is material for some economies or sectors, but not yet a broad global recession.",
+        "Transmission has caused damage, but system-wide macro damage is not yet dominant.",
     ),
     CrisisLevel(
-        "macro_recession",
+        "macro_recession_damage",
         3,
-        "Macro Recession Crisis",
-        "宏观衰退危机",
-        55,
-        75,
-        "Broad risk-asset drawdowns, sustained credit stress, and recession pricing.",
-        "GDP, jobs, consumption, or corporate earnings show material damage.",
-        "Market stress is becoming real-economy damage.",
+        "Macro Recession Damage",
+        "宏观衰退损害",
+        50,
+        70,
+        "Broad drawdowns and sustained credit stress are visible.",
+        "GDP, jobs, consumption, corporate earnings, or industrial activity show real deterioration.",
+        "The crisis has moved from market pricing into the real economy.",
     ),
     CrisisLevel(
-        "systemic_financial",
+        "systemic_financial_damage",
         4,
-        "Systemic Financial Crisis",
-        "系统性金融危机",
-        75,
-        100,
-        "Multi-asset liquidation, bank/funding stress, and policy rescue conditions.",
+        "Systemic Financial Damage",
+        "系统性金融损害",
+        70,
+        90,
+        "Multi-asset liquidation, bank/funding stress, and emergency policy support are visible.",
         "Credit creation, employment, output, and confidence can be impaired together.",
-        "The financial system itself becomes a source of macro damage.",
+        "The financial system itself becomes a source of macroeconomic damage.",
     ),
+    CrisisLevel(
+        "depression_structural_damage",
+        5,
+        "Depression / Structural Damage",
+        "萧条或结构性损害",
+        90,
+        100,
+        "Market losses are deep and persistent across multiple asset classes.",
+        "GDP, employment, credit creation, banks, or sovereign balance sheets suffer long-duration damage.",
+        "Damage is structural rather than cyclical.",
+    ),
+)
+
+
+FORWARD_PRESSURE_LEVELS: tuple[CrisisLevel, ...] = (
+    CrisisLevel("normal_pressure", 0, "Normal Pressure", "正常压力", 0, 25, "Risk pressure is normal.", "No near-term damage signal.", "Routine monitoring."),
+    CrisisLevel("elevated_pressure", 1, "Elevated Pressure", "压力升高", 25, 40, "Market pressure is rising.", "Damage is not yet broad.", "Watch for confirmation."),
+    CrisisLevel("high_transmission_pressure", 2, "High / Transmission Pressure", "高压或传导压力", 40, 55, "Multiple channels are warming.", "Damage can emerge if pressure persists.", "This is pre-damage or early transmission risk."),
+    CrisisLevel("severe_pre_crisis_pressure", 3, "Severe Pre-Crisis Pressure", "严重危机前压力", 55, 75, "Stress resembles prior pre-crisis windows.", "Real economy damage risk is material.", "Pressure is high enough to require defensive attention."),
+    CrisisLevel("crisis_level_pressure", 4, "Crisis-Level Pressure", "危机级压力", 75, 100, "Pressure is comparable to major crisis windows.", "Damage is likely already visible or imminent.", "This is crisis-grade pressure, not necessarily final damage classification."),
 )
 
 
@@ -123,7 +150,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "asia_1997",
         "1997 Asian Financial Crisis",
         "1997 亚洲金融危机",
-        "regional_crisis",
+        "regional_market_damage",
+        "damage_realization",
         "1997-10 to 1998-01",
         "FX pressure, external funding stress, regional equity contagion, and trade exposure.",
         {
@@ -141,7 +169,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "gfc_2008",
         "2008 Global Financial Crisis",
         "2008 全球金融危机",
-        "systemic_financial",
+        "systemic_financial_damage",
+        "damage_realization",
         "2008-09 to 2009-03",
         "Credit, banking, housing, liquidity, and equity stress became mutually reinforcing.",
         {
@@ -159,7 +188,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "euro_2011",
         "2011 Eurozone Sovereign Crisis",
         "2011 欧债危机",
-        "regional_crisis",
+        "regional_market_damage",
+        "damage_realization",
         "2011-08 to 2011-11",
         "Sovereign-credit, euro, banking, and regional equity stress fed into global risk appetite.",
         {
@@ -177,7 +207,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "china_2015",
         "2015 China Shock",
         "2015 中国冲击",
-        "regional_crisis",
+        "regional_market_damage",
+        "damage_realization",
         "2015-08 to 2016-01",
         "China equity, RMB, commodity, and regional trade exposure drove global repricing.",
         {
@@ -195,7 +226,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "covid_2020",
         "2020 COVID Liquidity Shock",
         "2020 新冠流动性冲击",
-        "systemic_financial",
+        "macro_recession_damage",
+        "rapid_damage_realization",
         "2020-02 to 2020-03",
         "Global equity liquidation, volatility shock, supply-chain disruption, and emergency policy response.",
         {
@@ -213,7 +245,8 @@ HISTORICAL_ARCHETYPES: tuple[CrisisArchetype, ...] = (
         "rate_2022",
         "2022 Rate-Hike Shock",
         "2022 加息冲击",
-        "macro_recession",
+        "market_correction",
+        "pre_damage_pressure",
         "2022-06 to 2022-10",
         "Rates, dollar strength, equity valuation compression, and global liquidity stress dominated.",
         {
@@ -239,21 +272,41 @@ class CrisisRegimeAssessmentEngine:
         gfcri = float(risk_index.get("gfcri_value") or risk_index.get("gfcri") or 0)
         factors = self._factor_scores(risk_index, ehs_scores or [])
         contributions = self._factor_contributions(factors)
-        level = self._level_for_score(gfcri)
+        damage_score = self._realized_damage_score(factors)
+        damage_level = self._level_for_score(damage_score, DAMAGE_LEVELS)
+        pressure_level = self._level_for_score(gfcri, FORWARD_PRESSURE_LEVELS)
+        hidden = self._hidden_risk_assessment(risk_index)
         matches = self._historical_matches(factors)
 
         return {
             "score": round(gfcri, 2),
-            "level": self._level_to_dict(level),
-            "level_progress": self._level_progress(gfcri, level),
-            "interpretation": self._interpretation(level, matches),
+            "realized_damage": {
+                "score": round(damage_score, 2),
+                "level": self._level_to_dict(damage_level),
+                "level_progress": self._level_progress(damage_score, damage_level),
+                "evidence": self._damage_evidence(factors),
+            },
+            "forward_pressure": {
+                "score": round(gfcri, 2),
+                "level": self._level_to_dict(pressure_level),
+                "level_progress": self._level_progress(gfcri, pressure_level),
+            },
+            "hidden_risk": hidden,
+            # Backward-compatible aliases for existing consumers.
+            "level": self._level_to_dict(damage_level),
+            "level_progress": self._level_progress(damage_score, damage_level),
+            "interpretation": self._interpretation(damage_level, pressure_level, hidden, matches),
             "factors": contributions,
             "matches": matches,
-            "levels": [self._level_to_dict(l) for l in CRISIS_LEVELS],
+            "levels": [self._level_to_dict(l) for l in DAMAGE_LEVELS],
+            "damage_levels": [self._level_to_dict(l) for l in DAMAGE_LEVELS],
+            "pressure_levels": [self._level_to_dict(l) for l in FORWARD_PRESSURE_LEVELS],
             "methodology": {
                 "factor_weights": FACTOR_WEIGHTS,
+                "damage_level_basis": "realized damage evidence, not GFCRI score",
+                "forward_pressure_basis": "GFCRI score and risk transmission pressure",
                 "matching": "weighted Euclidean distance converted into 0-100 similarity",
-                "note": "Crisis level is a reference frame, not a prediction of exact crisis timing.",
+                "note": "Damage level describes realized damage; forward pressure describes risk that may or may not become damage.",
             },
         }
 
@@ -314,7 +367,9 @@ class CrisisRegimeAssessmentEngine:
                 "id": archetype.id,
                 "name": archetype.name,
                 "name_zh": archetype.name_zh,
-                "level_id": archetype.level_id,
+                "damage_level_id": archetype.damage_level_id,
+                "level_id": archetype.damage_level_id,
+                "pressure_phase": archetype.pressure_phase,
                 "peak_period": archetype.peak_period,
                 "description": archetype.description,
                 "similarity": round(similarity, 2),
@@ -355,11 +410,73 @@ class CrisisRegimeAssessmentEngine:
         return max(0.0, min(100.0, 0.45 * rates + 0.35 * credit + 0.20 * hidden))
 
     @staticmethod
-    def _level_for_score(score: float) -> CrisisLevel:
-        for level in CRISIS_LEVELS:
+    def _realized_damage_score(factors: dict[str, float]) -> float:
+        """Estimate realized damage conservatively.
+
+        Forward pressure can be high while realized damage remains low. Only
+        stress above practical damage thresholds contributes materially here.
+        """
+        capital_damage = max(0.0, factors["capital_markets"] - 35.0) * 0.60
+        credit_damage = max(0.0, factors["credit_banking"] - 35.0) * 0.70
+        economic_damage = max(0.0, factors["economic_health"] - 45.0) * 0.75
+        fx_damage = max(0.0, factors["fx_dollar"] - 50.0) * 0.45
+        trade_damage = max(0.0, factors["trade_spillover"] - 55.0) * 0.35
+        commodity_damage = max(0.0, factors["commodities"] - 60.0) * 0.35
+        raw = (
+            capital_damage
+            + credit_damage
+            + economic_damage
+            + fx_damage
+            + trade_damage
+            + commodity_damage
+        )
+        return max(0.0, min(100.0, raw))
+
+    @staticmethod
+    def _damage_evidence(factors: dict[str, float]) -> list[dict[str, Any]]:
+        evidence = [
+            ("capital_markets", "Capital-market drawdown evidence", "资本市场损害证据", max(0.0, factors["capital_markets"] - 35.0)),
+            ("credit_banking", "Credit / banking damage evidence", "信用与银行损害证据", max(0.0, factors["credit_banking"] - 35.0)),
+            ("economic_health", "Real-economy damage evidence", "实体经济损害证据", max(0.0, factors["economic_health"] - 45.0)),
+            ("fx_dollar", "FX / external-balance damage evidence", "汇率与外部平衡损害证据", max(0.0, factors["fx_dollar"] - 50.0)),
+            ("trade_spillover", "Trade-spillover damage evidence", "贸易传导损害证据", max(0.0, factors["trade_spillover"] - 55.0)),
+        ]
+        return [
+            {"id": fid, "name": name, "name_zh": name_zh, "score": round(score, 2)}
+            for fid, name, name_zh, score in evidence
+        ]
+
+    @staticmethod
+    def _hidden_risk_assessment(risk_index: dict[str, Any]) -> dict[str, Any]:
+        divergence = risk_index.get("divergence") or {}
+        status = str(divergence.get("status") or "none")
+        undercurrent = float(risk_index.get("undercurrent_boost") or 0.0)
+        trade_boost = float(risk_index.get("trade_spillover_boost") or 0.0)
+        status_score = {"none": 0.0, "mild": 25.0, "significant": 55.0, "critical": 80.0}.get(status, 0.0)
+        score = max(status_score, min(100.0, undercurrent * 4.0 + trade_boost * 6.0))
+        if score >= 75:
+            label, label_zh = "Critical Hidden Risk", "严重隐藏风险"
+        elif score >= 50:
+            label, label_zh = "Significant Hidden Risk", "显著隐藏风险"
+        elif score >= 25:
+            label, label_zh = "Mild Hidden Risk", "轻度隐藏风险"
+        else:
+            label, label_zh = "Low Hidden Risk", "低隐藏风险"
+        return {
+            "score": round(score, 2),
+            "label": label,
+            "label_zh": label_zh,
+            "divergence_status": status,
+            "undercurrent_boost": round(undercurrent, 2),
+            "trade_spillover_boost": round(trade_boost, 2),
+        }
+
+    @staticmethod
+    def _level_for_score(score: float, levels: tuple[CrisisLevel, ...]) -> CrisisLevel:
+        for level in levels:
             if level.range_min <= score < level.range_max:
                 return level
-        return CRISIS_LEVELS[-1]
+        return levels[-1]
 
     @staticmethod
     def _level_progress(score: float, level: CrisisLevel) -> float:
@@ -381,11 +498,17 @@ class CrisisRegimeAssessmentEngine:
         }
 
     @staticmethod
-    def _interpretation(level: CrisisLevel, matches: list[dict[str, Any]]) -> str:
+    def _interpretation(
+        damage_level: CrisisLevel,
+        pressure_level: CrisisLevel,
+        hidden: dict[str, Any],
+        matches: list[dict[str, Any]],
+    ) -> str:
         if not matches:
-            return level.description
+            return damage_level.description
         top = matches[0]
         return (
-            f"Current conditions sit in {level.label}. The closest historical "
-            f"reference is {top['name']} with {top['similarity']:.0f}% profile similarity."
+            f"Realized damage is currently {damage_level.label}, while forward pressure is "
+            f"{pressure_level.label}. Hidden risk is {hidden['label']}. The closest historical "
+            f"pressure profile is {top['name']} with {top['similarity']:.0f}% similarity."
         )
