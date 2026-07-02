@@ -83,73 +83,9 @@
         </div>
       </section>
 
-      <!-- ── Hero Section ── -->
-      <div class="hero-section fade-in fade-in-delay-1" ref="heroRef">
-
-        <!-- Eyebrow label -->
-        <p class="eyebrow">{{ t('dash.eyebrow') }}</p>
-
-        <!-- Score ring + number -->
-        <div class="score-ring-wrapper">
-          <svg class="score-ring" viewBox="0 0 220 220" fill="none" aria-hidden="true">
-            <!-- Track -->
-            <circle
-              cx="110" cy="110" r="96"
-              stroke="rgba(255,255,255,0.05)"
-              stroke-width="3"
-              stroke-linecap="round"
-            />
-            <!-- Progress arc -->
-            <circle
-              cx="110" cy="110" r="96"
-              :stroke="getAlertColor(riskStore.latest.alert_level)"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-dasharray="603.186"
-              :stroke-dashoffset="ringOffset"
-              transform="rotate(-90 110 110)"
-              class="ring-arc"
-            />
-            <!-- Tick marks at 25/50/75 -->
-            <line v-for="tick in ringTicks" :key="tick.angle"
-              :x1="tick.x1" :y1="tick.y1" :x2="tick.x2" :y2="tick.y2"
-              stroke="rgba(255,255,255,0.15)" stroke-width="1"
-            />
-          </svg>
-
-          <!-- Glow halo behind the number -->
-          <div
-            class="score-glow"
-            :style="{ '--glow-color': getAlertColor(riskStore.latest.alert_level) }"
-          ></div>
-
-          <!-- The big number -->
-          <p
-            class="score-number"
-            :style="{ color: getAlertColor(riskStore.latest.alert_level) }"
-          >{{ riskStore.latest.gfcri_value.toFixed(1) }}</p>
-        </div>
-
-        <!-- Alert badge with pulsing dot -->
-        <div class="alert-badge">
-          <span
-            class="alert-dot"
-            :style="{ '--dot-color': getAlertColor(riskStore.latest.alert_level) }"
-          ></span>
-          <span
-            class="alert-label"
-            :style="{ color: getAlertColor(riskStore.latest.alert_level) }"
-          >{{ t('alert.' + riskStore.latest.alert_level) }}</span>
-        </div>
-
-        <!-- AI summary -->
-        <p class="hero-summary">{{ heroSummary }}</p>
-        <p class="hero-date">{{ riskStore.latest.index_date }}</p>
-      </div>
-
       <!-- ── Signal Cards ── -->
       <Paywall :blurred="!isPro" :title="t('dash.anomalous')" :description="t('common.upgradeDesc')">
-      <div class="cards-grid fade-in fade-in-delay-2">
+      <div class="cards-grid fade-in fade-in-delay-1">
 
         <!-- Anomalous Indicators -->
         <div
@@ -200,12 +136,12 @@
       </Paywall>
 
       <!-- ── Global Risk Network Globe ── -->
-      <div class="fade-in fade-in-delay-3" style="margin-bottom: 32px;">
+      <div class="fade-in fade-in-delay-2" style="margin-bottom: 32px;">
         <GlobeNetwork />
       </div>
 
       <!-- ── Trust Bar ── -->
-      <div class="trust-bar fade-in fade-in-delay-3">
+      <div class="trust-bar fade-in fade-in-delay-2">
         <div class="trust-separator" aria-hidden="true"></div>
         <p class="trust-powered">{{ t('dash.powered') }}</p>
         <div class="trust-sources">
@@ -231,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 
 import { useRiskStore } from '@/stores/risk'
 import { COLORS, getAlertColor } from '@/composables/useTheme'
@@ -244,33 +180,9 @@ import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
 const { t, tx } = useI18n()
-const heroRef = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   riskStore.loadLatest()
-})
-
-// Circular progress ring: circumference = 2π × 96 ≈ 603.186
-const ringOffset = computed(() => {
-  const val = riskStore.latest?.gfcri_value ?? 0
-  const pct = Math.min(Math.max(val / 100, 0), 1)
-  return 603.186 * (1 - pct)
-})
-
-// Tick marks at 0°, 90°, 180° (0, 25, 50, 75 of the scale)
-const ringTicks = computed(() => {
-  const cx = 110, cy = 110, r = 96, tickLen = 8
-  return [0, 90, 180, 270].map(deg => {
-    const rad = (deg - 90) * (Math.PI / 180)
-    const cos = Math.cos(rad), sin = Math.sin(rad)
-    return {
-      angle: deg,
-      x1: cx + (r - tickLen) * cos,
-      y1: cy + (r - tickLen) * sin,
-      x2: cx + r * cos,
-      y2: cy + r * sin,
-    }
-  })
 })
 
 const anomalyCount = computed(() => {
@@ -496,121 +408,6 @@ const heroSummary = computed(() => {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-size: 128px 128px;
   mix-blend-mode: overlay;
-}
-
-/* ── Hero Section ── */
-.hero-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 28px 0 32px;
-  text-align: center;
-}
-
-.eyebrow {
-  font-size: 10px;
-  letter-spacing: 7px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 18px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Score ring */
-.score-ring-wrapper {
-  position: relative;
-  width: 150px;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.score-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.score-ring circle,
-.score-ring line {
-  vector-effect: non-scaling-stroke;
-}
-
-.ring-arc {
-  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
-  filter: drop-shadow(0 0 6px currentColor);
-}
-
-.score-glow {
-  position: absolute;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
-  opacity: 0.06;
-}
-
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.10; transform: scale(0.95); }
-  50%       { opacity: 0.20; transform: scale(1.05); }
-}
-
-.score-number {
-  position: relative;
-  font-size: 54px;
-  line-height: 1;
-  font-weight: 200;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0;
-  transition: color 0.4s ease;
-  text-shadow: none;
-}
-
-/* Alert badge */
-.alert-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.alert-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--dot-color);
-  box-shadow: 0 0 6px var(--dot-color);
-}
-
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1;   box-shadow: 0 0 4px var(--dot-color); }
-  50%       { opacity: 0.5; box-shadow: 0 0 12px var(--dot-color); }
-}
-
-.alert-label {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-family: 'JetBrains Mono', monospace;
-  transition: color 0.4s ease;
-}
-
-.hero-summary {
-  font-size: 15px;
-  color: var(--muted);
-  font-weight: 300;
-  line-height: 1.7;
-  max-width: 620px;
-  margin: 0 auto 12px;
-}
-
-.hero-date {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--muted) 40%, transparent);
-  font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── Signal Cards ── */
