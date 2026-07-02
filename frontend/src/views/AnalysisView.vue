@@ -35,6 +35,83 @@
         </div>
       </div>
 
+      <!-- Section 2: Model Logic Breakdown -->
+      <div class="mb-12 fade-in fade-in-delay-1">
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Model Explainability</p>
+        <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.modelLogic') }}</h2>
+
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover min-w-0">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm text-white font-medium">{{ t('analysis.subIndexBreakdown') }}</p>
+              <span class="text-[10px] text-[var(--muted)] font-mono">{{ t('dash.coherence') }} {{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span>
+            </div>
+            <v-chart :option="subIndexBreakdownOption" style="height: 320px" autoresize />
+          </div>
+
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover min-w-0">
+            <div class="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+              <p class="text-sm text-white font-medium">{{ t('analysis.nodeContribution') }}</p>
+              <span class="text-[10px] text-[var(--muted)] font-mono">Top {{ topNodeContributions.length }}</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+                    <th class="text-left px-5 py-2 font-medium">{{ t('analysis.node') }}</th>
+                    <th class="text-right px-3 py-2 font-medium">{{ t('analysis.zscore') }}</th>
+                    <th class="text-right px-3 py-2 font-medium">{{ t('analysis.absScore') }}</th>
+                    <th class="text-right px-5 py-2 font-medium">{{ t('analysis.current') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="node in topNodeContributions" :key="node.id" class="border-b border-[var(--border)]/40 hover:bg-white/[0.02]">
+                    <td class="px-5 py-2.5 text-white whitespace-nowrap">{{ node.name }}</td>
+                    <td class="px-3 py-2.5 text-right font-mono" :style="{ color: Math.abs(node.zscore) >= 2 ? 'var(--red)' : 'var(--muted)' }">{{ node.zscore.toFixed(2) }}</td>
+                    <td class="px-3 py-2.5 text-right font-mono">{{ node.absScoreDisplay }}</td>
+                    <td class="px-5 py-2.5 text-right font-mono text-[var(--muted)]">{{ node.currentDisplay }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover">
+          <div class="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <p class="text-sm text-white font-medium">{{ t('analysis.chainPressure') }}</p>
+            <span class="text-[10px] text-[var(--muted)] font-mono">{{ activeChains.length }} {{ t('analysis.chainActive') }}</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+                  <th class="text-left px-5 py-2 font-medium">{{ t('analysis.chain') }}</th>
+                  <th class="text-left px-3 py-2 font-medium">{{ t('common.path') }}</th>
+                  <th class="text-right px-3 py-2 font-medium">{{ t('analysis.stress') }}</th>
+                  <th class="text-right px-5 py-2 font-medium">{{ t('analysis.pathStrength') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="chain in chainPressureRows" :key="chain.id" class="border-b border-[var(--border)]/40 hover:bg-white/[0.02]">
+                  <td class="px-5 py-2.5 text-white whitespace-nowrap">{{ chain.name }}</td>
+                  <td class="px-3 py-2.5 text-[var(--muted)] min-w-[280px]">{{ chain.path }}</td>
+                  <td class="px-3 py-2.5 text-right">
+                    <div class="inline-flex items-center gap-2 min-w-[110px] justify-end">
+                      <div class="h-1.5 w-16 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div class="h-full rounded-full" :style="{ width: Math.min(chain.stress, 100) + '%', backgroundColor: scoreColor(chain.stress) }"></div>
+                      </div>
+                      <span class="font-mono" :style="{ color: scoreColor(chain.stress) }">{{ chain.stress.toFixed(0) }}</span>
+                    </div>
+                  </td>
+                  <td class="px-5 py-2.5 text-right font-mono text-[var(--muted)]">{{ chain.pathStrength }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Section 2: Transmission Chains — Pro only -->
       <Paywall :blurred="!isPro" :title="t('analysis.unlockChain')" :description="t('analysis.unlockChainDesc')">
       <div class="mb-12 fade-in fade-in-delay-1">
@@ -62,6 +139,19 @@
               </span>
             </div>
             <p class="text-xs text-[var(--muted)]">{{ chain.path?.map((n: string) => tx(nodeNames[n] || n)).join(' → ') }}</p>
+            <div class="mt-3 space-y-1">
+              <div v-for="node in chainNodeBars(chain)" :key="node.id" class="flex items-center gap-2">
+                <span class="w-24 truncate text-[10px] text-[var(--muted)]">{{ node.name }}</span>
+                <div class="h-1.5 flex-1 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div class="h-full rounded-full" :style="{ width: node.width + '%', backgroundColor: scoreColor(node.score * 100) }"></div>
+                </div>
+                <span class="w-8 text-right text-[10px] font-mono text-[var(--muted)]">{{ (node.score * 100).toFixed(0) }}</span>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between text-[10px] text-[var(--muted)] font-mono">
+              <span>{{ t('analysis.pathStrength') }}</span>
+              <span>{{ Number(chain.path_strength || 0).toFixed(4) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -77,13 +167,15 @@
           <span class="text-sm text-[var(--muted)] font-normal ml-2">{{ anomalousNodes.length }} {{ t('analysis.deviating') }}</span>
         </h2>
 
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="text-[var(--muted)] text-xs uppercase tracking-wider border-b border-[var(--border)]">
                 <th class="text-left px-5 py-3 font-medium">{{ t('analysis.indicator') }}</th>
                 <th class="text-right px-5 py-3 font-medium">{{ t('analysis.currentVal') }}</th>
                 <th class="text-right px-5 py-3 font-medium">{{ t('analysis.deviation') }}</th>
+                <th class="text-right px-5 py-3 font-medium">{{ t('analysis.anomalyScore') }}</th>
+                <th class="text-right px-5 py-3 font-medium">{{ t('analysis.absScore') }}</th>
                 <th class="text-right px-5 py-3 font-medium">{{ t('analysis.direction') }}</th>
               </tr>
             </thead>
@@ -95,6 +187,8 @@
                 <td class="px-5 py-3 text-right font-mono" :style="{ color: Math.abs(node.zscore) > 3 ? 'var(--red)' : 'var(--yellow)' }">
                   {{ Math.abs(node.zscore).toFixed(1) }}×
                 </td>
+                <td class="px-5 py-3 text-right font-mono text-[var(--muted)]">{{ (node.anomalyScore * 100).toFixed(0) }}</td>
+                <td class="px-5 py-3 text-right font-mono text-[var(--muted)]">{{ node.absScoreDisplay }}</td>
                 <td class="px-5 py-3 text-right">
                   <span :class="node.zscore > 0 ? 'text-[var(--red)]' : 'text-[var(--green)]'">
                     {{ node.zscore > 0 ? t('analysis.high') : t('analysis.low') }}
@@ -207,7 +301,7 @@
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
-import { LineChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import MarkdownIt from 'markdown-it'
@@ -222,7 +316,7 @@ import Paywall from '@/components/common/Paywall.vue'
 import RiskWatch from '@/components/common/RiskWatch.vue'
 import client from '@/api/client'
 
-use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
+use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 const md = new MarkdownIt()
 const riskStore = useRiskStore()
@@ -409,10 +503,148 @@ const anomalousNodes = computed(() => {
     .filter(([, info]: [string, any]) => info.is_anomalous)
     .map(([id, info]: [string, any]) => ({
       id, name: info.display_name || nodeNames[id] || id,
-      zscore: info.zscore, value: info.current_value,
+      zscore: Number(info.zscore || 0),
+      value: info.current_value,
+      anomalyScore: Number(info.anomaly_score || 0),
+      absScore: info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score),
+      absScoreDisplay: info.abs_score === null || info.abs_score === undefined ? '-' : (Number(info.abs_score) * 100).toFixed(0),
     }))
     .sort((a, b) => Math.abs(b.zscore) - Math.abs(a.zscore))
 })
+
+const topNodeContributions = computed(() => {
+  const nc = riskStore.latest?.node_contributions
+  if (!nc) return []
+  return Object.entries(nc)
+    .map(([id, info]: [string, any]) => {
+      const zscore = Number(info.zscore || 0)
+      const anomaly = Number(info.anomaly_score || 0)
+      const absScore = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+      return {
+        id,
+        name: tx(info.display_name || nodeNames[id] || id),
+        zscore,
+        anomalyScore: anomaly,
+        absScore,
+        absScoreDisplay: absScore === null ? '-' : (absScore * 100).toFixed(0),
+        currentDisplay: formatCurrentValue(info.current_value),
+        sortScore: Math.max(Math.abs(zscore) / 4, anomaly, absScore || 0),
+      }
+    })
+    .sort((a, b) => b.sortScore - a.sortScore)
+    .slice(0, 8)
+})
+
+const subIndexRows = computed(() => {
+  const details = riskStore.latest?.sub_index_details || {}
+  return Object.entries(details)
+    .map(([key, val]: [string, any]) => ({
+      id: key,
+      name: tx(val?.name || key),
+      score: Number(val?.score || 0),
+      anomalyStress: Number(val?.mean_stress || 0) * 100,
+      absoluteStress: Number(val?.mean_abs_stress || 0) * 100,
+      transmission: Number(val?.transmission || 0) * 100,
+      topDriver: tx(nodeNames[val?.top_driver] || val?.top_driver || '-'),
+    }))
+    .sort((a, b) => b.score - a.score)
+})
+
+const subIndexBreakdownOption = computed(() => ({
+  backgroundColor: 'transparent',
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    backgroundColor: '#111214',
+    borderColor: 'rgba(255,255,255,0.08)',
+    textStyle: { color: '#eff1f5', fontSize: 11 },
+  },
+  legend: {
+    top: 0,
+    right: 0,
+    textStyle: { color: '#8a93a3', fontSize: 10 },
+    itemWidth: 9,
+    itemHeight: 9,
+  },
+  grid: { left: 126, right: 18, top: 34, bottom: 18 },
+  xAxis: {
+    type: 'value',
+    max: 100,
+    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+    axisLabel: { color: '#8a93a3', fontSize: 10 },
+  },
+  yAxis: {
+    type: 'category',
+    data: subIndexRows.value.map(r => r.name),
+    axisLabel: { color: '#d6d9df', fontSize: 10, width: 112, overflow: 'truncate' },
+    axisLine: { show: false },
+    axisTick: { show: false },
+  },
+  series: [
+    {
+      name: t('analysis.anomalyStress'),
+      type: 'bar',
+      stack: 'stress',
+      data: subIndexRows.value.map(r => Math.min(r.anomalyStress, 100)),
+      itemStyle: { color: COLORS.yellow },
+      barWidth: 12,
+    },
+    {
+      name: t('analysis.absoluteStress'),
+      type: 'bar',
+      stack: 'stress',
+      data: subIndexRows.value.map(r => Math.min(r.absoluteStress, 100)),
+      itemStyle: { color: COLORS.orange },
+      barWidth: 12,
+    },
+    {
+      name: t('analysis.transmissionAmp'),
+      type: 'bar',
+      stack: 'stress',
+      data: subIndexRows.value.map(r => Math.min(r.transmission, 100)),
+      itemStyle: { color: COLORS.blue },
+      barWidth: 12,
+    },
+  ],
+}))
+
+const chainPressureRows = computed(() => {
+  return sortedChains.value.map((chain: any) => ({
+    id: chain.id,
+    name: tx(chain.name),
+    path: (chain.path || []).map((n: string) => tx(nodeNames[n] || n)).join(' -> '),
+    stress: Number(chain.stress || 0),
+    pathStrength: Number(chain.path_strength || 0).toFixed(4),
+  }))
+})
+
+function chainNodeBars(chain: any) {
+  const scores = chain.node_scores || {}
+  return (chain.path || []).map((id: string) => {
+    const score = Number(scores[id] || 0)
+    return {
+      id,
+      name: tx(nodeNames[id] || id),
+      score,
+      width: Math.min(score * 100, 100),
+    }
+  })
+}
+
+function formatCurrentValue(value: any): string {
+  if (value === null || value === undefined) return '-'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return String(value)
+  if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+function scoreColor(score: number): string {
+  if (score >= 70) return COLORS.red
+  if (score >= 45) return COLORS.orange
+  if (score >= 25) return COLORS.yellow
+  return COLORS.green
+}
 
 const trendChartOption = computed(() => {
   const data = [...riskStore.history].reverse()
