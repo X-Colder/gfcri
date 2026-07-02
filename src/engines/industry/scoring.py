@@ -21,6 +21,7 @@ from src.engines.industry import INDUSTRIES, Industry, IndustryTicker
 class IndustryScore:
     code: str
     name_zh: str
+    name_en: str
     category: str
     score: float  # 0-100 momentum score
     trend: str  # up/down/flat
@@ -34,6 +35,7 @@ class IndustryScore:
         return {
             "code": self.code,
             "name_zh": self.name_zh,
+            "name_en": self.name_en,
             "category": self.category,
             "score": self.score,
             "trend": self.trend,
@@ -151,6 +153,7 @@ class IndustryScoringEngine:
         return IndustryScore(
             code=ind.code,
             name_zh=ind.name_zh,
+            name_en=ind.name_en,
             category=ind.category,
             score=round(float(avg_score), 1),
             trend=trend,

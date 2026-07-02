@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold">{{ t('industry.title') }}</h2>
-      <button @click="loadScores" :disabled="loading" class="px-4 py-2 rounded-lg bg-accent/15 text-accent text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-50">
-        {{ loading ? t('common.loading') : t('common.refresh') }}
+      <button @click="loadScores(true)" :disabled="scoresLoading || scoreMeta.refreshing" class="px-4 py-2 rounded-lg bg-accent/15 text-accent text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-50">
+        {{ scoresLoading || scoreMeta.refreshing ? t('industry.refreshing') : t('common.refresh') }}
       </button>
     </div>
 
@@ -18,10 +18,15 @@
       >{{ tab.label }}</button>
     </div>
 
-    <LoadingSpinner v-if="loading" />
-
     <!-- Layer 1: Industry Scores -->
-    <div v-show="activeTab === 'scores' && !loading">
+    <div v-show="activeTab === 'scores'">
+      <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-muted">
+        <span v-if="scoreMeta.updated_at">{{ t('industry.updatedAt') }} {{ formatDate(scoreMeta.updated_at) }}</span>
+        <span v-if="scoreMeta.stale" class="px-2 py-0.5 rounded bg-alert-yellow/10 text-alert-yellow">{{ t('industry.stale') }}</span>
+        <span v-if="scoreMeta.source === 'baseline'" class="px-2 py-0.5 rounded bg-border/60">{{ t('industry.baseline') }}</span>
+        <span v-if="scoreMeta.refreshing" class="px-2 py-0.5 rounded bg-accent/10 text-accent">{{ t('industry.refreshing') }}</span>
+      </div>
+      <p v-if="scoresError" class="mb-4 text-xs text-alert-red">{{ scoresError }}</p>
       <!-- Category Filter -->
       <div class="flex gap-2 flex-wrap mb-4">
         <button
@@ -33,7 +38,9 @@
         >{{ cat === ALL_CATEGORY ? t('industry.all') : tx(cat) }}</button>
       </div>
 
-      <div v-if="filteredScores.length" class="space-y-2">
+      <LoadingSpinner v-if="scoresLoading && !scores.length" />
+
+      <div v-else-if="filteredScores.length" class="space-y-2">
         <div
           v-for="s in filteredScores"
           :key="s.code"
@@ -73,10 +80,12 @@
     </div>
 
     <!-- Layer 2: Supply Chain -->
-    <div v-show="activeTab === 'chain' && !loading">
+    <div v-show="activeTab === 'chain'">
       <div class="bg-card border border-border rounded-xl p-5">
         <h3 class="text-sm font-medium mb-4">{{ t('industry.chainTitle') }}</h3>
-        <div v-if="supplyChain" class="space-y-4">
+        <LoadingSpinner v-if="chainLoading && !supplyChain" />
+        <p v-else-if="chainError" class="text-xs text-alert-red">{{ chainError }}</p>
+        <div v-else-if="supplyChain" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <p class="text-xs text-muted mb-2">{{ t('industry.nodes') }} ({{ supplyChain.nodes.length }})</p>
@@ -186,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import client from '@/api/client'
 import MetricCard from '@/components/common/MetricCard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -201,12 +210,22 @@ const tabs = computed(() => [
 ])
 
 const scores = ref<any[]>([])
-const loading = ref(false)
+const scoresLoading = ref(false)
+const scoresError = ref('')
+const chainLoading = ref(false)
+const chainError = ref('')
 const selectedIndustry = ref<any>(null)
 const selectedCategory = ref(ALL_CATEGORY)
 const categories = ref<string[]>([])
 const supplyChain = ref<any>(null)
 const chainDetail = ref<any>(null)
+let scorePollTimer: number | undefined
+const scoreMeta = ref({
+  updated_at: '',
+  stale: true,
+  refreshing: false,
+  source: '',
+})
 
 const filteredScores = computed(() => {
   if (selectedCategory.value === ALL_CATEGORY) return scores.value
@@ -218,24 +237,49 @@ onMounted(async () => {
     const { data } = await client.get('/industry/categories')
     categories.value = data
   } catch {}
-  loadScores()
+  loadScores(false)
   loadSupplyChain()
 })
 
-async function loadScores() {
-  loading.value = true
+onBeforeUnmount(() => {
+  if (scorePollTimer) window.clearTimeout(scorePollTimer)
+})
+
+async function loadScores(refresh = false) {
+  scoresLoading.value = true
+  scoresError.value = ''
   try {
-    const { data } = await client.get('/industry/scores')
-    scores.value = data
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+    const { data } = await client.get('/industry/scores', { params: refresh ? { refresh: true } : {} })
+    const payload = Array.isArray(data) ? { scores: data } : data
+    scores.value = payload.scores || []
+    scoreMeta.value = {
+      updated_at: payload.updated_at || '',
+      stale: !!payload.stale,
+      refreshing: !!payload.refreshing,
+      source: payload.source || '',
+    }
+  } catch (e: any) {
+    scoresError.value = e?.message || t('industry.loadError')
+  } finally {
+    scoresLoading.value = false
+    if (scoreMeta.value.refreshing) {
+      if (scorePollTimer) window.clearTimeout(scorePollTimer)
+      scorePollTimer = window.setTimeout(() => loadScores(false), 5000)
+    }
+  }
 }
 
 async function loadSupplyChain() {
+  chainLoading.value = true
+  chainError.value = ''
   try {
     const { data } = await client.get('/industry/supply-chain/graph')
     supplyChain.value = data
-  } catch (e) { console.error(e) }
+  } catch (e: any) {
+    chainError.value = e?.message || t('industry.loadError')
+  } finally {
+    chainLoading.value = false
+  }
 }
 
 async function showChainDetail(code: string) {
@@ -243,6 +287,12 @@ async function showChainDetail(code: string) {
     const { data } = await client.get(`/industry/supply-chain/${code}`)
     chainDetail.value = data
   } catch (e) { console.error(e) }
+}
+
+function formatDate(value: string): string {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString()
 }
 
 function scoreColor(s: number): string {
