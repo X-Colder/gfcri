@@ -93,6 +93,22 @@
       </div>
 
       <div v-if="!compact" class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <p class="text-xs font-medium text-white">{{ t('regime.damageEvidence') }}</p>
+          <span class="text-[10px] text-[var(--muted)]">{{ t('regime.realizedDamage') }}</span>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-2">
+          <div v-for="item in damageEvidence" :key="item.id" class="grid grid-cols-[minmax(0,150px)_1fr_auto] items-center gap-2 rounded-lg border border-[var(--border)] p-3">
+            <span class="truncate text-xs text-[var(--muted)]">{{ damageEvidenceName(item) }}</span>
+            <div class="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+              <div class="h-full rounded-full" :style="{ width: Math.min(Number(item.score || 0), 100) + '%', backgroundColor: factorColor(Number(item.score || 0)) }"></div>
+            </div>
+            <span class="w-10 text-right font-mono text-[10px] text-white">{{ Number(item.score || 0).toFixed(0) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!compact" class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
         <p class="mb-3 text-xs font-medium text-white">{{ t('regime.reference') }}</p>
         <div class="grid gap-3 lg:grid-cols-2">
           <div v-for="level in damageLevels" :key="level.id" class="rounded-lg border border-[var(--border)] p-3">
@@ -138,6 +154,7 @@ const damage = computed(() => assessment.value?.realized_damage || { score: 0, l
 const pressure = computed(() => assessment.value?.forward_pressure || { score: assessment.value?.score || 0, level: {} })
 const hidden = computed(() => assessment.value?.hidden_risk || { score: 0, label: 'Low Hidden Risk', label_zh: '低隐藏风险' })
 const damageLevels = computed(() => assessment.value?.damage_levels || assessment.value?.levels || [])
+const damageEvidence = computed(() => assessment.value?.realized_damage?.evidence || [])
 const damageColor = computed(() => factorColor(Number(damage.value?.score || 0)))
 const pressureColor = computed(() => factorColor(Number(pressure.value?.score || 0)))
 const hiddenColor = computed(() => factorColor(Number(hidden.value?.score || 0)))
@@ -157,6 +174,10 @@ function levelLabel(level: any): string {
 
 function factorName(factor: any): string {
   return lang.value === 'zh' ? factor.name_zh || factor.name : factor.name
+}
+
+function damageEvidenceName(item: any): string {
+  return lang.value === 'zh' ? item.name_zh || item.name : item.name
 }
 
 function matchName(match: any): string {

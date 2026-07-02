@@ -66,6 +66,26 @@ FACTOR_LABELS: dict[str, dict[str, str]] = {
 }
 
 
+DAMAGE_COMPONENT_WEIGHTS: dict[str, float] = {
+    "market_damage": 0.20,
+    "economic_activity_damage": 0.20,
+    "labor_consumer_damage": 0.15,
+    "credit_banking_damage": 0.20,
+    "external_fx_damage": 0.15,
+    "trade_damage": 0.10,
+}
+
+
+DAMAGE_COMPONENT_LABELS: dict[str, dict[str, str]] = {
+    "market_damage": {"en": "Market Damage", "zh": "市场损害"},
+    "economic_activity_damage": {"en": "Economic Activity Damage", "zh": "经济活动损害"},
+    "labor_consumer_damage": {"en": "Labor / Consumer Damage", "zh": "就业与消费损害"},
+    "credit_banking_damage": {"en": "Credit / Banking Damage", "zh": "信用与银行损害"},
+    "external_fx_damage": {"en": "External / FX Damage", "zh": "外部与汇率损害"},
+    "trade_damage": {"en": "Trade Damage", "zh": "贸易损害"},
+}
+
+
 DAMAGE_LEVELS: tuple[CrisisLevel, ...] = (
     CrisisLevel(
         "no_material_damage",
@@ -272,7 +292,8 @@ class CrisisRegimeAssessmentEngine:
         gfcri = float(risk_index.get("gfcri_value") or risk_index.get("gfcri") or 0)
         factors = self._factor_scores(risk_index, ehs_scores or [])
         contributions = self._factor_contributions(factors)
-        damage_score = self._realized_damage_score(factors)
+        damage_components = self._damage_components(factors, ehs_scores or [], risk_index)
+        damage_score = self._realized_damage_score(damage_components)
         damage_level = self._level_for_score(damage_score, DAMAGE_LEVELS)
         pressure_level = self._level_for_score(gfcri, FORWARD_PRESSURE_LEVELS)
         hidden = self._hidden_risk_assessment(risk_index)
@@ -284,7 +305,8 @@ class CrisisRegimeAssessmentEngine:
                 "score": round(damage_score, 2),
                 "level": self._level_to_dict(damage_level),
                 "level_progress": self._level_progress(damage_score, damage_level),
-                "evidence": self._damage_evidence(factors),
+                "evidence": self._damage_evidence(damage_components),
+                "components": damage_components,
             },
             "forward_pressure": {
                 "score": round(gfcri, 2),
@@ -303,6 +325,7 @@ class CrisisRegimeAssessmentEngine:
             "pressure_levels": [self._level_to_dict(l) for l in FORWARD_PRESSURE_LEVELS],
             "methodology": {
                 "factor_weights": FACTOR_WEIGHTS,
+                "damage_component_weights": DAMAGE_COMPONENT_WEIGHTS,
                 "damage_level_basis": "realized damage evidence, not GFCRI score",
                 "forward_pressure_basis": "GFCRI score and risk transmission pressure",
                 "matching": "weighted Euclidean distance converted into 0-100 similarity",
@@ -409,42 +432,94 @@ class CrisisRegimeAssessmentEngine:
         hidden = float(risk_index.get("undercurrent_boost") or 0) * 4
         return max(0.0, min(100.0, 0.45 * rates + 0.35 * credit + 0.20 * hidden))
 
-    @staticmethod
-    def _realized_damage_score(factors: dict[str, float]) -> float:
-        """Estimate realized damage conservatively.
+    def _damage_components(
+        self,
+        factors: dict[str, float],
+        ehs_scores: list[dict[str, Any]],
+        risk_index: dict[str, Any],
+    ) -> dict[str, float]:
+        ehs_damage = self._ehs_damage_components(ehs_scores)
+        node_contrib = risk_index.get("node_contributions") or {}
+        consumer = node_contrib.get("consumer_stress") or {}
+        recession = node_contrib.get("us_recession_prob") or {}
+        consumer_damage = max(
+            float(consumer.get("anomaly_score") or 0),
+            float(consumer.get("abs_score") or 0),
+            float(recession.get("anomaly_score") or 0),
+            float(recession.get("abs_score") or 0),
+        ) * 100
 
-        Forward pressure can be high while realized damage remains low. Only
-        stress above practical damage thresholds contributes materially here.
-        """
-        capital_damage = max(0.0, factors["capital_markets"] - 35.0) * 0.60
-        credit_damage = max(0.0, factors["credit_banking"] - 35.0) * 0.70
-        economic_damage = max(0.0, factors["economic_health"] - 45.0) * 0.75
-        fx_damage = max(0.0, factors["fx_dollar"] - 50.0) * 0.45
-        trade_damage = max(0.0, factors["trade_spillover"] - 55.0) * 0.35
-        commodity_damage = max(0.0, factors["commodities"] - 60.0) * 0.35
-        raw = (
-            capital_damage
-            + credit_damage
-            + economic_damage
-            + fx_damage
-            + trade_damage
-            + commodity_damage
+        return {
+            "market_damage": max(0.0, min(100.0, (factors["capital_markets"] - 30.0) * 1.15)),
+            "economic_activity_damage": max(
+                ehs_damage.get("growth", 0.0),
+                max(0.0, (factors["economic_health"] - 45.0) * 0.85),
+            ),
+            "labor_consumer_damage": max(
+                ehs_damage.get("labor", 0.0),
+                consumer_damage,
+            ),
+            "credit_banking_damage": max(
+                ehs_damage.get("financial", 0.0),
+                max(0.0, (factors["credit_banking"] - 30.0) * 1.05),
+            ),
+            "external_fx_damage": max(
+                ehs_damage.get("external", 0.0),
+                max(0.0, (factors["fx_dollar"] - 45.0) * 0.90),
+            ),
+            "trade_damage": max(0.0, min(100.0, (factors["trade_spillover"] - 50.0) * 0.70)),
+        }
+
+    @staticmethod
+    def _ehs_damage_components(ehs_scores: list[dict[str, Any]]) -> dict[str, float]:
+        if not ehs_scores:
+            return {}
+
+        def avg_damage(field: str, neutral: float = 50.0) -> float:
+            vals = [float(r.get(field) or neutral) for r in ehs_scores if r.get(field) is not None]
+            if not vals:
+                return 0.0
+            avg_score = sum(vals) / len(vals)
+            # EHS dimensions are health scores. Damage only starts once a
+            # dimension is below neutral; the multiplier maps weak health into
+            # a 0-100 damage-evidence scale.
+            return max(0.0, min(100.0, (neutral - avg_score) * 2.0))
+
+        return {
+            "growth": avg_damage("growth_score"),
+            "labor": avg_damage("labor_score"),
+            "external": avg_damage("external_score"),
+            "financial": avg_damage("financial_score"),
+        }
+
+    @staticmethod
+    def _realized_damage_score(components: dict[str, float]) -> float:
+        weighted = sum(
+            max(0.0, min(100.0, components.get(k, 0.0))) * w
+            for k, w in DAMAGE_COMPONENT_WEIGHTS.items()
         )
-        return max(0.0, min(100.0, raw))
+        return max(0.0, min(100.0, weighted))
 
     @staticmethod
-    def _damage_evidence(factors: dict[str, float]) -> list[dict[str, Any]]:
-        evidence = [
-            ("capital_markets", "Capital-market drawdown evidence", "资本市场损害证据", max(0.0, factors["capital_markets"] - 35.0)),
-            ("credit_banking", "Credit / banking damage evidence", "信用与银行损害证据", max(0.0, factors["credit_banking"] - 35.0)),
-            ("economic_health", "Real-economy damage evidence", "实体经济损害证据", max(0.0, factors["economic_health"] - 45.0)),
-            ("fx_dollar", "FX / external-balance damage evidence", "汇率与外部平衡损害证据", max(0.0, factors["fx_dollar"] - 50.0)),
-            ("trade_spillover", "Trade-spillover damage evidence", "贸易传导损害证据", max(0.0, factors["trade_spillover"] - 55.0)),
-        ]
-        return [
-            {"id": fid, "name": name, "name_zh": name_zh, "score": round(score, 2)}
-            for fid, name, name_zh, score in evidence
-        ]
+    def _damage_evidence(components: dict[str, float]) -> list[dict[str, Any]]:
+        rows = []
+        total = sum(
+            max(0.0, min(100.0, components.get(k, 0.0))) * w
+            for k, w in DAMAGE_COMPONENT_WEIGHTS.items()
+        ) or 1.0
+        for component, score in sorted(components.items(), key=lambda x: x[1], reverse=True):
+            labels = DAMAGE_COMPONENT_LABELS[component]
+            points = max(0.0, min(100.0, score)) * DAMAGE_COMPONENT_WEIGHTS[component]
+            rows.append({
+                "id": component,
+                "name": labels["en"],
+                "name_zh": labels["zh"],
+                "score": round(score, 2),
+                "weight": DAMAGE_COMPONENT_WEIGHTS[component],
+                "points": round(points, 2),
+                "share": round(points / total * 100, 2),
+            })
+        return rows
 
     @staticmethod
     def _hidden_risk_assessment(risk_index: dict[str, Any]) -> dict[str, Any]:
