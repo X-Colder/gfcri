@@ -93,8 +93,12 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="chain in chainPressureRows" :key="chain.id" class="border-b border-[var(--border)]/40 hover:bg-white/[0.02]">
-                  <td class="px-5 py-2.5 text-white whitespace-nowrap">{{ chain.name }}</td>
+                <template v-for="chain in chainPressureRows" :key="chain.id">
+                <tr class="border-b border-[var(--border)]/40 hover:bg-white/[0.02] cursor-pointer" @click="toggleChainDetail(chain.id)">
+                  <td class="px-5 py-2.5 text-white whitespace-nowrap">
+                    <span class="mr-2 text-[10px] text-[var(--muted)]">{{ expandedChainId === chain.id ? '▼' : '▶' }}</span>
+                    {{ chain.name }}
+                  </td>
                   <td class="px-3 py-2.5 text-[var(--muted)] min-w-[280px]">{{ chain.path }}</td>
                   <td class="px-3 py-2.5 text-right">
                     <div class="inline-flex items-center gap-2 min-w-[110px] justify-end">
@@ -106,6 +110,52 @@
                   </td>
                   <td class="px-5 py-2.5 text-right font-mono text-[var(--muted)]">{{ chain.pathStrength }}</td>
                 </tr>
+                <tr v-if="expandedChainId === chain.id" class="border-b border-[var(--border)] bg-white/[0.012]">
+                  <td colspan="4" class="px-5 py-5">
+                    <div class="grid gap-4 xl:grid-cols-2">
+                      <div class="space-y-4">
+                        <div>
+                          <p class="text-[11px] uppercase tracking-[3px] text-[var(--muted)] mb-2">{{ t('analysis.stressFormula') }}</p>
+                          <p class="text-xs text-[var(--muted)] leading-relaxed">{{ chain.stressFormula }}</p>
+                        </div>
+                        <div>
+                          <p class="text-[11px] uppercase tracking-[3px] text-[var(--muted)] mb-2">{{ t('analysis.pathFormula') }}</p>
+                          <p class="text-xs text-[var(--muted)] leading-relaxed">{{ chain.pathFormula }}</p>
+                        </div>
+                        <div v-if="chain.edgeDetails.length">
+                          <p class="text-[11px] uppercase tracking-[3px] text-[var(--muted)] mb-2">{{ t('analysis.edgeStrengths') }}</p>
+                          <div class="flex flex-wrap gap-2">
+                            <span v-for="edge in chain.edgeDetails" :key="edge" class="px-2 py-1 rounded border border-[var(--border)] text-[10px] font-mono text-[var(--muted)]">{{ edge }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="overflow-x-auto">
+                        <p class="text-[11px] uppercase tracking-[3px] text-[var(--muted)] mb-2">{{ t('analysis.nodeContribution') }}</p>
+                        <table class="w-full text-xs">
+                          <thead>
+                            <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+                              <th class="text-left py-2 pr-3">{{ t('analysis.node') }}</th>
+                              <th class="text-right py-2 px-3">{{ t('analysis.current') }}</th>
+                              <th class="text-right py-2 px-3">{{ t('analysis.zscore') }}</th>
+                              <th class="text-right py-2 px-3">{{ t('analysis.anomalyScore') }}</th>
+                              <th class="text-right py-2 pl-3">{{ t('analysis.absScore') }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="node in chain.nodes" :key="node.id" class="border-b border-[var(--border)]/40">
+                              <td class="py-2 pr-3 text-white whitespace-nowrap">{{ node.name }}</td>
+                              <td class="py-2 px-3 text-right font-mono text-[var(--muted)]">{{ node.currentDisplay }}</td>
+                              <td class="py-2 px-3 text-right font-mono">{{ node.zscoreDisplay }}</td>
+                              <td class="py-2 px-3 text-right font-mono">{{ node.anomalyDisplay }}</td>
+                              <td class="py-2 pl-3 text-right font-mono">{{ node.absScoreDisplay }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -326,6 +376,7 @@ const { t, tx, lang } = useI18n()
 const showFullReport = ref(false)
 const activeExport = ref('')
 const copied = ref(false)
+const expandedChainId = ref('')
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
 const enNarrative = ref('')
 
@@ -615,8 +666,51 @@ const chainPressureRows = computed(() => {
     path: (chain.path || []).map((n: string) => tx(nodeNames[n] || n)).join(' -> '),
     stress: Number(chain.stress || 0),
     pathStrength: Number(chain.path_strength || 0).toFixed(4),
+    edgeDetails: (chain.edge_details || []).map((edge: string) => edge),
+    nodes: chainDetailNodes(chain),
+    stressFormula: buildChainStressFormula(chain),
+    pathFormula: buildPathStrengthFormula(chain),
   }))
 })
+
+function toggleChainDetail(id: string) {
+  expandedChainId.value = expandedChainId.value === id ? '' : id
+}
+
+function chainDetailNodes(chain: any) {
+  const scores = chain.node_scores || {}
+  const nc = riskStore.latest?.node_contributions || {}
+  return (chain.path || []).map((id: string) => {
+    const info = (nc as any)[id] || {}
+    const anomaly = Number(scores[id] ?? info.anomaly_score ?? 0)
+    const zscore = Number(info.zscore || 0)
+    const absScore = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+    return {
+      id,
+      name: tx(info.display_name || nodeNames[id] || id),
+      currentDisplay: formatCurrentValue(info.current_value),
+      zscoreDisplay: zscore.toFixed(2),
+      anomalyDisplay: (anomaly * 100).toFixed(0),
+      absScoreDisplay: absScore === null ? '-' : (absScore * 100).toFixed(0),
+      anomaly,
+    }
+  })
+}
+
+function buildChainStressFormula(chain: any): string {
+  const nodes = chainDetailNodes(chain)
+  if (!nodes.length) return '-'
+  const values = nodes.map((n: any) => `${n.name} ${n.anomalyDisplay}`).join(' + ')
+  const avg = Number(chain.stress || 0).toFixed(1)
+  return `Chain Stress = average(node anomaly scores) x 100 = (${values}) / ${nodes.length} = ${avg}`
+}
+
+function buildPathStrengthFormula(chain: any): string {
+  const details = chain.edge_details || []
+  const strength = Number(chain.path_strength || 0).toFixed(4)
+  if (!details.length) return `Path Strength = product(edge causal strengths) = ${strength}`
+  return `Path Strength = product(edge causal strengths) = ${details.join(' x ')} = ${strength}`
+}
 
 function chainNodeBars(chain: any) {
   const scores = chain.node_scores || {}

@@ -153,6 +153,9 @@ const messages: Record<string, Record<string, string>> = {
   'analysis.chain': { zh: '链路', en: 'Channel' },
   'analysis.stress': { zh: '压力', en: 'Stress' },
   'analysis.pathStrength': { zh: '路径强度', en: 'Path Strength' },
+  'analysis.stressFormula': { zh: '压力分数计算', en: 'Stress Score Formula' },
+  'analysis.pathFormula': { zh: '路径强度计算', en: 'Path Strength Formula' },
+  'analysis.edgeStrengths': { zh: '边权明细', en: 'Edge Strengths' },
   // Forward
   'forward.title': { zh: '前瞻风险监测', en: 'Forward Risk Monitor' },
   'forward.crisis': { zh: '历史压力阈值接近度', en: 'Crisis Proximity' },
