@@ -1,0 +1,44 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.dependencies import init_cache, shutdown_cache
+from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_cache()
+    yield
+    shutdown_cache()
+
+
+app = FastAPI(
+    title="GFCRI API",
+    description="Global Financial Crisis Risk Index REST API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health.router, prefix="/api")
+app.include_router(risk_index.router, prefix="/api")
+app.include_router(daily_state.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
+app.include_router(inference.router, prefix="/api")
+app.include_router(graph.router, prefix="/api")
+app.include_router(social.router, prefix="/api")
+app.include_router(alerts.router, prefix="/api")
+app.include_router(ehs.router, prefix="/api")
+app.include_router(industry.router, prefix="/api")
+app.include_router(stress_test.router, prefix="/api")
+app.include_router(crisis_distance.router, prefix="/api")
+app.include_router(intraday.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")

@@ -1,0 +1,251 @@
+<template>
+  <div>
+    <!-- Header with run button -->
+    <div class="flex items-center justify-between mb-8 fade-in">
+      <div>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Forward Looking</p>
+        <h2 class="text-lg font-light text-white">{{ t('forward.title') }}</h2>
+      </div>
+      <button @click="loadAll" :disabled="loading"
+              class="px-4 py-2 rounded-lg bg-[var(--accent)]/15 text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)]/25 transition-colors disabled:opacity-50">
+        {{ loading ? t('common.loading') : t('common.refresh') }}
+      </button>
+    </div>
+
+    <LoadingSpinner v-if="loading" />
+
+    <template v-if="!loading">
+
+      <Paywall :blurred="!isPro" :title="t('forward.unlockTitle')" :description="t('forward.unlockDesc')">
+
+      <!-- Section 1: Crisis Distance — How far from crisis? -->
+      <div class="mb-12 fade-in" v-if="crisisData">
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Crisis Distance</p>
+        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.crisis') }}</h3>
+
+        <!-- Overall + 3 tiers -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 text-center card-hover">
+            <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-2">{{ t('forward.overall') }}</p>
+            <p class="text-4xl font-extralight font-mono" :style="{ color: distColor(crisisData.overall_distance) }">
+              {{ crisisData.overall_distance.toFixed(0) }}%
+            </p>
+            <p class="text-xs mt-2" :style="{ color: distColor(crisisData.overall_distance) }">{{ probLabel(crisisData.overall_probability) }}</p>
+          </div>
+          <div v-for="(tier, i) in [
+            { key: 'tier1_distance', label: t('forward.global'), desc: 'VIX · Credit · USD' },
+            { key: 'tier2_distance', label: t('forward.usCore'), desc: 'SPX · Bonds · Oil · Gold' },
+            { key: 'tier3_distance', label: t('forward.regional'), desc: 'KRW · HSI · EUR' },
+          ]" :key="i"
+               class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 text-center card-hover">
+            <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-2">{{ tier.label }}</p>
+            <p class="text-3xl font-extralight font-mono" :style="{ color: distColor(crisisData[tier.key]) }">
+              {{ crisisData[tier.key].toFixed(0) }}%
+            </p>
+            <p class="text-[10px] text-[var(--muted)] mt-2">{{ tier.desc }}</p>
+          </div>
+        </div>
+
+        <!-- Distance bars -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+          <div v-for="tierNum in [1,2,3]" :key="tierNum" class="mb-5 last:mb-0">
+            <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-3">
+              Tier {{ tierNum }} — {{ tierNum === 1 ? t('forward.global') : tierNum === 2 ? t('forward.usCore') : t('forward.regional') }}
+            </p>
+            <div class="space-y-3">
+              <div v-for="d in crisisData.distances.filter((x: any) => x.tier === tierNum)" :key="d.node_id">
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-white">{{ tx(d.name) }}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded"
+                          :class="d.status === 'crisis' ? 'bg-[var(--red)]/10 text-[var(--red)]' : d.status === 'warning' ? 'bg-[var(--yellow)]/10 text-[var(--yellow)]' : 'bg-[var(--green)]/10 text-[var(--green)]'">
+                      {{ d.status === 'crisis' ? t('forward.danger') : d.status === 'warning' ? t('forward.warn') : t('forward.safe') }}
+                    </span>
+                  </div>
+                  <span class="font-mono text-[var(--muted)] text-[11px]">{{ d.current_value.toFixed(1) }}</span>
+                </div>
+                <div class="relative h-2.5 bg-white/[0.03] rounded-full overflow-hidden">
+                  <div class="absolute top-0 h-full rounded-full transition-all duration-700"
+                       :style="{ width: Math.min(d.distance_pct, 100) + '%', backgroundColor: distColor(d.distance_pct) }"></div>
+                </div>
+                <p class="text-[9px] text-[var(--muted)]/50 mt-1">{{ t('forward.worstHist') }}: {{ tx(d.worst_event) }} ({{ d.worst_value }})</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Stress Test Scenarios — What if? -->
+      <div class="mb-12 fade-in fade-in-delay-1" v-if="stressResults.length">
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Test</p>
+        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.stress') }}</h3>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div v-for="sr in sortedStress" :key="sr.scenario_name"
+               class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover"
+               :class="sr.gfcri_delta > 10 ? 'border-l-[3px] border-l-[var(--red)]' : sr.gfcri_delta > 5 ? 'border-l-[3px] border-l-[var(--orange)]' : ''">
+            <div class="flex justify-between items-start mb-3">
+              <h4 class="text-sm text-white font-medium">{{ tx(sr.scenario_name) }}</h4>
+              <span class="text-xs font-mono text-[var(--red)]">+{{ sr.gfcri_delta.toFixed(0) }}</span>
+            </div>
+            <p class="text-xs text-[var(--muted)] mb-3">{{ tx(sr.scenario_description) }}</p>
+            <div class="flex items-center gap-3">
+              <span class="text-[var(--muted)] font-mono text-sm">{{ sr.baseline_gfcri.toFixed(0) }}</span>
+              <span class="text-[var(--muted)]">→</span>
+              <span class="font-mono text-lg" :style="{ color: sr.stressed_gfcri >= 75 ? 'var(--red)' : sr.stressed_gfcri >= 50 ? 'var(--orange)' : 'var(--yellow)' }">
+                {{ sr.stressed_gfcri.toFixed(0) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Economy Health Rankings -->
+      <div class="mb-12 fade-in fade-in-delay-2" v-if="ehsData.length">
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Economy Health</p>
+        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.economy') }}</h3>
+
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+          <div v-for="(eco, i) in ehsData" :key="eco.code"
+               class="flex items-center px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+            <span class="w-8 text-[var(--muted)] text-sm font-mono">{{ i + 1 }}</span>
+            <span class="w-8 text-lg">{{ eco.flag }}</span>
+            <span class="flex-1 text-sm text-white ml-3">{{ tx(eco.name) }}</span>
+            <span class="text-xs px-2 py-0.5 rounded mr-4"
+                  :class="eco.cyclePhase === 'expansion' ? 'bg-[var(--green)]/10 text-[var(--green)]' : 'bg-[var(--yellow)]/10 text-[var(--yellow)]'">
+              {{ tx(eco.cycleLabel) }}
+            </span>
+            <div class="w-32">
+              <div class="h-2 bg-white/[0.03] rounded-full overflow-hidden">
+                <div class="h-full rounded-full" :style="{ width: eco.score + '%', backgroundColor: eco.score >= 55 ? 'var(--green)' : eco.score >= 45 ? 'var(--yellow)' : 'var(--red)' }"></div>
+              </div>
+            </div>
+            <span class="w-12 text-right font-mono text-sm ml-3" :style="{ color: eco.score >= 55 ? 'var(--green)' : eco.score >= 45 ? 'var(--yellow)' : 'var(--red)' }">
+              {{ eco.score.toFixed(1) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Policy buffers -->
+      <div class="mb-12 fade-in fade-in-delay-3" v-if="crisisData?.policies?.length">
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Policy Buffer</p>
+        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.policy') }}</h3>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div v-for="p in crisisData.policies" :key="p.name"
+               class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 card-hover">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-white font-medium">{{ tx(p.name) }}</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded"
+                    :class="p.status === 'buffer' ? 'bg-[var(--green)]/10 text-[var(--green)]' : p.status === 'warning' ? 'bg-[var(--red)]/10 text-[var(--red)]' : 'bg-[var(--yellow)]/10 text-[var(--yellow)]'">
+                {{ p.status === 'buffer' ? t('forward.hasBuffer') : p.status === 'warning' ? t('forward.warning') : t('forward.neutral') }}
+              </span>
+            </div>
+            <p class="text-[11px] text-[var(--muted)] leading-relaxed">{{ tx(p.detail) }}</p>
+          </div>
+        </div>
+      </div>
+
+      </Paywall>
+
+      <!-- Alert Subscription (P1) -->
+      <div class="mt-12 fade-in">
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 card-hover max-w-lg mx-auto text-center">
+          <p class="text-[10px] text-[var(--muted)] uppercase tracking-[3px] mb-3">Alert Subscription</p>
+          <h3 class="text-white font-medium mb-2">{{ t('forward.alertSub') }}</h3>
+          <p class="text-xs text-[var(--muted)] mb-5">{{ t('forward.alertDesc') }}</p>
+          <div v-if="!subscribed" class="flex gap-2 max-w-sm mx-auto">
+            <input v-model="alertEmail" type="email" placeholder="your@email.com"
+                   class="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-white text-sm focus:border-[var(--accent)] focus:outline-none" />
+            <button @click="subscribe"
+                    class="px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/80 transition-colors">
+              {{ t('common.subscribe') }}
+            </button>
+          </div>
+          <p v-else class="text-sm text-[var(--green)]">✓ {{ t('forward.subscribed') }} {{ alertEmail }}</p>
+        </div>
+      </div>
+
+    </template>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { COLORS } from '@/composables/useTheme'
+import { useAuth } from '@/composables/useAuth'
+import { useI18n } from '@/composables/useI18n'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import Paywall from '@/components/common/Paywall.vue'
+import client from '@/api/client'
+
+const loading = ref(false)
+const { isPro } = useAuth()
+const { t, tx, pickLang } = useI18n()
+const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
+const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
+const crisisData = ref<any>(null)
+const stressResults = ref<any[]>([])
+const ehsData = ref<any[]>([])
+
+const FLAGS: Record<string, string> = {
+  US: '🇺🇸', CN: '🇨🇳', JP: '🇯🇵', KR: '🇰🇷', DE: '🇩🇪', GB: '🇬🇧',
+  IN: '🇮🇳', BR: '🇧🇷', MX: '🇲🇽', TR: '🇹🇷', IT: '🇮🇹', AU: '🇦🇺',
+  TW: '🇨🇳', SG: '🇸🇬', ID: '🇮🇩', TH: '🇹🇭', VN: '🇻🇳', PH: '🇵🇭',
+  MY: '🇲🇾', CA: '🇨🇦', FR: '🇫🇷',
+}
+
+function distColor(d: number): string {
+  if (d >= 70) return COLORS.red
+  if (d >= 40) return COLORS.orange
+  if (d >= 20) return COLORS.yellow
+  return COLORS.green
+}
+
+function probLabel(p: string): string {
+  return { low: t('forward.lowRisk'), medium: t('forward.medRisk'), high: t('forward.highRisk'), critical: t('forward.critRisk') }[p] || p
+}
+
+const sortedStress = computed(() =>
+  [...stressResults.value].sort((a, b) => b.gfcri_delta - a.gfcri_delta)
+)
+
+async function loadAll() {
+  loading.value = true
+  try {
+    const [crisisRes, stressRes, ehsRes] = await Promise.allSettled([
+      client.get('/crisis-distance'),
+      client.get('/stress-test/run-all'),
+      client.get('/ehs/scores'),
+    ])
+    if (crisisRes.status === 'fulfilled') crisisData.value = crisisRes.value.data
+    if (stressRes.status === 'fulfilled') stressResults.value = stressRes.value.data
+    if (ehsRes.status === 'fulfilled') {
+      const raw = ehsRes.value.data || []
+      ehsData.value = (Array.isArray(raw) ? raw : [])
+        .map((e: any) => ({
+          code: e.economy_code || e.code,
+          name: tx(pickLang(e, 'name_zh', 'name_en', 'economy_name')),
+          score: e.ehs_score || e.score || 0,
+          cyclePhase: e.cycle_phase || '',
+          cycleLabel: e.cycle_label || e.cycle_phase || '—',
+          flag: FLAGS[e.economy_code || e.code] || '🌐',
+        }))
+        .sort((a: any, b: any) => b.score - a.score)
+    }
+  } catch (e) {
+    console.error('Forward data load failed', e)
+  }
+  loading.value = false
+}
+
+onMounted(() => loadAll())
+
+function subscribe() {
+  if (alertEmail.value && alertEmail.value.includes('@')) {
+    localStorage.setItem('gfcri_alert_email', alertEmail.value)
+    subscribed.value = true
+  }
+}
+</script>

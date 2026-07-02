@@ -1,0 +1,27 @@
+{
+  "events": [
+    {"date": "2026-07-02", "name": "美国 ISM 制造业 PMI", "type": "macro", "affected_nodes": ["us_recession_prob", "vix"], "impact": "medium"},
+    {"date": "2026-07-03", "name": "美国非农就业数据 (NFP)", "type": "nfp", "affected_nodes": ["vix", "us_recession_prob", "ust_10y"], "impact": "high"},
+    {"date": "2026-07-10", "name": "美国 CPI (6月)", "type": "cpi", "affected_nodes": ["ust_10y", "dxy", "vix"], "impact": "high"},
+    {"date": "2026-07-10", "name": "韩国央行利率决议", "type": "bok", "affected_nodes": ["krw_usd", "kr_cds_5y", "kospi"], "impact": "high"},
+    {"date": "2026-07-11", "name": "美国 PPI (6月)", "type": "ppi", "affected_nodes": ["ust_10y", "dxy"], "impact": "medium"},
+    {"date": "2026-07-22", "name": "Google (Alphabet) Q2 财报", "type": "earnings", "affected_nodes": ["ai_capex", "dram_spot", "sox"], "impact": "high"},
+    {"date": "2026-07-23", "name": "Microsoft Q4 财报", "type": "earnings", "affected_nodes": ["ai_capex", "dram_spot", "sox"], "impact": "high"},
+    {"date": "2026-07-24", "name": "Meta Q2 财报", "type": "earnings", "affected_nodes": ["ai_capex", "dram_spot", "sox"], "impact": "medium"},
+    {"date": "2026-07-29", "name": "美国 GDP (Q2 初值)", "type": "gdp", "affected_nodes": ["us_recession_prob", "vix", "ust_10y"], "impact": "high"},
+    {"date": "2026-07-30", "name": "FOMC 利率决议", "type": "fomc", "affected_nodes": ["fed_funds", "ust_2y", "ust_10y", "dxy"], "impact": "high"},
+    {"date": "2026-08-01", "name": "美国非农就业数据 (NFP)", "type": "nfp", "affected_nodes": ["vix", "us_recession_prob", "ust_10y"], "impact": "high"},
+    {"date": "2026-08-04", "name": "OPEC+ 会议", "type": "opec", "affected_nodes": ["oil_wti", "kr_cds_5y"], "impact": "high"},
+    {"date": "2026-08-12", "name": "美国 CPI (7月)", "type": "cpi", "affected_nodes": ["ust_10y", "dxy", "vix"], "impact": "high"},
+    {"date": "2026-08-14", "name": "韩国央行利率决议", "type": "bok", "affected_nodes": ["krw_usd", "kr_cds_5y", "kospi"], "impact": "high"},
+    {"date": "2026-08-27", "name": "NVIDIA Q2 财报", "type": "earnings", "affected_nodes": ["ai_capex", "dram_spot", "nand_spot", "sox"], "impact": "high"},
+    {"date": "2026-09-05", "name": "美国非农就业数据 (NFP)", "type": "nfp", "affected_nodes": ["vix", "us_recession_prob", "ust_10y"], "impact": "high"},
+    {"date": "2026-09-10", "name": "美国 CPI (8月)", "type": "cpi", "affected_nodes": ["ust_10y", "dxy", "vix"], "impact": "high"},
+    {"date": "2026-09-17", "name": "FOMC 利率决议", "type": "fomc", "affected_nodes": ["fed_funds", "ust_2y", "ust_10y", "dxy"], "impact": "high"},
+    {"date": "2026-10-08", "name": "韩国央行利率决议", "type": "bok", "affected_nodes": ["krw_usd", "kr_cds_5y", "kospi"], "impact": "high"},
+    {"date": "2026-10-13", "name": "美国 CPI (9月)", "type": "cpi", "affected_nodes": ["ust_10y", "dxy", "vix"], "impact": "high"},
+    {"date": "2026-10-29", "name": "美国 GDP (Q3 初值)", "type": "gdp", "affected_nodes": ["us_recession_prob", "vix", "ust_10y"], "impact": "high"},
+    {"date": "2026-11-04", "name": "FOMC 利率决议", "type": "fomc", "affected_nodes": ["fed_funds", "ust_2y", "ust_10y", "dxy"], "impact": "high"},
+    {"date": "2026-12-16", "name": "FOMC 利率决议", "type": "fomc", "affected_nodes": ["fed_funds", "ust_2y", "ust_10y", "dxy"], "impact": "high"}
+  ]
+}

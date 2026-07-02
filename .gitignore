@@ -1,0 +1,48 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# Build and runtime output
+output/
+*.log
+logs/
+
+# Local editor / OS metadata
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local agent/tooling state
+.claude/
+.agents/
+.codex/
+
+# Screenshots and local review artifacts
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.tar.gz
