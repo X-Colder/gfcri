@@ -86,6 +86,8 @@
             </div>
           </div>
         </div>
+
+        <TradeSpilloverPanel compact class="mt-4" />
       </section>
 
       <!-- ── Signal Cards ── -->
@@ -181,6 +183,7 @@ import { useI18n } from '@/composables/useI18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
+import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 
 const riskStore = useRiskStore()
 const { isPro } = useAuth()

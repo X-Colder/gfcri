@@ -95,6 +95,17 @@ const messages: Record<string, Record<string, string>> = {
   'dash.tradeBoost': { zh: '贸易传导加分', en: 'Trade Spillover Boost' },
   'dash.finalScore': { zh: '最终分数', en: 'Final Score' },
   'dash.scoreFormula': { zh: '最终 GFCRI = 加权基础分 × 信号一致性 + 隐藏风险加分 + 贸易传导加分', en: 'Final GFCRI = weighted base score x signal coherence + hidden risk boost + trade spillover boost' },
+  // Trade spillover
+  'trade.kicker': { zh: '全球传导', en: 'Global Spillover' },
+  'trade.title': { zh: '贸易依赖传导', en: 'Trade Dependency Spillover' },
+  'trade.desc': { zh: '识别一个经济体或商品市场的压力如何通过贸易依赖传导到其他经济体和资本市场。', en: 'Shows how stress in one economy or commodity market can transmit to other economies and capital markets through trade dependency.' },
+  'trade.score': { zh: '传导压力', en: 'Spillover Stress' },
+  'trade.boost': { zh: '指数加分', en: 'Index Boost' },
+  'trade.topLinks': { zh: '主要传导链', en: 'Top Spillover Links' },
+  'trade.exposures': { zh: '经济体暴露', en: 'Economy Exposure' },
+  'trade.additive': { zh: '加分项', en: 'Additive' },
+  'trade.empty': { zh: '暂无显著贸易传导压力。', en: 'No material trade-spillover pressure detected.' },
+  'trade.staticNote': { zh: '当前为 static-v1 依赖矩阵，用于可解释建模；后续应接入官方贸易流数据进行动态校准。', en: 'This uses the static-v1 dependency matrix for explainable modeling; it should later be calibrated with official trade-flow data.' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },

@@ -104,6 +104,8 @@
           <p class="mt-4 text-[11px] text-[var(--accent)]">{{ t('analysis.hiddenWhyPro') }}</p>
         </div>
 
+        <TradeSpilloverPanel class="mb-5" />
+
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover min-w-0">
             <div class="flex items-center justify-between mb-3">
@@ -416,6 +418,7 @@ import { useI18n } from '@/composables/useI18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import RiskWatch from '@/components/common/RiskWatch.vue'
+import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 import client from '@/api/client'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
