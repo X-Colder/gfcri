@@ -362,7 +362,12 @@ const messages: Record<string, Record<string, string>> = {
   'social.noCard': { zh: '暂无分享卡片', en: 'No share card' },
   // RiskWatch
   'watch.title': { zh: '我的关注', en: 'My Risk Watch' },
+  'watch.context': { zh: '风险监控', en: 'Risk Monitor' },
   'watch.watching': { zh: '条关注中', en: 'watching' },
+  'watch.selected': { zh: '已关注', en: 'Selected' },
+  'watch.active': { zh: '激活', en: 'Active' },
+  'watch.manage': { zh: '管理', en: 'Manage' },
+  'watch.done': { zh: '完成', en: 'Done' },
   'watch.hint': { zh: '选择你关注的传导链，当它们激活时会优先提醒你', en: 'Select chains to watch — get alerts when they activate' },
   'analogy.current': { zh: '当前', en: 'Current' },
   'analogy.closestTo': { zh: '最接近', en: 'is closest to' },

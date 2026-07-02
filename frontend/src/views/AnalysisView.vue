@@ -4,9 +4,6 @@
 
     <template v-else-if="riskStore.latest">
 
-      <!-- Personalized Risk Watch (P2) -->
-      <RiskWatch />
-
       <!-- Section 1: Judgment + Trend -->
       <div class="mb-12 fade-in grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(420px,1.12fr)]">
         <div v-if="reportStore.latest?.llm_narrative" class="min-w-0">
@@ -26,11 +23,16 @@
           </div>
         </div>
 
-        <div v-if="riskStore.history.length > 1" class="min-w-0">
-          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Historical Trend</p>
-          <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.trend') }}</h2>
-          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover">
-            <v-chart :option="trendChartOption" style="height: 320px" autoresize />
+        <div class="min-w-0">
+          <template v-if="riskStore.history.length > 1">
+            <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Historical Trend</p>
+            <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.trend') }}</h2>
+            <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover">
+              <v-chart :option="trendChartOption" style="height: 320px" autoresize />
+            </div>
+          </template>
+          <div :class="riskStore.history.length > 1 ? 'mt-4' : ''">
+            <RiskWatch compact />
           </div>
         </div>
       </div>
