@@ -279,6 +279,15 @@ python3 scripts/backtest_trade_spillover.py all
 python3 scripts/backtest_trade_spillover.py "1997" --verbose
 ```
 
+Current production-engine historical replay:
+
+```bash
+python3 scripts/backtest_current_engine_replay.py all
+python3 scripts/backtest_current_engine_replay.py "1997" --verbose
+```
+
+The replay script reports both raw production-engine GFCRI and a coverage-adjusted historical score. The adjusted score reweights only the sub-index families that had observable historical data in that window, which is necessary because many modern ETFs and market proxies did not exist in earlier crises.
+
 ## Disclaimer
 
 GFCRI is provided for informational and risk-monitoring purposes only. It is not investment advice, trading advice, or a recommendation to buy or sell any financial product. Historical analogies and stress-test scenarios do not guarantee future outcomes.
