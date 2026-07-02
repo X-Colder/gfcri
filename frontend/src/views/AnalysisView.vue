@@ -313,8 +313,8 @@
       </div>
       </Paywall>
 
-      <!-- Section 4: Full Report — WeChat HTML format, Pro only -->
-      <div class="mb-12 fade-in fade-in-delay-3" v-if="reportStore.latest">
+      <!-- Section 4: Full Report — Chinese publishing format only -->
+      <div class="mb-12 fade-in fade-in-delay-3" v-if="lang === 'zh' && reportStore.latest">
         <div class="flex items-center justify-between mb-6">
           <div>
             <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Full Report</p>
