@@ -109,6 +109,40 @@
       </div>
 
       <div v-if="!compact" class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <p class="text-xs font-medium text-white">{{ t('regime.currentEvidence') }}</p>
+          <span class="text-[10px] text-[var(--muted)]">{{ t('regime.forwardPressure') }}</span>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-3">
+          <div v-for="item in currentEvidence" :key="item.id" class="rounded-lg border border-[var(--border)] p-3">
+            <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ item.label }}</p>
+            <p class="mt-1 font-mono text-sm text-white">{{ item.value }}</p>
+            <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ item.detail }}</p>
+          </div>
+        </div>
+        <div v-if="topIndicators.length" class="mt-4 overflow-x-auto rounded-lg border border-[var(--border)]">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-[var(--border)] text-[var(--muted)]">
+                <th class="px-3 py-2 text-left font-medium">{{ t('analysis.indicator') }}</th>
+                <th class="px-3 py-2 text-right font-medium">{{ t('analysis.current') }}</th>
+                <th class="px-3 py-2 text-right font-medium">{{ t('analysis.zscore') }}</th>
+                <th class="px-3 py-2 text-right font-medium">{{ t('analysis.absScore') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="node in topIndicators" :key="node.id" class="border-b border-[var(--border)]/50 last:border-b-0">
+                <td class="px-3 py-2 text-white">{{ node.name }}</td>
+                <td class="px-3 py-2 text-right font-mono text-[var(--muted)]">{{ node.current }}</td>
+                <td class="px-3 py-2 text-right font-mono" :style="{ color: Math.abs(node.zscore) >= 2 ? 'var(--red)' : 'var(--muted)' }">{{ node.zscore.toFixed(2) }}</td>
+                <td class="px-3 py-2 text-right font-mono">{{ node.abs }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div v-if="!compact" class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
         <p class="mb-3 text-xs font-medium text-white">{{ t('regime.reference') }}</p>
         <div class="grid gap-3 lg:grid-cols-2">
           <div v-for="level in damageLevels" :key="level.id" class="rounded-lg border border-[var(--border)] p-3">
@@ -127,10 +161,12 @@ import { computed, onMounted, ref } from 'vue'
 import client from '@/api/client'
 import { COLORS } from '@/composables/useTheme'
 import { useI18n } from '@/composables/useI18n'
+import { useRiskStore } from '@/stores/risk'
 
 defineProps<{ compact?: boolean }>()
 
 const { t, lang } = useI18n()
+const riskStore = useRiskStore()
 const assessment = ref<any>(null)
 const loading = ref(false)
 
@@ -141,6 +177,7 @@ async function loadAssessment() {
   try {
     const { data } = await client.get('/regime-assessment/latest')
     assessment.value = data
+    if (!riskStore.latest) await riskStore.loadLatest()
   } catch (e) {
     assessment.value = null
   } finally {
@@ -160,6 +197,91 @@ const pressureColor = computed(() => factorColor(Number(pressure.value?.score ||
 const hiddenColor = computed(() => factorColor(Number(hidden.value?.score || 0)))
 const damageWidth = computed(() => `${Math.min(Number(damage.value?.score || 0), 100)}%`)
 const hiddenLabel = computed(() => lang.value === 'zh' ? hidden.value?.label_zh || hidden.value?.label : hidden.value?.label)
+
+const currentEvidence = computed(() => {
+  const latest = riskStore.latest
+  const sub = latest?.sub_index_details || {}
+  const trade = latest?.trade_spillover || sub.SI_TRADE_SPILLOVER?.trade_spillover || {}
+  return [
+    {
+      id: 'gfcri',
+      label: t('regime.pressure'),
+      value: latest ? Number(latest.gfcri_value || 0).toFixed(1) : '-',
+      detail: pressure.value?.level?.description || '',
+    },
+    {
+      id: 'coherence',
+      label: t('dash.coherence'),
+      value: `${Number(latest?.coherence_multiplier || 1).toFixed(2)}x`,
+      detail: `${activeChainCount.value} ${t('analysis.chainActive')} / ${t('analysis.chainTitle')}`,
+    },
+    {
+      id: 'trade',
+      label: t('trade.title'),
+      value: `${Number(trade?.score || 0).toFixed(1)} / +${Number(latest?.trade_spillover_boost || 0).toFixed(1)}`,
+      detail: topTradeLink.value,
+    },
+    {
+      id: 'hidden',
+      label: t('regime.hiddenRisk'),
+      value: `${Number(hidden.value?.score || 0).toFixed(0)}`,
+      detail: `${t('analysis.undercurrentBoost')} +${Number(latest?.undercurrent_boost || 0).toFixed(1)}`,
+    },
+    {
+      id: 'damage',
+      label: t('regime.realizedDamage'),
+      value: `${Number(damage.value?.score || 0).toFixed(1)}`,
+      detail: topDamageEvidence.value,
+    },
+    {
+      id: 'match',
+      label: t('regime.closest'),
+      value: visibleMatches.value[0] ? `${Number(visibleMatches.value[0].similarity || 0).toFixed(0)}%` : '-',
+      detail: visibleMatches.value[0] ? matchName(visibleMatches.value[0]) : '-',
+    },
+  ]
+})
+
+const activeChainCount = computed(() => {
+  const raw = riskStore.latest?.chain_details || []
+  const list = Array.isArray(raw) ? raw : Object.values(raw)
+  return list.filter((c: any) => c.active).length
+})
+
+const topTradeLink = computed(() => {
+  const latest = riskStore.latest
+  const sub = latest?.sub_index_details || {}
+  const trade = latest?.trade_spillover || sub.SI_TRADE_SPILLOVER?.trade_spillover || {}
+  const link = Array.isArray(trade?.top_links) ? trade.top_links[0] : null
+  if (!link) return t('trade.empty')
+  return `${link.source_name || link.source} -> ${link.target_name || link.target}: ${Number(link.spillover || 0).toFixed(1)}`
+})
+
+const topDamageEvidence = computed(() => {
+  const top = damageEvidence.value[0]
+  if (!top) return '-'
+  return `${damageEvidenceName(top)} ${Number(top.score || 0).toFixed(0)}`
+})
+
+const topIndicators = computed(() => {
+  const nc = riskStore.latest?.node_contributions || {}
+  return Object.entries(nc)
+    .map(([id, info]: [string, any]) => {
+      const zscore = Number(info.zscore || 0)
+      const anomaly = Number(info.anomaly_score || 0)
+      const abs = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+      return {
+        id,
+        name: String(info.display_name || id),
+        current: formatValue(info.current_value),
+        zscore,
+        abs: abs === null ? '-' : (abs * 100).toFixed(0),
+        sortScore: Math.max(Math.abs(zscore) / 4, anomaly, abs || 0),
+      }
+    })
+    .sort((a, b) => b.sortScore - a.sortScore)
+    .slice(0, 6)
+})
 
 function factorColor(value: number): string {
   if (value >= 75) return COLORS.red
@@ -182,5 +304,13 @@ function damageEvidenceName(item: any): string {
 
 function matchName(match: any): string {
   return lang.value === 'zh' ? match.name_zh || match.name : match.name
+}
+
+function formatValue(value: any): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-'
+  const n = Number(value)
+  if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
+  if (Math.abs(n) >= 10) return n.toFixed(1)
+  return n.toFixed(2)
 }
 </script>

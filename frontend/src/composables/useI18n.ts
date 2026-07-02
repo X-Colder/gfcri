@@ -121,6 +121,7 @@ const messages: Record<string, Record<string, string>> = {
   'regime.reference': { zh: '损害等级定义', en: 'Damage Level Definitions' },
   'regime.realizedDamage': { zh: '已发生损害', en: 'Realized Damage' },
   'regime.damageEvidence': { zh: '损害证据拆解', en: 'Damage Evidence Breakdown' },
+  'regime.currentEvidence': { zh: '当前数据证据', en: 'Current Data Evidence' },
   'regime.forwardPressure': { zh: '前瞻风险压力', en: 'Forward Risk Pressure' },
   'regime.hiddenRisk': { zh: '未兑现隐藏风险', en: 'Unrealized Hidden Risk' },
   'regime.hiddenNote': { zh: '用于识别表面损害不明显、但底层压力已经累积的状态。', en: 'Captures pressure that has not yet turned into visible damage.' },
