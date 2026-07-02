@@ -11,6 +11,7 @@ from api.dependencies import get_graph, get_historical_data
 router = APIRouter(prefix="/stress-test", tags=["stress-test"])
 
 _cache: dict = {"results": [], "ts": 0}
+_compute_lock = asyncio.Lock()
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/output")
 
 
@@ -47,12 +48,22 @@ async def run_all():
     if _cache["results"] and (now - _cache["ts"]) < 3600:
         return _cache["results"]
 
-    # 3. Compute on-demand (slow fallback)
-    loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(None, _compute_all)
-    _cache["results"] = results
-    _cache["ts"] = time.time()
-    return results
+    # 3. Compute on-demand (slow fallback). Single-flight avoids duplicate
+    # market-data downloads if users refresh while the first request is running.
+    async with _compute_lock:
+        cached = _read_file_cache(cache_file)
+        if cached is not None:
+            return cached
+        now = time.time()
+        if _cache["results"] and (now - _cache["ts"]) < 3600:
+            return _cache["results"]
+
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(None, _compute_all)
+        _cache["results"] = results
+        _cache["ts"] = time.time()
+        _write_file_cache(cache_file, results)
+        return results
 
 
 @router.post("/run-custom")
@@ -91,6 +102,27 @@ def _compute_all():
         results.append(result_dict)
 
     return results
+
+
+def _read_file_cache(cache_file: str):
+    if os.path.exists(cache_file):
+        try:
+            mtime = os.path.getmtime(cache_file)
+            if time.time() - mtime < 86400:
+                with open(cache_file) as f:
+                    return json.load(f)
+        except Exception:
+            return None
+    return None
+
+
+def _write_file_cache(cache_file: str, results: list[dict]):
+    try:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(results, f)
+    except Exception:
+        pass
 
 
 def _compute_custom(shock: CustomShock):

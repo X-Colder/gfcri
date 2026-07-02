@@ -12,20 +12,25 @@
       </button>
     </div>
 
-    <LoadingSpinner v-if="loading" />
-
-    <template v-if="!loading">
-
-      <Paywall :blurred="!isPro" :title="t('forward.unlockTitle')" :description="t('forward.unlockDesc')">
+    <Paywall :blurred="!isPro" :title="t('forward.unlockTitle')" :description="t('forward.unlockDesc')">
 
       <!-- Section 1: Crisis Distance — How far from crisis? -->
-      <div class="mb-12 fade-in" v-if="crisisData">
+      <div class="mb-12 fade-in">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Threshold Monitor</p>
-        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.crisis') }}</h3>
+        <div class="mb-6 flex items-center justify-between gap-4">
+          <h3 class="text-lg font-light text-white">{{ t('forward.crisis') }}</h3>
+          <span v-if="crisisLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
+        </div>
         <p class="text-xs text-[var(--muted)] mb-5 max-w-2xl">{{ t('forward.crisisHelp') }}</p>
 
+        <div v-if="crisisLoading && !crisisData" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div v-for="i in 4" :key="i" class="h-28 rounded-lg bg-white/[0.025] animate-pulse"></div>
+          </div>
+        </div>
+
         <!-- Overall + 3 tiers -->
-        <div class="grid gap-4 mb-6 md:grid-cols-2 xl:grid-cols-4">
+        <div v-else-if="crisisData" class="grid gap-4 mb-6 md:grid-cols-2 xl:grid-cols-4">
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 text-center card-hover">
             <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-2">{{ t('forward.overall') }}</p>
             <p class="text-4xl font-extralight font-mono" :style="{ color: distColor(crisisData.overall_distance) }">
@@ -48,7 +53,7 @@
         </div>
 
         <!-- Distance bars -->
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+        <div v-if="crisisData" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
           <div v-for="tierNum in [1,2,3]" :key="tierNum" class="mb-5 last:mb-0">
             <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-3">
               Tier {{ tierNum }} — {{ tierNum === 1 ? t('forward.global') : tierNum === 2 ? t('forward.usCore') : t('forward.regional') }}
@@ -77,11 +82,18 @@
       </div>
 
       <!-- Section 2: Stress Test Scenarios — What if? -->
-      <div class="mb-12 fade-in fade-in-delay-1" v-if="stressResults.length">
+      <div class="mb-12 fade-in fade-in-delay-1">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Test</p>
-        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.stress') }}</h3>
+        <div class="mb-6 flex items-center justify-between gap-4">
+          <h3 class="text-lg font-light text-white">{{ t('forward.stress') }}</h3>
+          <span v-if="stressLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
+        </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div v-if="stressLoading && !stressResults.length" class="grid gap-4 lg:grid-cols-2">
+          <div v-for="i in 4" :key="i" class="h-32 rounded-xl bg-[var(--card)] border border-[var(--border)] animate-pulse"></div>
+        </div>
+
+        <div v-else-if="stressResults.length" class="grid gap-4 lg:grid-cols-2">
           <div v-for="sr in sortedStress" :key="sr.scenario_name"
                class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover"
                :class="sr.gfcri_delta > 10 ? 'border-l-[3px] border-l-[var(--red)]' : sr.gfcri_delta > 5 ? 'border-l-[3px] border-l-[var(--orange)]' : ''">
@@ -102,11 +114,18 @@
       </div>
 
       <!-- Section 3: Economy Health Rankings -->
-      <div class="mb-12 fade-in fade-in-delay-2" v-if="ehsData.length">
+      <div class="mb-12 fade-in fade-in-delay-2">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Economy Health</p>
-        <h3 class="text-lg font-light text-white mb-6">{{ t('forward.economy') }}</h3>
+        <div class="mb-6 flex items-center justify-between gap-4">
+          <h3 class="text-lg font-light text-white">{{ t('forward.economy') }}</h3>
+          <span v-if="ehsLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
+        </div>
 
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+        <div v-if="ehsLoading && !ehsData.length" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+          <div v-for="i in 8" :key="i" class="mb-3 h-8 rounded bg-white/[0.025] animate-pulse last:mb-0"></div>
+        </div>
+
+        <div v-else-if="ehsData.length" class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
           <div v-for="(eco, i) in ehsData" :key="eco.code"
                class="flex items-center px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-white/[0.02] transition-colors">
             <span class="w-8 text-[var(--muted)] text-sm font-mono">{{ i + 1 }}</span>
@@ -167,8 +186,6 @@
           <p v-else class="text-sm text-[var(--green)]">✓ {{ t('forward.subscribed') }} {{ alertEmail }}</p>
         </div>
       </div>
-
-    </template>
   </div>
 </template>
 
@@ -177,11 +194,9 @@ import { ref, computed, onMounted } from 'vue'
 import { COLORS } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import client from '@/api/client'
 
-const loading = ref(false)
 const { isPro } = useAuth()
 const { t, tx, pickLang } = useI18n()
 const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
@@ -189,6 +204,10 @@ const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const crisisData = ref<any>(null)
 const stressResults = ref<any[]>([])
 const ehsData = ref<any[]>([])
+const crisisLoading = ref(false)
+const stressLoading = ref(false)
+const ehsLoading = ref(false)
+const loading = computed(() => crisisLoading.value || stressLoading.value || ehsLoading.value)
 
 const FLAGS: Record<string, string> = {
   US: '🇺🇸', CN: '🇨🇳', JP: '🇯🇵', KR: '🇰🇷', DE: '🇩🇪', GB: '🇬🇧',
@@ -213,32 +232,53 @@ const sortedStress = computed(() =>
 )
 
 async function loadAll() {
-  loading.value = true
+  await Promise.allSettled([loadCrisis(), loadStress(), loadEhs()])
+}
+
+async function loadCrisis() {
+  crisisLoading.value = true
   try {
-    const [crisisRes, stressRes, ehsRes] = await Promise.allSettled([
-      client.get('/crisis-distance'),
-      client.get('/stress-test/run-all'),
-      client.get('/ehs/scores'),
-    ])
-    if (crisisRes.status === 'fulfilled') crisisData.value = crisisRes.value.data
-    if (stressRes.status === 'fulfilled') stressResults.value = stressRes.value.data
-    if (ehsRes.status === 'fulfilled') {
-      const raw = ehsRes.value.data || []
-      ehsData.value = (Array.isArray(raw) ? raw : [])
-        .map((e: any) => ({
-          code: e.economy_code || e.code,
-          name: tx(pickLang(e, 'name_zh', 'name_en', 'economy_name')),
-          score: e.ehs_score || e.score || 0,
-          cyclePhase: e.cycle_phase || '',
-          cycleLabel: e.cycle_label || e.cycle_phase || '—',
-          flag: FLAGS[e.economy_code || e.code] || '🌐',
-        }))
-        .sort((a: any, b: any) => b.score - a.score)
-    }
+    const { data } = await client.get('/crisis-distance')
+    crisisData.value = data
   } catch (e) {
-    console.error('Forward data load failed', e)
+    console.error('Crisis distance load failed', e)
+  } finally {
+    crisisLoading.value = false
   }
-  loading.value = false
+}
+
+async function loadStress() {
+  stressLoading.value = true
+  try {
+    const { data } = await client.get('/stress-test/run-all')
+    stressResults.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('Stress test load failed', e)
+  } finally {
+    stressLoading.value = false
+  }
+}
+
+async function loadEhs() {
+  ehsLoading.value = true
+  try {
+    const { data } = await client.get('/ehs/scores')
+    const raw = data || []
+    ehsData.value = (Array.isArray(raw) ? raw : [])
+      .map((e: any) => ({
+        code: e.economy_code || e.code,
+        name: tx(pickLang(e, 'name_zh', 'name_en', 'economy_name')),
+        score: e.ehs_score || e.score || 0,
+        cyclePhase: e.cycle_phase || '',
+        cycleLabel: e.cycle_label || e.cycle_phase || '—',
+        flag: FLAGS[e.economy_code || e.code] || '🌐',
+      }))
+      .sort((a: any, b: any) => b.score - a.score)
+  } catch (e) {
+    console.error('EHS load failed', e)
+  } finally {
+    ehsLoading.value = false
+  }
 }
 
 onMounted(() => loadAll())
