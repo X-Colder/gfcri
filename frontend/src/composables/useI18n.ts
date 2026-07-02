@@ -88,6 +88,12 @@ const messages: Record<string, Record<string, string>> = {
   'dash.methodologyShort': { zh: 'GFCRI 结合异常检测、绝对压力水平和传导链一致性评分。结果是风险监测信号，不构成投资建议。', en: 'GFCRI combines anomaly detection, absolute stress levels, and transmission-channel coherence. It is a monitoring signal, not investment advice.' },
   'dash.primaryDriver': { zh: '主要驱动', en: 'Primary driver' },
   'dash.noDriver': { zh: '暂无显著驱动', en: 'No dominant driver' },
+  'dash.scoreReceipt': { zh: '总分计算收据', en: 'Score Receipt' },
+  'dash.weightedBase': { zh: '加权基础分', en: 'Weighted Base' },
+  'dash.coherenceEffect': { zh: '一致性放大', en: 'Coherence Effect' },
+  'dash.hiddenRiskBoost': { zh: '隐藏风险加分', en: 'Hidden Risk Boost' },
+  'dash.finalScore': { zh: '最终分数', en: 'Final Score' },
+  'dash.scoreFormula': { zh: '最终 GFCRI = 加权基础分 × 信号一致性 + 隐藏风险加分', en: 'Final GFCRI = weighted base score x signal coherence + hidden risk boost' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
@@ -372,6 +378,14 @@ const messages: Record<string, Record<string, string>> = {
   'trust.limitationsBody': { zh: '历史相似度不代表未来会重复；压力测试是情景分析，不是概率预测；指数无法覆盖所有政策、地缘政治或流动性事件。', en: 'Historical similarity does not mean history will repeat; stress tests are scenario analyses, not probability forecasts; the index cannot capture every policy, geopolitical, or liquidity event.' },
   'trust.disclaimer': { zh: '免责声明', en: 'Disclaimer' },
   'trust.disclaimerBody': { zh: 'GFCRI 仅用于信息和风险监测目的，不构成投资建议、交易建议或任何金融产品推荐。', en: 'GFCRI is provided for informational and risk-monitoring purposes only. It is not investment advice, trading advice, or a recommendation to buy or sell any financial product.' },
+  'trust.formulas': { zh: '核心公式', en: 'Core Formulas' },
+  'trust.weights': { zh: '子指数权重', en: 'Sub-Index Weights' },
+  'trust.thresholds': { zh: '绝对压力阈值样例', en: 'Absolute Stress Threshold Examples' },
+  'trust.riskChains': { zh: '风险传导链', en: 'Risk Transmission Channels' },
+  'trust.weight': { zh: '权重', en: 'Weight' },
+  'trust.normal': { zh: '正常', en: 'Normal' },
+  'trust.crisisThreshold': { zh: '压力阈值', en: 'Stress Threshold' },
+  'trust.direction': { zh: '方向', en: 'Direction' },
 }
 
 const textMap: Record<string, string> = {

@@ -50,6 +50,37 @@
             <p class="terminal-copy mt-2">{{ t('dash.methodologyShort') }}</p>
           </div>
         </div>
+
+        <div class="score-receipt">
+          <div class="receipt-head">
+            <div>
+              <p class="terminal-kicker">{{ t('dash.scoreReceipt') }}</p>
+              <p class="terminal-copy mt-1">{{ t('dash.scoreFormula') }}</p>
+            </div>
+            <router-link to="/methodology" class="receipt-link">{{ t('nav.methodology') }}</router-link>
+          </div>
+          <div class="receipt-grid">
+            <div class="receipt-step">
+              <span>{{ t('dash.weightedBase') }}</span>
+              <strong>{{ scoreReceipt.weightedBase.toFixed(1) }}</strong>
+            </div>
+            <div class="receipt-op">×</div>
+            <div class="receipt-step">
+              <span>{{ t('dash.coherence') }}</span>
+              <strong>{{ scoreReceipt.coherence.toFixed(2) }}</strong>
+            </div>
+            <div class="receipt-op">+</div>
+            <div class="receipt-step">
+              <span>{{ t('dash.hiddenRiskBoost') }}</span>
+              <strong>+{{ scoreReceipt.hiddenBoost.toFixed(1) }}</strong>
+            </div>
+            <div class="receipt-op">=</div>
+            <div class="receipt-step receipt-final">
+              <span>{{ t('dash.finalScore') }}</span>
+              <strong :style="{ color: getAlertColor(riskStore.latest.alert_level) }">{{ riskStore.latest.gfcri_value.toFixed(1) }}</strong>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ── Hero Section ── -->
@@ -283,6 +314,30 @@ const primaryDriver = computed(() => {
   return tx((item[1] as any).display_name || item[0])
 })
 
+const SUB_INDEX_WEIGHTS: Record<string, number> = {
+  SI_RATES: 0.14,
+  SI_FX: 0.14,
+  SI_US_EQUITY: 0.10,
+  SI_ASIA_EQUITY: 0.10,
+  SI_EUROPE: 0.08,
+  SI_CREDIT: 0.14,
+  SI_BANKING: 0.08,
+  SI_COMMODITY: 0.10,
+  SI_SENTIMENT: 0.12,
+}
+
+const scoreReceipt = computed(() => {
+  const details = riskStore.latest?.sub_index_details || {}
+  const weightedBase = Object.entries(details).reduce((sum, [key, val]: [string, any]) => {
+    return sum + Number(val?.score || 0) * (SUB_INDEX_WEIGHTS[key] || 0)
+  }, 0)
+  return {
+    weightedBase,
+    coherence: riskStore.latest?.coherence_multiplier || 1,
+    hiddenBoost: riskStore.latest?.undercurrent_boost || 0,
+  }
+})
+
 const heroSummary = computed(() => {
   const ac = activeChainCount.value
   const an = anomalyCount.value
@@ -362,6 +417,73 @@ const heroSummary = computed(() => {
   font-size: 18px;
   font-weight: 500;
   margin-top: 10px;
+}
+
+.score-receipt {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.receipt-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.receipt-link {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--accent);
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
+.receipt-grid {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.receipt-step {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.receipt-step span {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.receipt-step strong {
+  color: var(--text);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.receipt-final {
+  border-color: rgba(129,140,248,0.28);
+}
+
+.receipt-op {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  text-align: center;
 }
 
 /* ── Noise overlay ── */
@@ -723,8 +845,17 @@ const heroSummary = computed(() => {
   }
 
   .brief-meta,
-  .cards-grid {
+  .cards-grid,
+  .receipt-grid {
     grid-template-columns: 1fr;
+  }
+
+  .receipt-op {
+    display: none;
+  }
+
+  .receipt-head {
+    flex-direction: column;
   }
 }
 </style>

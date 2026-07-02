@@ -53,11 +53,150 @@
         </div>
       </div>
     </section>
+
+    <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('trust.formulas') }}</p>
+      <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <div v-for="item in formulas" :key="item.name" class="method-block">
+          <p class="text-sm text-white font-medium">{{ item.name }}</p>
+          <code class="method-code">{{ item.formula }}</code>
+          <p class="terminal-copy mt-2">{{ item.note }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('trust.weights') }}</p>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+              <th class="text-left py-2 pr-3">{{ t('analysis.subIndexBreakdown') }}</th>
+              <th class="text-right py-2 px-3">{{ t('trust.weight') }}</th>
+              <th class="text-left py-2 pl-3">Nodes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in weights" :key="row.id" class="border-b border-[var(--border)]/40">
+              <td class="py-2 pr-3 text-white">{{ row.name }}</td>
+              <td class="py-2 px-3 text-right font-mono">{{ row.weight }}</td>
+              <td class="py-2 pl-3 text-[var(--muted)]">{{ row.nodes }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('trust.thresholds') }}</p>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+              <th class="text-left py-2 pr-3">{{ t('analysis.node') }}</th>
+              <th class="text-right py-2 px-3">{{ t('trust.normal') }}</th>
+              <th class="text-right py-2 px-3">{{ t('trust.crisisThreshold') }}</th>
+              <th class="text-left py-2 pl-3">{{ t('trust.direction') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in thresholds" :key="row.node" class="border-b border-[var(--border)]/40">
+              <td class="py-2 pr-3 text-white">{{ row.node }}</td>
+              <td class="py-2 px-3 text-right font-mono">{{ row.normal }}</td>
+              <td class="py-2 px-3 text-right font-mono">{{ row.crisis }}</td>
+              <td class="py-2 pl-3 text-[var(--muted)]">{{ row.direction }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('trust.riskChains') }}</p>
+      <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <div v-for="chain in chains" :key="chain.name" class="method-block">
+          <p class="text-sm text-white font-medium">{{ chain.name }}</p>
+          <p class="text-[11px] text-[var(--muted)] font-mono mt-1">{{ chain.path }}</p>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n'
 
-const { t } = useI18n()
+const { t, tx } = useI18n()
+
+const formulas = [
+  {
+    name: 'Indicator anomaly',
+    formula: 'Anomaly Score = min(1.0, abs(Z-score) / 4.0)',
+    note: 'Captures fast deviations from recent historical behavior.',
+  },
+  {
+    name: 'Sub-index stress',
+    formula: 'Sub-index = 100 x (0.6 x raw stress + 0.4 x transmission)',
+    note: 'Combines anomaly stress, absolute stress, and external transmission pressure.',
+  },
+  {
+    name: 'Transmission channel',
+    formula: 'Chain Stress = average(node anomaly scores) x 100',
+    note: 'Shows whether linked indicators are becoming stressed together.',
+  },
+  {
+    name: 'Final GFCRI',
+    formula: 'GFCRI = weighted base x signal coherence + hidden risk boost',
+    note: 'Adds synchronization and hidden-risk effects to the weighted base score.',
+  },
+]
+
+const weights = [
+  { id: 'SI_RATES', name: tx('利率与央行'), weight: '14%', nodes: 'fed_funds, ust_10y, ust_2y' },
+  { id: 'SI_FX', name: tx('全球汇率'), weight: '14%', nodes: 'dxy, krw_usd, eurusd, cny_usd, jpy_usd' },
+  { id: 'SI_US_EQUITY', name: tx('美国股市'), weight: '10%', nodes: 'spx, sox' },
+  { id: 'SI_ASIA_EQUITY', name: tx('亚洲股市'), weight: '10%', nodes: 'kospi, hsi, nikkei' },
+  { id: 'SI_EUROPE', name: tx('欧洲市场'), weight: '8%', nodes: 'stoxx50, italy_etf' },
+  { id: 'SI_CREDIT', name: tx('信用与违约'), weight: '14%', nodes: 'hyg, lqd, kr_cds_5y, orcl_cds, emb' },
+  { id: 'SI_BANKING', name: tx('银行与房产'), weight: '8%', nodes: 'kre, vnq' },
+  { id: 'SI_COMMODITY', name: tx('商品与贸易'), weight: '10%', nodes: 'oil_wti, copper, gold, natgas, wheat, dram, nand, bdry' },
+  { id: 'SI_SENTIMENT', name: tx('情绪与风险偏好'), weight: '12%', nodes: 'vix, recession_prob, btc, consumer_stress, eem' },
+]
+
+const thresholds = [
+  { node: 'VIX', normal: '15', crisis: '45', direction: 'Higher is worse' },
+  { node: 'DXY', normal: '100', crisis: '114', direction: 'Higher is worse' },
+  { node: 'S&P 500', normal: '5000', crisis: '3500', direction: 'Lower is worse' },
+  { node: 'US 10Y Treasury', normal: '3.5', crisis: '5.2', direction: 'Higher is worse' },
+  { node: 'WTI Crude', normal: '70', crisis: '120', direction: 'Higher is worse' },
+  { node: 'KRW/USD', normal: '1250', crisis: '1550', direction: 'Higher is worse' },
+  { node: 'KOSPI', normal: '2600', crisis: '1800', direction: 'Lower is worse' },
+  { node: 'Hang Seng', normal: '22000', crisis: '14000', direction: 'Lower is worse' },
+]
+
+const chains = [
+  { name: tx('央行加息冲击波'), path: 'Fed Funds -> US 10Y -> DXY -> KRW/USD' },
+  { name: tx('强美元挤压'), path: 'US 10Y -> DXY -> KRW/USD -> KOSPI' },
+  { name: tx('信用危机传染'), path: 'LQD -> HYG -> Korea CDS -> KOSPI' },
+  { name: tx('房地产银行危机'), path: 'VNQ -> KRE -> VIX' },
+  { name: tx('中国冲击波'), path: 'USD/CNY -> Hang Seng -> KOSPI' },
+  { name: tx('欧债危机传染'), path: 'Italy ETF -> EUR/USD -> DXY -> EEM' },
+  { name: tx('日元套利平仓'), path: 'USD/JPY -> Nikkei -> VIX' },
+  { name: tx('粮食能源冲击'), path: 'Wheat -> Natural Gas -> Euro Stoxx 50' },
+]
 </script>
+
+<style scoped>
+.method-block {
+  background: rgba(255,255,255,0.015);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.method-code {
+  display: block;
+  margin-top: 8px;
+  white-space: normal;
+}
+</style>
