@@ -2,7 +2,23 @@
   <aside class="w-56 shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col">
     <div class="p-5 border-b border-[var(--border)]">
       <h1 class="text-xl font-extralight tracking-wide text-white">GFCRI</h1>
-      <p class="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-[3px]">Global Risk Index</p>
+      <p class="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-[3px]">{{ modeLabel }}</p>
+      <div class="mt-4 grid grid-cols-2 gap-1 rounded-lg border border-[var(--border)] bg-black/10 p-1">
+        <button
+          class="rounded-md px-2 py-1.5 text-[10px] transition-colors"
+          :class="mode === 'global' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
+          @click="setMode('global')"
+        >
+          Global
+        </button>
+        <button
+          class="rounded-md px-2 py-1.5 text-[10px] transition-colors"
+          :class="mode === 'institutional' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
+          @click="setMode('institutional')"
+        >
+          Institution
+        </button>
+      </div>
     </div>
     <nav class="flex-1 p-3 space-y-0.5">
       <router-link
@@ -59,9 +75,11 @@
 import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
+import { useProductMode } from '@/composables/useProductMode'
 
 const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, logout } = useAuth()
 const { t, lang, toggleLang } = useI18n()
+const { mode, isInstitutional, setMode } = useProductMode()
 
 const planLabel = computed(() => {
   if (effectivePlan.value === 'pro') return t('plan.pro')
@@ -69,12 +87,21 @@ const planLabel = computed(() => {
   return t('plan.free')
 })
 
-const navItems = computed(() => [
-  { path: '/', icon: '◉', label: t('nav.dashboard') },
-  { path: '/analysis', icon: '◈', label: t('nav.analysis') },
-  { path: '/forward', icon: '⚡', label: t('nav.forward') },
-  { path: '/backtest', icon: '⏱', label: t('nav.backtest') },
-  { path: '/industries', icon: '⬢', label: t('nav.industries') },
-  { path: '/methodology', icon: '◇', label: t('nav.methodology') },
-])
+const modeLabel = computed(() =>
+  isInstitutional.value ? t('product.institutionalMode') : t('product.globalMode')
+)
+
+const navItems = computed(() => {
+  const base = [
+    { path: '/', icon: '◉', label: t('nav.dashboard') },
+    { path: '/analysis', icon: '◈', label: t('nav.analysis') },
+    { path: '/forward', icon: '⚡', label: t('nav.forward') },
+    { path: '/backtest', icon: '⏱', label: t('nav.backtest') },
+  ]
+  if (isInstitutional.value) {
+    base.splice(1, 0, { path: '/institutional', icon: '▣', label: t('nav.institutional') })
+  }
+  base.push({ path: '/methodology', icon: '◇', label: t('nav.methodology') })
+  return base
+})
 </script>
