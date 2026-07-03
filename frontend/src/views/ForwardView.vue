@@ -113,40 +113,6 @@
         </div>
       </div>
 
-      <!-- Section 3: Economy Health Rankings -->
-      <div class="mb-12 fade-in fade-in-delay-2">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Economy Health</p>
-        <div class="mb-6 flex items-center justify-between gap-4">
-          <h3 class="text-lg font-light text-white">{{ t('forward.economy') }}</h3>
-          <span v-if="ehsLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
-        </div>
-
-        <div v-if="ehsLoading && !ehsData.length" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
-          <div v-for="i in 8" :key="i" class="mb-3 h-8 rounded bg-white/[0.025] animate-pulse last:mb-0"></div>
-        </div>
-
-        <div v-else-if="ehsData.length" class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
-          <div v-for="(eco, i) in ehsData" :key="eco.code"
-               class="flex items-center px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-white/[0.02] transition-colors">
-            <span class="w-8 text-[var(--muted)] text-sm font-mono">{{ i + 1 }}</span>
-            <span class="w-8 text-lg">{{ eco.flag }}</span>
-            <span class="flex-1 text-sm text-white ml-3">{{ tx(eco.name) }}</span>
-            <span class="text-xs px-2 py-0.5 rounded mr-4"
-                  :class="eco.cyclePhase === 'expansion' ? 'bg-[var(--green)]/10 text-[var(--green)]' : 'bg-[var(--yellow)]/10 text-[var(--yellow)]'">
-              {{ tx(eco.cycleLabel) }}
-            </span>
-            <div class="w-32">
-              <div class="h-2 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full rounded-full" :style="{ width: eco.score + '%', backgroundColor: eco.score >= 55 ? 'var(--green)' : eco.score >= 45 ? 'var(--yellow)' : 'var(--red)' }"></div>
-              </div>
-            </div>
-            <span class="w-12 text-right font-mono text-sm ml-3" :style="{ color: eco.score >= 55 ? 'var(--green)' : eco.score >= 45 ? 'var(--yellow)' : 'var(--red)' }">
-              {{ eco.score.toFixed(1) }}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <!-- Policy buffers -->
       <div class="mb-12 fade-in fade-in-delay-3" v-if="crisisData?.policies?.length">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Policy Buffer</p>
@@ -198,23 +164,14 @@ import Paywall from '@/components/common/Paywall.vue'
 import client from '@/api/client'
 
 const { isPro } = useAuth()
-const { t, tx, pickLang } = useI18n()
+const { t, tx } = useI18n()
 const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
 const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const crisisData = ref<any>(null)
 const stressResults = ref<any[]>([])
-const ehsData = ref<any[]>([])
 const crisisLoading = ref(false)
 const stressLoading = ref(false)
-const ehsLoading = ref(false)
-const loading = computed(() => crisisLoading.value || stressLoading.value || ehsLoading.value)
-
-const FLAGS: Record<string, string> = {
-  US: '🇺🇸', CN: '🇨🇳', JP: '🇯🇵', KR: '🇰🇷', DE: '🇩🇪', GB: '🇬🇧',
-  IN: '🇮🇳', BR: '🇧🇷', MX: '🇲🇽', TR: '🇹🇷', IT: '🇮🇹', AU: '🇦🇺',
-  TW: '🇨🇳', SG: '🇸🇬', ID: '🇮🇩', TH: '🇹🇭', VN: '🇻🇳', PH: '🇵🇭',
-  MY: '🇲🇾', CA: '🇨🇦', FR: '🇫🇷',
-}
+const loading = computed(() => crisisLoading.value || stressLoading.value)
 
 function distColor(d: number): string {
   if (d >= 70) return COLORS.red
@@ -232,7 +189,7 @@ const sortedStress = computed(() =>
 )
 
 async function loadAll() {
-  await Promise.allSettled([loadCrisis(), loadStress(), loadEhs()])
+  await Promise.allSettled([loadCrisis(), loadStress()])
 }
 
 async function loadCrisis() {
@@ -256,28 +213,6 @@ async function loadStress() {
     console.error('Stress test load failed', e)
   } finally {
     stressLoading.value = false
-  }
-}
-
-async function loadEhs() {
-  ehsLoading.value = true
-  try {
-    const { data } = await client.get('/ehs/scores')
-    const raw = data || []
-    ehsData.value = (Array.isArray(raw) ? raw : [])
-      .map((e: any) => ({
-        code: e.economy_code || e.code,
-        name: tx(pickLang(e, 'name_zh', 'name_en', 'economy_name')),
-        score: e.ehs_score || e.score || 0,
-        cyclePhase: e.cycle_phase || '',
-        cycleLabel: e.cycle_label || e.cycle_phase || '—',
-        flag: FLAGS[e.economy_code || e.code] || '🌐',
-      }))
-      .sort((a: any, b: any) => b.score - a.score)
-  } catch (e) {
-    console.error('EHS load failed', e)
-  } finally {
-    ehsLoading.value = false
   }
 }
 

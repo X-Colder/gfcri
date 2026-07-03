@@ -91,6 +91,36 @@
         <TradeSpilloverPanel compact class="mt-4" />
       </section>
 
+      <section class="terminal-section daily-workbench fade-in fade-in-delay-1">
+        <div class="workbench-grid">
+          <div class="daily-judgment-panel">
+            <p class="terminal-kicker">{{ t('analysis.aiTitle') }}</p>
+            <h2 class="terminal-subtitle">{{ t('dash.dailyWorkbench') }}</h2>
+            <div class="judgment-list">
+              <p class="judgment-line">{{ heroSummary }}</p>
+              <p class="judgment-line">{{ t('dash.primaryDriver') }}: <span>{{ primaryDriver }}</span></p>
+              <p class="judgment-line">{{ t('dash.anomalous') }}: <span>{{ anomalyCount }}</span> · {{ t('dash.chains') }}: <span>{{ activeChainCount }}</span></p>
+              <p class="judgment-line">{{ t('dash.coherence') }}: <span>{{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span></p>
+            </div>
+            <router-link to="/analysis" class="receipt-link mt-4 inline-block">{{ t('analysis.unlockChain') }}</router-link>
+          </div>
+
+          <div class="trend-watch-column">
+            <div v-if="riskStore.history.length > 1" class="trend-panel">
+              <div class="section-head">
+                <div>
+                  <p class="terminal-kicker">Historical Trend</p>
+                  <h2 class="terminal-subtitle">{{ t('analysis.trend') }}</h2>
+                </div>
+                <span class="text-[10px] text-[var(--muted)] font-mono">30D</span>
+              </div>
+              <v-chart :option="trendChartOption" style="height: 260px" autoresize />
+            </div>
+            <RiskWatch compact class="mt-4" />
+          </div>
+        </div>
+      </section>
+
       <!-- ── Signal Cards ── -->
       <Paywall :blurred="!isPro" :title="t('dash.anomalous')" :description="t('common.upgradeDesc')">
       <div class="cards-grid fade-in fade-in-delay-1">
@@ -176,6 +206,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 
 import { useRiskStore } from '@/stores/risk'
 import { COLORS, getAlertColor } from '@/composables/useTheme'
@@ -186,6 +221,9 @@ import Paywall from '@/components/common/Paywall.vue'
 import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
+import RiskWatch from '@/components/common/RiskWatch.vue'
+
+use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
@@ -193,6 +231,7 @@ const { t, tx } = useI18n()
 
 onMounted(() => {
   riskStore.loadLatest()
+  riskStore.loadHistory()
 })
 
 const anomalyCount = computed(() => {
@@ -271,6 +310,44 @@ const heroSummary = computed(() => {
   return t('dash.summary.normal')
 })
 
+const trendChartOption = computed(() => {
+  const data = [...riskStore.history].reverse()
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#111214',
+      borderColor: 'rgba(255,255,255,0.06)',
+      textStyle: { color: '#eff1f5', fontSize: 12 },
+    },
+    grid: { left: 42, right: 18, top: 20, bottom: 28 },
+    xAxis: { type: 'category', data: data.map(d => d.index_date), axisLabel: { color: '#6b7280', fontSize: 10 } },
+    yAxis: {
+      type: 'value', min: 0, max: 100,
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+      axisLabel: { color: '#6b7280', fontSize: 10 },
+    },
+    series: [{
+      type: 'line',
+      data: data.map(d => d.gfcri_value),
+      smooth: true,
+      showSymbol: false,
+      lineStyle: { color: COLORS.accent, width: 2 },
+      areaStyle: { color: COLORS.accent + '10' },
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { type: 'dashed' },
+        data: [
+          { yAxis: 25, lineStyle: { color: COLORS.green + '60' } },
+          { yAxis: 50, lineStyle: { color: COLORS.yellow + '60' } },
+          { yAxis: 75, lineStyle: { color: COLORS.red + '60' } },
+        ],
+      },
+    }],
+  }
+})
+
 </script>
 
 <style scoped>
@@ -282,6 +359,61 @@ const heroSummary = computed(() => {
 
 .dashboard-brief {
   margin-bottom: 24px;
+}
+
+.daily-workbench {
+  margin-bottom: 24px;
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: 18px;
+}
+
+.daily-judgment-panel,
+.trend-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.trend-watch-column {
+  min-width: 0;
+}
+
+.terminal-subtitle {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.judgment-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.judgment-line {
+  border-left: 2px solid rgba(129, 140, 248, 0.35);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  padding-left: 12px;
+}
+
+.judgment-line span {
+  color: var(--text);
+}
+
+.section-head {
+  align-items: start;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
 }
 
 .brief-header {
@@ -649,7 +781,8 @@ const heroSummary = computed(() => {
 
 @media (max-width: 960px) {
   .brief-header,
-  .brief-grid {
+  .brief-grid,
+  .workbench-grid {
     grid-template-columns: 1fr;
   }
 

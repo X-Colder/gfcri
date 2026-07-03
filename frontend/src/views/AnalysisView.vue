@@ -4,8 +4,8 @@
 
     <template v-else-if="riskStore.latest">
 
-      <!-- Section 1: Judgment + Trend -->
-      <div class="mb-12 fade-in grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(420px,1.12fr)]">
+      <!-- Section 1: Judgment -->
+      <div class="mb-12 fade-in">
         <div v-if="reportStore.latest?.llm_narrative" class="min-w-0">
           <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">AI Analysis</p>
           <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
@@ -20,19 +20,6 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div class="min-w-0">
-          <template v-if="riskStore.history.length > 1">
-            <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Historical Trend</p>
-            <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.trend') }}</h2>
-            <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover">
-              <v-chart :option="trendChartOption" style="height: 320px" autoresize />
-            </div>
-          </template>
-          <div :class="riskStore.history.length > 1 ? 'mt-4' : ''">
-            <RiskWatch compact />
           </div>
         </div>
       </div>
@@ -409,8 +396,8 @@
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import MarkdownIt from 'markdown-it'
 
@@ -421,13 +408,12 @@ import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
-import RiskWatch from '@/components/common/RiskWatch.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import CausalDiscoveryPanel from '@/components/common/CausalDiscoveryPanel.vue'
 import client from '@/api/client'
 
-use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
+use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const md = new MarkdownIt()
 const riskStore = useRiskStore()
@@ -445,7 +431,6 @@ const enNarrative = ref('')
 
 onMounted(async () => {
   riskStore.loadLatest()
-  riskStore.loadHistory()
   reportStore.loadLatest()
   try {
     const [wRes, zRes, enRes] = await Promise.allSettled([
@@ -944,40 +929,6 @@ function scoreColor(score: number): string {
   return COLORS.green
 }
 
-const trendChartOption = computed(() => {
-  const data = [...riskStore.history].reverse()
-  return {
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#111214',
-      borderColor: 'rgba(255,255,255,0.06)',
-      textStyle: { color: '#eff1f5', fontSize: 12 },
-    },
-    grid: { left: 50, right: 20, top: 20, bottom: 30 },
-    xAxis: { type: 'category', data: data.map(d => d.index_date), axisLabel: { color: '#6b7280', fontSize: 10 } },
-    yAxis: {
-      type: 'value', min: 0, max: 100,
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
-      axisLabel: { color: '#6b7280' },
-    },
-    series: [{
-      type: 'line',
-      data: data.map(d => d.gfcri_value),
-      smooth: true,
-      lineStyle: { color: COLORS.accent, width: 2 },
-      areaStyle: { color: COLORS.accent + '10' },
-      markLine: {
-        silent: true, symbol: 'none',
-        lineStyle: { type: 'dashed' },
-        data: [
-          { yAxis: 25, lineStyle: { color: COLORS.green + '60' } },
-          { yAxis: 50, lineStyle: { color: COLORS.yellow + '60' } },
-          { yAxis: 75, lineStyle: { color: COLORS.red + '60' } },
-        ],
-      },
-    }],
-  }
-})
 </script>
 
 <style scoped>

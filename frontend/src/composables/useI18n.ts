@@ -81,6 +81,7 @@ const messages: Record<string, Record<string, string>> = {
   'dash.summary.normal': { zh: '全球金融系统运行在正常参数范围内', en: 'Global financial system operating within normal parameters' },
   'dash.title': { zh: '全球宏观风险监测', en: 'Global Macro Risk Monitor' },
   'dash.subtitle': { zh: '跟踪系统性压力、风险传导链和历史压力阈值，辅助识别宏观风险是否正在累积。', en: 'Track systemic stress, transmission channels, and historical stress thresholds to understand whether macro risk is building.' },
+  'dash.dailyWorkbench': { zh: '每日风险工作台', en: 'Daily Risk Workbench' },
   'dash.latestObservation': { zh: '最新观测', en: 'Latest observation' },
   'dash.modelVersion': { zh: '模型版本', en: 'Model version' },
   'dash.dataCadence': { zh: '更新频率', en: 'Data cadence' },
