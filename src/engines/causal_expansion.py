@@ -101,7 +101,7 @@ class CausalExpansionEngine:
             "ai_prompt": prompt,
             "candidate_mechanisms": candidates,
             "governance": {
-                "core_rule": "AI may propose mechanisms, but daliyQ validates and governs graph changes.",
+                "core_rule": "AI may propose mechanisms, but GFCRI validates and governs graph changes.",
                 "allowed_statuses": ["rejected", "watchlist", "candidate_graph", "eligible_for_promotion"],
                 "promotion_rule": "A mechanism needs strong structural fit, measurable evidence, repeated validation, and human approval before entering the core graph.",
             },

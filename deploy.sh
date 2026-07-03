@@ -14,23 +14,23 @@ FILES=(
     "src/data/collector.py"
 )
 for f in "${FILES[@]}"; do
-    orb run -m meks -u root cp "/mnt/mac/Users/yaojun72/Documents/workspace/llm/daliyQ/$f" "/opt/daliyQ/$f" 2>/dev/null
+    orb run -m meks -u root cp "/mnt/mac/Users/yaojun72/Documents/workspace/llm/GFCRI/$f" "/opt/GFCRI/$f" 2>/dev/null
 done
 echo "  ✓ Backend synced"
 
 echo "=== Building frontend ==="
-cd /Users/yaojun72/Documents/workspace/llm/daliyQ/frontend
+cd /Users/yaojun72/Documents/workspace/llm/GFCRI/frontend
 npx vite build 2>&1 | tail -1
 echo "  ✓ Frontend built"
 
 echo "=== Deploying frontend to Docker ==="
-cd /Users/yaojun72/Documents/workspace/llm/daliyQ
-orb run -m meks -u root docker cp frontend/dist/. macro_risk_frontend:/usr/share/nginx/html/
-orb run -m meks -u root docker exec macro_risk_frontend nginx -s reload 2>/dev/null
+cd /Users/yaojun72/Documents/workspace/llm/GFCRI
+orb run -m meks -u root docker cp frontend/dist/. gfcri_frontend:/usr/share/nginx/html/
+orb run -m meks -u root docker exec gfcri_frontend nginx -s reload 2>/dev/null
 echo "  ✓ Frontend deployed"
 
 echo "=== Restarting API ==="
-orb run -m meks -u root docker restart macro_risk_api 2>/dev/null
+orb run -m meks -u root docker restart gfcri_api 2>/dev/null
 echo "  ✓ API restarted"
 
 echo ""

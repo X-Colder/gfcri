@@ -10,8 +10,8 @@ class Settings:
 
     postgres_host: str = "postgres"
     postgres_port: int = 5432
-    postgres_db: str = "macro_risk_db"
-    postgres_user: str = "macro_risk"
+    postgres_db: str = "gfcri_db"
+    postgres_user: str = "gfcri"
     postgres_password: str = "changeme"
 
     app_env: str = "development"

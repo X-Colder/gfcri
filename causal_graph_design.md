@@ -413,7 +413,7 @@ def build_initial_causal_graph() -> MacroRiskCausalGraph:
     """构建初始宏观风险因果图（替代原5条线性链）"""
     
     graph = MacroRiskCausalGraph(
-        graph_id="macro_risk_v1",
+        graph_id="gfcri_v1",
         version="v1.0",
         created_at=datetime.now().isoformat(),
         description="全球宏观风险传导因果图——初始版本"
