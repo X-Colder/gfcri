@@ -190,6 +190,54 @@ class CausalExpansionEngine:
             "validation_note": self._validation_note(overall, graph_support, data_coverage),
         }
 
+    def score_external_candidate(
+        self,
+        mechanism: dict[str, Any],
+        node_contrib: dict[str, Any],
+        trigger: dict[str, Any],
+        source: str = "ai",
+    ) -> dict[str, Any]:
+        cause = mechanism.get("cause_node")
+        effect = mechanism.get("effect_node")
+        nodes = [n for n in [cause, effect] if n]
+        known_nodes = [n for n in nodes if n in node_contrib or n in self.graph.nodes]
+        data_coverage = len(known_nodes) / max(len(nodes), 1)
+        graph_support = self._graph_support(cause, effect)
+        falsification = mechanism.get("falsification") or []
+        falsifiability = 1.0 if falsification else 0.0
+        structural_score = float(mechanism.get("confidence") or 0.5)
+        trigger_strength = min(1.0, float(trigger.get("gap") or 0) / 100.0)
+        overall = (
+            0.20 * data_coverage
+            + 0.20 * graph_support
+            + 0.25 * min(max(structural_score, 0), 1)
+            + 0.20 * falsifiability
+            + 0.15 * trigger_strength
+        )
+        decision = self._decision(overall, data_coverage, falsifiability)
+        cid = mechanism.get("id") or self._candidate_id(source, cause, effect, mechanism.get("hypothesis") or mechanism.get("mechanism"))
+        return {
+            "id": cid,
+            "title": mechanism.get("hypothesis") or mechanism.get("title") or cid,
+            "cause_node": cause,
+            "effect_node": effect,
+            "mechanism": mechanism.get("mechanism") or "",
+            "observable_tests": list(mechanism.get("observable_tests") or []),
+            "falsification": list(falsification),
+            "scores": {
+                "data_coverage": round(data_coverage, 2),
+                "graph_support": round(graph_support, 2),
+                "structural_score": round(min(max(structural_score, 0), 1), 2),
+                "falsifiability": round(falsifiability, 2),
+                "trigger_strength": round(trigger_strength, 2),
+            },
+            "overall_confidence": round(overall, 2),
+            "decision": decision,
+            "graph_status": "candidate_graph" if decision == "candidate_graph" else decision,
+            "validation_note": self._validation_note(overall, graph_support, data_coverage),
+            "source": source,
+        }
+
     def _graph_support(self, cause: str | None, effect: str | None) -> float:
         if not cause or not effect:
             return 0.25
@@ -203,6 +251,13 @@ class CausalExpansionEngine:
         except Exception:
             paths = []
         return 0.65 if paths else 0.35
+
+    @staticmethod
+    def _candidate_id(source: str, cause: str | None, effect: str | None, text: str | None) -> str:
+        import hashlib
+        raw = f"{source}:{cause or 'unknown'}:{effect or 'unknown'}:{text or ''}"
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:10]
+        return f"{source}_{cause or 'unknown'}_{effect or 'unknown'}_{digest}"
 
     @staticmethod
     def _decision(overall: float, data_coverage: float, falsifiability: float) -> str:
