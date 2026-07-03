@@ -34,6 +34,7 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "oil_wti":          ("high", 70, 120),
     "gold":             ("high", 1900, 3000),
     "krw_usd":          ("high", 1250, 1550),
+    "jpy_usd":          ("high", 130, 160),
     "kospi":            ("low",  2600, 1800),
     "hsi":              ("low",  22000, 14000),
     "eurusd":           ("low",  1.10, 0.95),
@@ -562,6 +563,79 @@ class GFCRIEngine:
                 ),
             })
 
+        # Pattern 4: speculative / AI-cycle overextension.
+        speculative_candidates = []
+        for nid in ["ai_capex", "sox", "spx", "kospi", "nikkei"]:
+            info = contribs.get(nid)
+            if not info:
+                continue
+            z = float(info.get("zscore", 0) or 0)
+            anomaly = float(info.get("anomaly_score", 0) or 0)
+            if z > 1.25 and anomaly >= 0.30:
+                speculative_candidates.append({
+                    "id": nid,
+                    "label": info.get("display_name", nid),
+                    "zscore": round(z, 2),
+                    "anomaly": round(anomaly * 100),
+                })
+
+        if speculative_candidates:
+            max_z = max(x["zscore"] for x in speculative_candidates)
+            details.append({
+                "type": "speculative_overextension",
+                "title": "泡沫/拥挤交易压力",
+                "severity_score": round(min(100, max_z / 3.0 * 100)),
+                "indicators": speculative_candidates,
+                "detail": (
+                    "AI、半导体或股指处于高位异常区间。价格上涨本身不是危机，"
+                    "但当上涨由集中叙事和拥挤交易驱动时，市场表面平静会低估回撤风险。"
+                ),
+            })
+
+        # Pattern 5: yen depreciation pressure.
+        jpy = contribs.get("jpy_usd")
+        if jpy:
+            jpy_z = float(jpy.get("zscore", 0) or 0)
+            jpy_abs = float(jpy.get("abs_score") or 0)
+            jpy_value = jpy.get("current_value")
+            if jpy_z > 1.25 or jpy_abs > 0.30:
+                if isinstance(jpy_value, (int, float)):
+                    detail = (
+                        f"USD/JPY 当前约 {jpy_value:.1f}，绝对压力 {jpy_abs*100:.0f}%。"
+                        "日元持续走弱可能暂时支撑日本股市，但也增加干预、输入型通胀和套利交易反转风险。"
+                    )
+                else:
+                    detail = "日元持续走弱增加干预、输入型通胀和套利交易反转风险。"
+                details.append({
+                    "type": "yen_depreciation_pressure",
+                    "title": "日元贬值与套利交易脆弱性",
+                    "zscore": round(jpy_z, 2),
+                    "abs_score": round(jpy_abs * 100),
+                    "current_value": jpy_value,
+                    "detail": detail,
+                })
+
+        # Pattern 6: Korea equity high with FX/export-channel fragility.
+        kospi = contribs.get("kospi")
+        krw = contribs.get("krw_usd")
+        if kospi and krw:
+            kospi_z = float(kospi.get("zscore", 0) or 0)
+            kospi_anom = float(kospi.get("anomaly_score", 0) or 0)
+            krw_z = float(krw.get("zscore", 0) or 0)
+            krw_abs = float(krw.get("abs_score") or 0)
+            if kospi_z > 1.0 and kospi_anom >= 0.25 and (krw_z > 1.0 or krw_abs > 0.25):
+                details.append({
+                    "type": "korea_equity_fx_divergence",
+                    "title": "韩国股市高位与汇率压力并存",
+                    "kospi_zscore": round(kospi_z, 2),
+                    "krw_zscore": round(krw_z, 2),
+                    "krw_abs_score": round(krw_abs * 100),
+                    "detail": (
+                        "KOSPI 处于高位异常区间，同时韩元或外部融资通道承压。"
+                        "这类组合常见于半导体周期过热、外资流入拥挤和出口敏感市场的脆弱阶段。"
+                    ),
+                })
+
         if gap > 0.25 and deep_avg > 0.4:
             status = "critical"
         elif gap > 0.15 and deep_avg > 0.3:
@@ -570,6 +644,20 @@ class GFCRIEngine:
             status = "mild"
         else:
             status = "none"
+
+        hidden_detail_types = {d.get("type") for d in details}
+        hidden_pressure_types = {
+            "speculative_overextension",
+            "yen_depreciation_pressure",
+            "korea_equity_fx_divergence",
+        }
+        if status == "none" and hidden_detail_types.intersection(hidden_pressure_types):
+            status = "mild"
+        if status == "mild" and hidden_detail_types.intersection({
+            "speculative_overextension",
+            "korea_equity_fx_divergence",
+        }) and len(hidden_detail_types.intersection(hidden_pressure_types)) >= 2:
+            status = "significant"
 
         return {
             "status": status,
@@ -638,6 +726,12 @@ class GFCRIEngine:
                 pr_avg = d.get("policy_responsive_avg", 0)
                 if st_avg > 20 and pr_avg < 10:
                     boost += min(5, (st_avg - pr_avg) / 5)
+            elif d.get("type") == "speculative_overextension":
+                boost += min(6, max(2, float(d.get("severity_score", 0) or 0) / 18))
+            elif d.get("type") == "yen_depreciation_pressure":
+                boost += min(4, max(1.5, float(d.get("abs_score", 0) or 0) / 18))
+            elif d.get("type") == "korea_equity_fx_divergence":
+                boost += 3
 
         return min(25.0, boost)
 
