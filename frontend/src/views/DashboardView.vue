@@ -95,14 +95,57 @@
         <div class="workbench-grid">
           <div class="daily-judgment-panel">
             <p class="terminal-kicker">{{ t('analysis.aiTitle') }}</p>
-            <h2 class="terminal-subtitle">{{ t('dash.dailyWorkbench') }}</h2>
-            <div class="judgment-list">
-              <p class="judgment-line">{{ heroSummary }}</p>
-              <p class="judgment-line">{{ t('dash.primaryDriver') }}: <span>{{ primaryDriver }}</span></p>
-              <p class="judgment-line">{{ t('dash.anomalous') }}: <span>{{ anomalyCount }}</span> · {{ t('dash.chains') }}: <span>{{ activeChainCount }}</span></p>
-              <p class="judgment-line">{{ t('dash.coherence') }}: <span>{{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span></p>
+            <div class="workbench-head">
+              <div>
+                <h2 class="terminal-subtitle">{{ t('dash.dailyWorkbench') }}</h2>
+                <p class="terminal-copy mt-1">{{ heroSummary }}</p>
+              </div>
+              <router-link to="/analysis" class="receipt-link">{{ t('analysis.unlockChain') }}</router-link>
             </div>
-            <router-link to="/analysis" class="receipt-link mt-4 inline-block">{{ t('analysis.unlockChain') }}</router-link>
+
+            <div class="decision-strip">
+              <div class="decision-tile">
+                <span>{{ t('regime.damage') }}</span>
+                <strong>{{ currentDamageLabel }}</strong>
+              </div>
+              <div class="decision-tile">
+                <span>{{ t('regime.pressure') }}</span>
+                <strong :style="{ color: getAlertColor(riskStore.latest.alert_level) }">{{ t('alert.' + riskStore.latest.alert_level) }}</strong>
+              </div>
+              <div class="decision-tile">
+                <span>{{ t('regime.hidden') }}</span>
+                <strong>+{{ scoreReceipt.hiddenBoost.toFixed(1) }}</strong>
+              </div>
+            </div>
+
+            <div class="watch-points">
+              <div class="watch-point">
+                <span>{{ t('dash.primaryDriver') }}</span>
+                <strong>{{ primaryDriver }}</strong>
+                <p>{{ primaryDriverDetail }}</p>
+              </div>
+              <div class="watch-point">
+                <span>{{ t('dash.marketBreadth') }}</span>
+                <strong>{{ anomalyCount }} {{ t('analysis.deviating') }}</strong>
+                <p>{{ topAnomalies || '—' }}</p>
+              </div>
+              <div class="watch-point">
+                <span>{{ t('dash.transmissionState') }}</span>
+                <strong>{{ activeChainCount }} {{ t('analysis.chainActive') }}</strong>
+                <p>{{ topChain }}</p>
+              </div>
+            </div>
+
+            <div class="workbench-bottom">
+              <div>
+                <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('dash.nextWatch') }}</p>
+                <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ nextWatchText }}</p>
+              </div>
+              <div class="mini-metrics">
+                <span>{{ t('dash.coherence') }} {{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span>
+                <span>{{ t('dash.tradeBoost') }} +{{ scoreReceipt.tradeBoost.toFixed(1) }}</span>
+              </div>
+            </div>
           </div>
 
           <div class="trend-watch-column">
@@ -275,6 +318,35 @@ const primaryDriver = computed(() => {
   return tx((item[1] as any).display_name || item[0])
 })
 
+const primaryDriverDetail = computed(() => {
+  const nc = riskStore.latest?.node_contributions
+  if (!nc) return '—'
+  const item = Object.entries(nc)
+    .sort((a: any, b: any) => Math.abs(b[1].zscore || 0) - Math.abs(a[1].zscore || 0))[0]
+  if (!item) return '—'
+  const info: any = item[1]
+  const z = Number(info.zscore || 0)
+  const abs = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+  const absText = abs === null ? '-' : `${(abs * 100).toFixed(0)}`
+  return `Z ${z.toFixed(2)} · ${t('analysis.absScore')} ${absText}`
+})
+
+const currentDamageLabel = computed(() => {
+  const score = riskStore.latest?.gfcri_value || 0
+  if (score >= 75) return 'D4+'
+  if (score >= 55) return 'D2-D3?'
+  if (score >= 40) return 'D0 / D1'
+  if (score >= 25) return 'D0'
+  return 'D0'
+})
+
+const nextWatchText = computed(() => {
+  if (scoreReceipt.hiddenBoost >= 15) return t('dash.watchHidden')
+  if (activeChainCount.value >= 4) return t('dash.watchTransmission')
+  if (anomalyCount.value >= 6) return t('dash.watchAnomalies')
+  return t('dash.watchNormal')
+})
+
 const SUB_INDEX_WEIGHTS: Record<string, number> = {
   SI_RATES: 0.14,
   SI_FX: 0.14,
@@ -379,6 +451,13 @@ const trendChartOption = computed(() => {
   padding: 18px;
 }
 
+.workbench-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
 .trend-watch-column {
   min-width: 0;
 }
@@ -390,22 +469,83 @@ const trendChartOption = computed(() => {
   margin-top: 4px;
 }
 
-.judgment-list {
+.decision-strip {
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
 }
 
-.judgment-line {
-  border-left: 2px solid rgba(129, 140, 248, 0.35);
+.decision-tile {
+  background: rgba(255,255,255,0.016);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.decision-tile span,
+.watch-point span {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.decision-tile strong {
+  color: var(--text);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  margin-top: 5px;
+}
+
+.watch-points {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.watch-point {
+  border-left: 2px solid rgba(129, 140, 248, 0.35);
   padding-left: 12px;
 }
 
-.judgment-line span {
+.watch-point strong {
   color: var(--text);
+  display: block;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.watch-point p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin-top: 3px;
+}
+
+.workbench-bottom {
+  align-items: end;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.mini-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mini-metrics span {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-align: right;
 }
 
 .section-head {
@@ -788,8 +928,18 @@ const trendChartOption = computed(() => {
 
   .brief-meta,
   .cards-grid,
-  .receipt-grid {
+  .receipt-grid,
+  .decision-strip,
+  .workbench-bottom {
     grid-template-columns: 1fr;
+  }
+
+  .workbench-head {
+    flex-direction: column;
+  }
+
+  .mini-metrics span {
+    text-align: left;
   }
 
   .receipt-op {
