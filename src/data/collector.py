@@ -75,9 +75,9 @@ PROXY_TICKER_MAP: dict[str, dict] = {
         "source_label": "yfinance SMH (proxy)",
     },
     "orcl_cds": {
-        "ticker": "ORCL",
-        "description": "Oracle stock price inverse as CDS spread proxy (stock down = CDS up)",
-        "source_label": "yfinance ORCL (proxy, inverted)",
+        "tickers": ["ORCL", "MSFT", "AMZN", "GOOGL", "META"],
+        "description": "AI/cloud equity basket inverse as credit-stress proxy (basket down = credit stress up)",
+        "source_label": "yfinance ORCL/MSFT/AMZN/GOOGL/META basket (proxy, inverted)",
         "invert": True,
     },
     "kr_cds_5y": {
@@ -92,9 +92,9 @@ PROXY_TICKER_MAP: dict[str, dict] = {
         "source_label": "yfinance EWY (proxy)",
     },
     "ai_capex": {
-        "ticker": "CLOU",
-        "description": "Global X Cloud Computing ETF as AI/cloud capex proxy",
-        "source_label": "yfinance CLOU (proxy)",
+        "tickers": ["CLOU", "SMH", "MSFT", "AMZN", "GOOGL", "META", "NVDA"],
+        "description": "AI/cloud capex cycle basket proxy",
+        "source_label": "yfinance CLOU/SMH/MSFT/AMZN/GOOGL/META/NVDA basket (proxy)",
     },
     "global_liqd": {
         "ticker": "TLT",
@@ -114,7 +114,9 @@ _CONSUMER_TICKERS = {"xly": "XLY", "xlp": "XLP"}
 # Collect all unique proxy tickers for bulk download
 _ALL_PROXY_TICKERS: set[str] = set()
 for p in PROXY_TICKER_MAP.values():
-    _ALL_PROXY_TICKERS.add(p["ticker"])
+    for ticker in p.get("tickers", [p.get("ticker")]):
+        if ticker:
+            _ALL_PROXY_TICKERS.add(ticker)
 
 # Data source labels for all nodes
 DATA_SOURCE_LABELS: dict[str, str] = {}
@@ -123,6 +125,44 @@ for nid, ticker in YFINANCE_TICKER_MAP.items():
 for nid, info in PROXY_TICKER_MAP.items():
     DATA_SOURCE_LABELS[nid] = info["source_label"]
 DATA_SOURCE_LABELS["consumer_stress"] = "yfinance XLY/XLP (computed ratio)"
+
+
+def _proxy_tickers(proxy_info: dict) -> list[str]:
+    return [t for t in proxy_info.get("tickers", [proxy_info.get("ticker")]) if t]
+
+
+def _proxy_series(close: pd.DataFrame, proxy_info: dict, node_id: str) -> pd.Series:
+    tickers = _proxy_tickers(proxy_info)
+    if not tickers:
+        return pd.Series(dtype=float, name=node_id)
+
+    series_list = []
+    for ticker in tickers:
+        try:
+            s = close[ticker].dropna()
+        except KeyError:
+            logger.warning(f"Proxy ticker {ticker} missing for {node_id}")
+            continue
+        if s.empty:
+            continue
+        if len(tickers) > 1:
+            first = float(s.iloc[0])
+            if first == 0:
+                continue
+            s = s / first * 100.0
+        series_list.append(s.rename(ticker))
+
+    if not series_list:
+        return pd.Series(dtype=float, name=node_id)
+
+    if len(series_list) == 1:
+        result = series_list[0].rename(node_id)
+    else:
+        result = pd.concat(series_list, axis=1).mean(axis=1).dropna().rename(node_id)
+
+    if proxy_info.get("invert"):
+        result = -result
+    return result
 
 # ---------------------------------------------------------------------------
 # FRED indicators — real economic data replacing yfinance proxies
@@ -246,16 +286,9 @@ class MarketDataCollector:
                     logger.warning(f"Ticker {ticker} missing for {node_id}")
 
             for node_id, proxy_info in PROXY_TICKER_MAP.items():
-                try:
-                    ticker = proxy_info["ticker"]
-                    series = close[ticker].dropna()
-                    if not series.empty:
-                        value = float(series.iloc[-1])
-                        if proxy_info.get("invert"):
-                            value = -value
-                        result[node_id] = value
-                except KeyError:
-                    logger.warning(f"Proxy ticker {proxy_info['ticker']} missing for {node_id}")
+                series = _proxy_series(close, proxy_info, node_id)
+                if not series.empty:
+                    result[node_id] = float(series.iloc[-1])
 
             try:
                 xly = close["XLY"].dropna()
@@ -315,13 +348,10 @@ class MarketDataCollector:
                     logger.warning(f"Historical data missing for {node_id} ({ticker})")
 
             for node_id, proxy_info in PROXY_TICKER_MAP.items():
-                try:
-                    ticker = proxy_info["ticker"]
-                    series = close[ticker].dropna().rename(node_id)
-                    if proxy_info.get("invert"):
-                        series = -series
+                series = _proxy_series(close, proxy_info, node_id)
+                if not series.empty:
                     frames[node_id] = series
-                except KeyError:
+                else:
                     logger.warning(f"Historical proxy data missing for {node_id}")
 
             if "XLY" in close.columns and "XLP" in close.columns:
@@ -371,6 +401,11 @@ class MarketDataCollector:
         updated_count = 0
         for node_id, node in graph.nodes.items():
             value = current.get(node_id)
+            proxy = PROXY_TICKER_MAP.get(node_id)
+            if proxy and len(_proxy_tickers(proxy)) > 1 and node_id in historical.columns:
+                hist_col = historical[node_id].dropna()
+                if not hist_col.empty:
+                    value = float(hist_col.iloc[-1])
             if value is None:
                 logger.debug(f"No current value for node {node_id}, skipping")
                 continue

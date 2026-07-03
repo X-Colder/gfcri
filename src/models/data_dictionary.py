@@ -231,11 +231,11 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
     },
     "orcl_cds": {
         "source_tier": "C",
-        "raw_formula": "-ORCL adjusted close from yfinance as temporary inverse proxy.",
+        "raw_formula": "Negative equal-weight normalized basket of ORCL, MSFT, AMZN, GOOGL, and META adjusted closes from yfinance.",
         "stress_direction": "higher_is_worse after inversion",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "Not actual Oracle CDS; single equity proxy is not sufficient for AI/cloud credit risk.",
-        "upgrade_plan": "Replace with actual CDS or basket of cloud/AI credit spreads and bond OAS.",
+        "known_limitations": "Not actual CDS or bond spread data; equity-basket proxy can move for valuation, earnings, and positioning reasons unrelated to credit.",
+        "upgrade_plan": "Replace with actual AI/cloud issuer CDS, bond OAS, or a cloud infrastructure credit spread basket.",
     },
 
     # Banking / real estate / consumer
@@ -339,10 +339,10 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
     },
     "ai_capex": {
         "source_tier": "C",
-        "raw_formula": "CLOU adjusted close from yfinance as AI/cloud capex proxy.",
+        "raw_formula": "Equal-weight normalized basket of CLOU, SMH, MSFT, AMZN, GOOGL, META, and NVDA adjusted closes from yfinance.",
         "stress_direction": "higher_can_indicate_crowding_or_capex_cycle_heat",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "Cloud ETF price is not actual hyperscaler capex; equity sentiment contaminates the signal.",
+        "known_limitations": "Equity basket is not actual hyperscaler capex; sentiment, valuation, and earnings expectations contaminate the signal.",
         "upgrade_plan": "Use company filings for capex guidance and aggregate hyperscaler capex data.",
     },
     "btc": {

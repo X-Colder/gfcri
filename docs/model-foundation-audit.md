@@ -75,6 +75,7 @@ Current nodes:
 - FRED `DGS10`, `DGS2`, and `RECPROUSM156N` now replace yfinance/TLT proxies for `ust_10y`, `ust_2y`, and `us_recession_prob`, including historical series used for z-score calculation.
 - FRED `WALCL` now replaces TLT as the `global_liqd` source, making the node an official Fed balance-sheet liquidity proxy. `dram_spot`, `nand_spot`, and `ai_capex` display names were corrected to explicit proxy names until direct memory-price and capex-filing data are added.
 - FRED `KORB6BLTT02STSAQ` now replaces EWY as the `kr_ca` source, making Korea current account a real official macro node. `kr_cds_5y` was renamed to an explicit EWY-inverted Korea credit stress proxy until actual Korea CDS data is available.
+- `ai_capex` and `orcl_cds` now use normalized multi-name AI/cloud baskets instead of single CLOU/ORCL proxies. They remain Tier C until actual capex filings, CDS, or bond-OAS data are available, but single-name noise is reduced.
 
 Current online example:
 

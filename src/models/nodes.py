@@ -324,8 +324,8 @@ CORE_NODES: dict[str, CausalNode] = {
     # ---- AI / Cloud Capex -------------------------------------------
     "ai_capex": CausalNode(
         node_id="ai_capex",
-        display_name="AI/Cloud Capex Proxy (CLOU)",
-        description="Cloud-computing ETF proxy for AI/cloud capex cycle until company-filing aggregation is available.",
+        display_name="AI/Cloud Capex Basket Proxy",
+        description="Equal-weight AI/cloud equity basket proxy for capex-cycle heat until company-filing aggregation is available.",
         node_type=NodeType.OBSERVABLE,
         asset_class=AssetClass.EQUITY,
         geography="US",
@@ -335,14 +335,14 @@ CORE_NODES: dict[str, CausalNode] = {
     ),
     "orcl_cds": CausalNode(
         node_id="orcl_cds",
-        display_name="Oracle 5Y CDS Spread",
-        description="5-year CDS spread for Oracle Corp; proxy for AI-cloud credit risk.",
+        display_name="AI/Cloud Credit Stress Proxy (Equity Basket Inverted)",
+        description="Inverse AI/cloud equity basket proxy used until actual cloud/AI credit spread or CDS data is available.",
         node_type=NodeType.OBSERVABLE,
         asset_class=AssetClass.CREDIT,
         geography="US",
-        data_source="Bloomberg",
+        data_source="yfinance",
         update_frequency="daily",
-        unit="bps",
+        unit="inverted index",
     ),
     # ---- Commodities -------------------------------------------------
     "oil_wti": CausalNode(
