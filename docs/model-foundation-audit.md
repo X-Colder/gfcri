@@ -77,6 +77,7 @@ Current nodes:
 - FRED `KORB6BLTT02STSAQ` now replaces EWY as the `kr_ca` source, making Korea current account a real official macro node. `kr_cds_5y` was renamed to an explicit EWY-inverted Korea credit stress proxy until actual Korea CDS data is available.
 - `ai_capex` and `orcl_cds` now use normalized multi-name AI/cloud baskets instead of single CLOU/ORCL proxies. They remain Tier C until actual capex filings, CDS, or bond-OAS data are available, but single-name noise is reduced.
 - `dram_spot` and `nand_spot` no longer duplicate the same SMH proxy. They now use separate normalized producer baskets for DRAM and NAND/storage cycles, while remaining Tier C until direct memory price data is licensed or integrated.
+- `SI_CREDIT` now uses a dimension-weighted formula instead of a flat node average. Current dimensions are US corporate credit, EM/sovereign credit, and AI/cloud credit; Europe credit, bank funding, defaults/downgrades, and China credit remain planned dimensions.
 
 Current online example:
 
@@ -123,7 +124,7 @@ Keep the product label `Global Credit & Default Pressure`, but make the model wo
 
 ### Target Formula
 
-The current formula should evolve from a flat node average into a dimension-weighted structure:
+The implemented formula is now evolving from a flat node average into a dimension-weighted structure. Current implementation covers available dimensions first; target dimensions remain broader:
 
 ```text
 Global Credit & Default Pressure =

@@ -20,6 +20,11 @@ SUB_INDEX_FORMULA = (
     "score = 100 * (0.6 * raw_stress + 0.4 * transmission)"
 )
 
+CREDIT_FORMULA = (
+    "dimension_score = 100 * (0.35 * mean_stress + 0.45 * mean_abs_stress + 0.20 * transmission); "
+    "SI_CREDIT = weighted average of credit dimensions, then + transmission overlay"
+)
+
 
 def _build_receipt(si_id: str, details: dict, node_contrib: dict) -> SubIndexReceipt:
     config = SUB_INDEX_CONFIG.get(si_id, {})
@@ -55,7 +60,7 @@ def _build_receipt(si_id: str, details: dict, node_contrib: dict) -> SubIndexRec
         sub_index_id=si_id,
         name=str((details or {}).get("name") or config.get("name") or si_id),
         score=float((details or {}).get("score") or 0),
-        formula=SUB_INDEX_FORMULA,
+        formula=CREDIT_FORMULA if (details or {}).get("formula_type") == "dimension_weighted" else SUB_INDEX_FORMULA,
         mean_stress=float((details or {}).get("mean_stress") or 0),
         mean_abs_stress=float((details or {}).get("mean_abs_stress") or 0),
         transmission=float((details or {}).get("transmission") or 0),
@@ -64,6 +69,9 @@ def _build_receipt(si_id: str, details: dict, node_contrib: dict) -> SubIndexRec
         source_tier_summary=dict(source_counter),
         nodes=nodes,
         limitations=limitations[:8],
+        formula_type=(details or {}).get("formula_type"),
+        dimension_details=(details or {}).get("dimension_details"),
+        dimension_weights=(details or {}).get("dimension_weights"),
         config=config or None,
     )
 

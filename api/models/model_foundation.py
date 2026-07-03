@@ -46,6 +46,9 @@ class SubIndexReceipt(BaseModel):
     source_tier_summary: dict[str, int]
     nodes: list[SubIndexNodeReceipt]
     limitations: list[str]
+    formula_type: str | None = None
+    dimension_details: dict[str, Any] | None = None
+    dimension_weights: dict[str, float] | None = None
     config: dict[str, Any] | None = None
 
 

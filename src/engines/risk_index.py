@@ -186,6 +186,24 @@ SUB_INDEX_CONFIG: dict[str, dict[str, Any]] = {
     },
 }
 
+CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
+    "us_corporate_credit": {
+        "name": "美国企业信用",
+        "nodes": ["fred_hy_spread", "fred_bbb_spread", "fred_ic_spread", "hyg", "lqd"],
+        "weight": 0.50,
+    },
+    "em_sovereign_credit": {
+        "name": "新兴市场/主权信用",
+        "nodes": ["emb", "kr_cds_5y"],
+        "weight": 0.30,
+    },
+    "ai_cloud_credit": {
+        "name": "AI/云信用压力",
+        "nodes": ["orcl_cds"],
+        "weight": 0.20,
+    },
+}
+
 RISK_CHAINS: list[dict[str, Any]] = [
     {
         "id": "fed_cascade",
@@ -276,7 +294,10 @@ class GFCRIEngine:
         sub_indices = {}
         for si_id, config in SUB_INDEX_CONFIG.items():
             if config["nodes"]:
-                sub_indices[si_id] = self._compute_sub_index(si_id, config)
+                if si_id == "SI_CREDIT":
+                    sub_indices[si_id] = self._compute_credit_sub_index(config)
+                else:
+                    sub_indices[si_id] = self._compute_sub_index(si_id, config)
 
         chain_results = [self._evaluate_chain(c) for c in RISK_CHAINS]
         active_count = sum(1 for c in chain_results if c["stress"] > 40)
@@ -393,6 +414,84 @@ class GFCRIEngine:
             "transmission": round(transmission, 4),
             "node_scores": {k: round(v, 4) for k, v in z_scores.items()},
             "top_driver": top_node,
+        }
+
+    def _compute_credit_sub_index(self, config: dict[str, Any]) -> dict[str, Any]:
+        dimension_details = {}
+        weighted_score = 0.0
+        used_weight = 0.0
+        all_z_scores = {}
+        all_abs_scores = {}
+
+        for dim_id, dim in CREDIT_DIMENSIONS.items():
+            detail = self._compute_credit_dimension(dim_id, dim)
+            if detail["node_count"] == 0:
+                continue
+            dimension_details[dim_id] = detail
+            weight = float(dim["weight"])
+            weighted_score += detail["score"] * weight
+            used_weight += weight
+            all_z_scores.update(detail["node_scores"])
+            all_abs_scores.update(detail["abs_scores"])
+
+        if used_weight > 0:
+            score = weighted_score / used_weight
+        else:
+            fallback = self._compute_sub_index("SI_CREDIT", config)
+            fallback["formula_type"] = "fallback_flat"
+            return fallback
+
+        transmission = self._compute_transmission_amp(set(config["nodes"]))
+        score = min(100.0, 0.85 * score + 15.0 * transmission)
+        mean_z = sum(all_z_scores.values()) / len(all_z_scores) if all_z_scores else 0.0
+        mean_abs = sum(all_abs_scores.values()) / len(all_abs_scores) if all_abs_scores else 0.0
+        top_node = max(all_z_scores, key=all_z_scores.get) if all_z_scores else None
+
+        return {
+            "score": round(score, 2),
+            "name": config["name"],
+            "mean_stress": round(mean_z, 4),
+            "mean_abs_stress": round(mean_abs, 4),
+            "transmission": round(transmission, 4),
+            "node_scores": {k: round(v, 4) for k, v in all_z_scores.items()},
+            "top_driver": top_node,
+            "formula_type": "dimension_weighted",
+            "dimension_details": dimension_details,
+            "dimension_weights": {k: v["weight"] for k, v in CREDIT_DIMENSIONS.items()},
+        }
+
+    def _compute_credit_dimension(self, dim_id: str, dim: dict[str, Any]) -> dict[str, Any]:
+        nodes = dim["nodes"]
+        z_scores = {}
+        abs_scores = {}
+
+        for nid in nodes:
+            node = self.graph.nodes.get(nid)
+            if not node:
+                continue
+            z_scores[nid] = node.anomaly_score
+            if node.current_value is not None:
+                a = _abs_score(nid, node.current_value)
+                if a is not None:
+                    abs_scores[nid] = a
+
+        mean_z = sum(z_scores.values()) / len(z_scores) if z_scores else 0.0
+        mean_abs = sum(abs_scores.values()) / len(abs_scores) if abs_scores else 0.0
+        transmission = self._compute_transmission_amp(set(nodes))
+        raw_stress = 0.35 * mean_z + 0.45 * mean_abs + 0.20 * transmission
+        score = min(100.0, 100.0 * raw_stress)
+
+        return {
+            "id": dim_id,
+            "name": dim["name"],
+            "weight": dim["weight"],
+            "score": round(score, 2),
+            "mean_stress": round(mean_z, 4),
+            "mean_abs_stress": round(mean_abs, 4),
+            "transmission": round(transmission, 4),
+            "node_count": len(z_scores),
+            "node_scores": {k: round(v, 4) for k, v in z_scores.items()},
+            "abs_scores": {k: round(v, 4) for k, v in abs_scores.items()},
         }
 
     def _compute_transmission_amp(self, group_nodes: set[str]) -> float:
