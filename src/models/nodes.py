@@ -301,8 +301,8 @@ CORE_NODES: dict[str, CausalNode] = {
     ),
     "dram_spot": CausalNode(
         node_id="dram_spot",
-        display_name="DRAM Cycle Proxy (SMH)",
-        description="Semiconductor ETF proxy used until direct DRAM spot/contract prices are available.",
+        display_name="DRAM Producer Basket Proxy",
+        description="Equal-weight memory-producer equity basket used until direct DRAM spot/contract prices are available.",
         node_type=NodeType.OBSERVABLE,
         asset_class=AssetClass.EQUITY,
         geography="GLOBAL",
@@ -312,8 +312,8 @@ CORE_NODES: dict[str, CausalNode] = {
     ),
     "nand_spot": CausalNode(
         node_id="nand_spot",
-        display_name="NAND Cycle Proxy (SMH)",
-        description="Semiconductor ETF proxy used until direct NAND spot/contract prices are available.",
+        display_name="NAND/Storage Producer Basket Proxy",
+        description="Equal-weight NAND/storage producer equity basket used until direct NAND spot/contract prices are available.",
         node_type=NodeType.OBSERVABLE,
         asset_class=AssetClass.EQUITY,
         geography="GLOBAL",

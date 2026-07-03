@@ -65,14 +65,14 @@ PROXY_TICKER_MAP: dict[str, dict] = {
         "fred_id": "EFFR",
     },
     "dram_spot": {
-        "ticker": "SMH",
-        "description": "VanEck Semiconductor ETF as DRAM demand proxy",
-        "source_label": "yfinance SMH (proxy)",
+        "tickers": ["MU", "005930.KS", "000660.KS"],
+        "description": "DRAM producer equity basket proxy",
+        "source_label": "yfinance MU/005930.KS/000660.KS basket (DRAM proxy)",
     },
     "nand_spot": {
-        "ticker": "SMH",
-        "description": "VanEck Semiconductor ETF as NAND demand proxy (shared with DRAM)",
-        "source_label": "yfinance SMH (proxy)",
+        "tickers": ["WDC", "STX", "MU", "005930.KS"],
+        "description": "NAND/storage producer equity basket proxy",
+        "source_label": "yfinance WDC/STX/MU/005930.KS basket (NAND/storage proxy)",
     },
     "orcl_cds": {
         "tickers": ["ORCL", "MSFT", "AMZN", "GOOGL", "META"],
