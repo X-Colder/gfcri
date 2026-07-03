@@ -478,6 +478,17 @@ CORE_NODES: dict[str, CausalNode] = {
         update_frequency="daily",
         unit="%",
     ),
+    "fred_euro_hy_spread": CausalNode(
+        node_id="fred_euro_hy_spread",
+        display_name="Euro High Yield OAS",
+        description="ICE BofA Euro High Yield Index option-adjusted spread from FRED; direct European high-yield credit stress.",
+        node_type=NodeType.OBSERVABLE,
+        asset_class=AssetClass.CREDIT,
+        geography="EU",
+        data_source="FRED / ICE BofA",
+        update_frequency="daily",
+        unit="%",
+    ),
     # ---- Commodities (additional) ------------------------------------
     "natgas": CausalNode(node_id="natgas", display_name="Natural Gas Futures", description="Henry Hub natural gas front-month futures.", node_type=NodeType.OBSERVABLE, asset_class=AssetClass.COMMODITY, geography="GLOBAL", data_source="yfinance", update_frequency="daily", unit="USD/MMBtu"),
     "wheat": CausalNode(node_id="wheat", display_name="Wheat Futures", description="CBOT wheat front-month futures; food security indicator.", node_type=NodeType.OBSERVABLE, asset_class=AssetClass.COMMODITY, geography="GLOBAL", data_source="yfinance", update_frequency="daily", unit="cents/bu"),

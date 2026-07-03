@@ -197,6 +197,14 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "known_limitations": "Effective yield mixes risk-free rates and credit premium; not a pure spread.",
         "upgrade_plan": "Replace or supplement with pure AAA/IG option-adjusted spread series.",
     },
+    "fred_euro_hy_spread": {
+        "source_tier": "A",
+        "raw_formula": "FRED BAMLHE00EHYIOAS latest observation; ICE BofA Euro High Yield OAS in percentage points.",
+        "stress_direction": "higher_is_worse",
+        "absolute_threshold": "normal=3.5, crisis=12.0",
+        "known_limitations": "European high-yield credit only; does not cover European investment-grade credit, bank funding, or sovereign-bank feedback.",
+        "upgrade_plan": "Add iTraxx Crossover, iTraxx Europe, European IG OAS, and bank CDS/bond spreads.",
+    },
     "hyg": {
         "source_tier": "B",
         "raw_formula": "HYG adjusted close from yfinance.",

@@ -186,6 +186,7 @@ FRED_INDICATORS: dict[str, dict] = {
     "fred_umcsent": {"series": "UMCSENT", "name": "消费者信心", "frequency": "monthly"},
     "fred_house": {"series": "CSUSHPINSA", "name": "房价指数", "frequency": "monthly"},
     "fred_ic_spread": {"series": "BAMLC0A1CAAAEY", "name": "投资级利差", "frequency": "daily"},
+    "fred_euro_hy_spread": {"series": "BAMLHE00EHYIOAS", "name": "欧元区高收益债利差", "frequency": "daily"},
     "fred_walcl": {"series": "WALCL", "name": "美联储资产负债表", "frequency": "weekly"},
 }
 

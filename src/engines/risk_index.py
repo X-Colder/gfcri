@@ -45,6 +45,7 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "fred_hy_spread":   ("high", 3.5, 10.0),
     "fred_bbb_spread":  ("high", 1.2, 4.0),
     "fred_ic_spread":   ("high", 4.0, 7.0),
+    "fred_euro_hy_spread": ("high", 3.5, 12.0),
     "kre":              ("low",  50, 30),
     "vnq":              ("low",  85, 55),
     "sox":              ("low",  4000, 2500),
@@ -195,12 +196,17 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
     "em_sovereign_credit": {
         "name": "新兴市场/主权信用",
         "nodes": ["emb", "kr_cds_5y"],
-        "weight": 0.30,
+        "weight": 0.25,
+    },
+    "europe_credit": {
+        "name": "欧洲企业信用",
+        "nodes": ["fred_euro_hy_spread", "italy_etf"],
+        "weight": 0.15,
     },
     "ai_cloud_credit": {
         "name": "AI/云信用压力",
         "nodes": ["orcl_cds"],
-        "weight": 0.20,
+        "weight": 0.10,
     },
 }
 

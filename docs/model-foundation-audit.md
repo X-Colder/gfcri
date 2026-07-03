@@ -78,6 +78,7 @@ Current nodes:
 - `ai_capex` and `orcl_cds` now use normalized multi-name AI/cloud baskets instead of single CLOU/ORCL proxies. They remain Tier C until actual capex filings, CDS, or bond-OAS data are available, but single-name noise is reduced.
 - `dram_spot` and `nand_spot` no longer duplicate the same SMH proxy. They now use separate normalized producer baskets for DRAM and NAND/storage cycles, while remaining Tier C until direct memory price data is licensed or integrated.
 - `SI_CREDIT` now uses a dimension-weighted formula instead of a flat node average. Current dimensions are US corporate credit, EM/sovereign credit, and AI/cloud credit; Europe credit, bank funding, defaults/downgrades, and China credit remain planned dimensions.
+- FRED `BAMLHE00EHYIOAS` has been added as `fred_euro_hy_spread`, starting the Europe Credit dimension with a direct Euro high-yield OAS signal.
 
 Current online example:
 
@@ -115,7 +116,7 @@ Keep the product label `Global Credit & Default Pressure`, but make the model wo
 | Dimension | Required signals | Purpose |
 |---|---|---|
 | US corporate credit | HY OAS, IG OAS, BBB OAS, CDX HY, CDX IG | Core global corporate credit cycle |
-| Europe corporate credit | iTraxx Europe, iTraxx Crossover, EUR HY/IG spreads | Europe credit stress and bank/sovereign feedback |
+| Europe corporate credit | Euro HY OAS now implemented; iTraxx Europe, iTraxx Crossover, EUR IG spreads planned | Europe credit stress and bank/sovereign feedback |
 | EM sovereign credit | EMB spread, EMBI Global, major sovereign CDS, FX debt stress | Dollar funding and sovereign default pressure |
 | Bank funding | FRA-OIS/SOFR-OIS, bank CDS basket, senior financial spreads, TED-like proxies | Funding market stress |
 | Sovereign credit | US, Italy, UK, Japan, China proxy, Korea CDS | Sovereign confidence and refinancing stress |
