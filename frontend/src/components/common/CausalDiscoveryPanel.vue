@@ -84,6 +84,26 @@
           </div>
 
           <p class="mt-3 text-[11px] leading-relaxed text-[var(--accent)]">{{ item.validation_note }}</p>
+
+          <div class="mt-4 rounded-lg border border-[var(--border)] bg-black/10 p-3">
+            <div class="grid gap-2 md:grid-cols-[170px_1fr_auto]">
+              <select v-model="reviewState[item.id]"
+                      class="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-white focus:border-[var(--accent)] focus:outline-none">
+                <option value="watchlist">watchlist</option>
+                <option value="candidate_graph">candidate_graph</option>
+                <option value="eligible_for_promotion">eligible_for_promotion</option>
+                <option value="rejected">rejected</option>
+              </select>
+              <input v-model="reviewNotes[item.id]"
+                     :placeholder="t('causal.reviewNote')"
+                     class="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-white focus:border-[var(--accent)] focus:outline-none" />
+              <button @click="saveReview(item.id)"
+                      class="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--accent)] transition-colors hover:border-[var(--accent)]">
+                {{ savingId === item.id ? t('common.loading') : t('causal.saveReview') }}
+              </button>
+            </div>
+            <p v-if="reviewSaved[item.id]" class="mt-2 text-[10px] text-[var(--green)]">{{ t('causal.reviewSaved') }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -99,6 +119,10 @@ import { useI18n } from '@/composables/useI18n'
 const { t } = useI18n()
 const data = ref<any>(null)
 const loading = ref(false)
+const savingId = ref('')
+const reviewState = ref<Record<string, string>>({})
+const reviewNotes = ref<Record<string, string>>({})
+const reviewSaved = ref<Record<string, boolean>>({})
 
 onMounted(load)
 
@@ -107,6 +131,10 @@ async function load() {
   try {
     const res = await client.get('/causal-discovery/current')
     data.value = res.data
+    for (const item of data.value?.candidate_mechanisms || []) {
+      reviewState.value[item.id] = item.graph_status || item.decision || 'watchlist'
+      reviewNotes.value[item.id] = item.review_note || ''
+    }
   } catch {
     data.value = null
   } finally {
@@ -118,6 +146,21 @@ const trigger = computed(() => data.value?.trigger || {})
 const candidates = computed(() => data.value?.candidate_mechanisms || [])
 const promptTask = computed(() => data.value?.ai_prompt?.user_payload?.task || '')
 const promptConstraints = computed(() => data.value?.ai_prompt?.user_payload?.constraints || [])
+
+async function saveReview(id: string) {
+  savingId.value = id
+  reviewSaved.value[id] = false
+  try {
+    await client.patch(`/causal-discovery/candidates/${id}`, {
+      review_status: reviewState.value[id] || 'watchlist',
+      review_note: reviewNotes.value[id] || '',
+      reviewed_by: 'local',
+    })
+    reviewSaved.value[id] = true
+  } finally {
+    savingId.value = ''
+  }
+}
 
 function decisionColor(decision: string): string {
   if (decision === 'eligible_for_promotion') return COLORS.green

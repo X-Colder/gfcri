@@ -413,6 +413,67 @@ def get_causal_candidates(limit: int = 50) -> list[dict]:
         conn.close()
 
 
+def update_causal_candidate_review(
+    candidate_id: str,
+    review_status: str,
+    review_note: str = "",
+    reviewed_by: str = "local",
+) -> Optional[dict]:
+    allowed = {"watchlist", "candidate_graph", "eligible_for_promotion", "rejected"}
+    if review_status not in allowed:
+        raise ValueError(f"Invalid review_status: {review_status}")
+
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS causal_candidate_edges (
+                    candidate_id TEXT PRIMARY KEY,
+                    first_seen DATE NOT NULL,
+                    last_seen DATE NOT NULL,
+                    trigger JSONB,
+                    title TEXT NOT NULL,
+                    cause_node TEXT,
+                    effect_node TEXT,
+                    mechanism TEXT,
+                    observable_tests JSONB,
+                    falsification JSONB,
+                    scores JSONB,
+                    overall_confidence NUMERIC(5, 4),
+                    decision TEXT,
+                    graph_status TEXT,
+                    validation_note TEXT,
+                    seen_count INTEGER DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute("ALTER TABLE causal_candidate_edges ADD COLUMN IF NOT EXISTS review_status TEXT")
+            cur.execute("ALTER TABLE causal_candidate_edges ADD COLUMN IF NOT EXISTS review_note TEXT")
+            cur.execute("ALTER TABLE causal_candidate_edges ADD COLUMN IF NOT EXISTS reviewed_by TEXT")
+            cur.execute("ALTER TABLE causal_candidate_edges ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP")
+            cur.execute(
+                """
+                UPDATE causal_candidate_edges
+                SET review_status = %s,
+                    review_note = %s,
+                    reviewed_by = %s,
+                    reviewed_at = NOW(),
+                    graph_status = %s,
+                    updated_at = NOW()
+                WHERE candidate_id = %s
+                RETURNING *
+                """,
+                (review_status, review_note, reviewed_by, review_status, candidate_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def save_daily_report(
     report_date: str,
     gfcri_value: float,

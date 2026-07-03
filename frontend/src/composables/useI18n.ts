@@ -138,6 +138,9 @@ const messages: Record<string, Record<string, string>> = {
   'causal.falsification': { zh: '证伪条件', en: 'Falsification Tests' },
   'causal.persisted': { zh: '已写入候选图谱注册表', en: 'Persisted to candidate graph registry' },
   'causal.candidates': { zh: '条候选', en: 'candidates' },
+  'causal.reviewNote': { zh: '审核备注：为什么保留、拒绝或升级？', en: 'Review note: why keep, reject, or promote?' },
+  'causal.saveReview': { zh: '保存审核', en: 'Save Review' },
+  'causal.reviewSaved': { zh: '审核状态已保存', en: 'Review saved' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
