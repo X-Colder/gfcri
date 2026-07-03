@@ -23,16 +23,21 @@
 
             <div class="judgment-workbench">
               <div class="explain-grid">
-                <div v-for="card in judgmentExplainCards" :key="card.title" class="explain-card">
+                <div v-for="card in todayEvidenceCards" :key="card.id" class="explain-card">
                   <div class="explain-card-head">
                     <p>{{ card.kicker }}</p>
                     <strong>{{ card.value }}</strong>
                   </div>
                   <h3>{{ card.title }}</h3>
                   <p>{{ card.body }}</p>
-                  <button type="button" @click="scrollToSection(card.target)">
-                    {{ card.action }}
-                  </button>
+                  <div class="evidence-actions">
+                    <button type="button" @click="scrollToSection(card.target)">
+                      {{ card.action }}
+                    </button>
+                    <button v-if="card.watchType && card.watchId" type="button" @click="toggleWatchCard(card)">
+                      {{ isWatched(card.watchType, card.watchId) ? t('watch.done') : t('analysis.addToWatch') }}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -43,7 +48,7 @@
                       <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)]">{{ t('analysis.actionPanel') }}</p>
                       <h3>{{ t('analysis.watchlistTitle') }}</h3>
                     </div>
-                    <span>{{ watchedIndicatorIds.length }} {{ t('analysis.watched') }}</span>
+                    <span>{{ watchItems.length }} {{ t('analysis.watched') }}</span>
                   </div>
                   <p class="terminal-copy mt-2">{{ t('analysis.watchlistDesc') }}</p>
                   <div class="watch-chip-grid">
@@ -480,6 +485,7 @@ import { useReportStore } from '@/stores/report'
 import { COLORS } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
+import { useRiskWatch, type RiskWatchType } from '@/composables/useRiskWatch'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
@@ -501,8 +507,10 @@ const expandedChainId = ref('')
 const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
 const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
-const watchedIndicatorIds = ref<string[]>(JSON.parse(localStorage.getItem('gfcri_watched_indicators') || '[]'))
 const selectedWatchIndicatorId = ref('')
+const riskWatch = useRiskWatch()
+const watchItems = riskWatch.items
+const watchedIndicatorIds = riskWatch.watchedIndicatorIds
 
 onMounted(async () => {
   riskStore.loadLatest()
@@ -793,68 +801,154 @@ const currentNextWatch = computed(() => {
     : 'Continue monitoring whether trend, transmission channels, and hidden risk deteriorate for several consecutive observations.'
 })
 
-const judgmentExplainCards = computed(() => {
+type EvidenceCard = {
+  id: string
+  kicker: string
+  title: string
+  value: string
+  body: string
+  action: string
+  target: string
+  watchType?: RiskWatchType
+  watchId?: string
+  watchLabel?: string
+  watchReason?: string
+}
+
+const todayEvidenceCards = computed<EvidenceCard[]>(() => {
   const risk = riskStore.latest
   const coherence = Number(risk?.coherence_multiplier || 1)
   const topSub = subIndexRows.value.slice(0, 3)
   const driver = topNodeContributions.value[0]
-  const driverName = driver?.name || (lang.value === 'zh' ? '暂无' : 'None')
-  const driverValue = driver ? `${driverName} · ${t('analysis.absScore')} ${driver.absScoreDisplay}` : '-'
-  const subText = topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(lang.value === 'zh' ? ' / ' : ' / ')
+  const chain = activeChains.value[0]
+  const hidden = hiddenRisk.value
+  const cards: EvidenceCard[] = []
   if (lang.value === 'zh') {
-    return [
-      {
-        kicker: 'Coherence',
-        title: '信号一致性是什么？',
-        value: `${coherence.toFixed(2)}x`,
-        body: `它衡量多个风险通道是否同时指向同一方向。1.00x 表示没有放大；${coherence.toFixed(2)}x 表示基础压力被同步性放大约 ${((coherence - 1) * 100).toFixed(0)}%。信号包括子指数压力、节点异常、绝对压力和传导链激活。`,
-        action: '查看传导链',
-        target: 'chain-pressure',
-      },
-      {
-        kicker: 'Sub-index',
-        title: '这些分数怎么读？',
-        value: subText || '-',
-        body: '子指数是 0-100 的压力读数，不是涨跌预测。25 附近是关注，50 以上说明该领域压力明显，75 以上接近历史危机压力区。它回答“压力集中在哪个市场/宏观领域”。',
-        action: '查看子指数构成',
-        target: 'sub-index-breakdown',
-      },
-      {
-        kicker: 'Driver',
-        title: '首要驱动怎么理解？',
-        value: driverValue,
-        body: 'Z-score 衡量近期变化相对历史波动是否异常；绝对压力衡量当前水平是否处在危险区。Gold Futures 指黄金期货，Z=-0.17 说明近期变化不异常，但绝对压力 100 表示价格水平本身已经处于极端区间。',
-        action: '查看指标明细',
-        target: 'node-contribution',
-      },
-    ]
-  }
-  return [
-    {
+    cards.push({
+      id: 'coherence',
       kicker: 'Coherence',
-      title: 'What does signal coherence mean?',
+      title: '信号共振',
       value: `${coherence.toFixed(2)}x`,
-      body: `It measures whether multiple risk channels point in the same direction. 1.00x means no amplification; ${coherence.toFixed(2)}x means base pressure is amplified by about ${((coherence - 1) * 100).toFixed(0)}%. Signals include sub-index stress, node anomalies, absolute stress, and active transmission chains.`,
-      action: 'Open chains',
+      body: `今天的 ${coherence.toFixed(2)}x 表示多个风险信号同向出现，基础压力被放大约 ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%。系统会根据当天活跃链路自动判断，不依赖固定指标。`,
+      action: '查看传导链',
       target: 'chain-pressure',
-    },
-    {
-      kicker: 'Sub-index',
-      title: 'How to read these scores?',
-      value: subText || '-',
-      body: 'Sub-index scores are 0-100 pressure readings, not directional forecasts. Around 25 means watch, above 50 means material pressure, and above 75 is close to historical crisis stress. They answer where pressure is concentrated.',
+    })
+    if (topSub.length) {
+      cards.push({
+        id: 'sub-index',
+        kicker: 'Pressure Pockets',
+        title: '压力集中领域',
+        value: topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(' / '),
+        body: `这些是当天压力最高的风险领域。分数是 0-100 压力读数：25 附近进入关注，50 以上说明压力明显，75 以上接近历史危机压力区。`,
+        action: '查看构成',
+        target: 'sub-index-breakdown',
+      })
+    }
+    if (driver) {
+      cards.push({
+        id: `driver-${driver.id}`,
+        kicker: 'Top Driver',
+        title: driver.name,
+        value: `Z=${driver.zscore.toFixed(2)} · ${t('analysis.absScore')} ${driver.absScoreDisplay}`,
+        body: buildIndicatorExplanation(driver.id, driver),
+        action: '查看指标',
+        target: 'node-contribution',
+        watchType: 'indicator',
+        watchId: driver.id,
+        watchLabel: driver.name,
+        watchReason: '今日首要驱动',
+      })
+    }
+    if (hidden.undercurrent > 0) {
+      cards.push({
+        id: 'hidden-risk',
+        kicker: 'Hidden Risk',
+        title: `隐藏风险 ${hidden.statusLabel}`,
+        value: `+${hidden.undercurrent.toFixed(1)}`,
+        body: `深层压力 ${hidden.deepAvgDisplay}，表层压力 ${hidden.surfaceAvgDisplay}，缺口 ${hidden.gapDisplay}。系统会自动提取隐藏风险相关指标，点击下方指标可加入 My Risk Watch。`,
+        action: '查看隐藏风险',
+        target: 'hidden-risk-section',
+      })
+    }
+    if (chain) {
+      cards.push({
+        id: `chain-${chain.id}`,
+        kicker: 'Leading Chain',
+        title: tx(chain.name),
+        value: `压力 ${Number(chain.stress || 0).toFixed(0)}`,
+        body: `这是当前最强的活跃传导链。链路压力来自路径内节点异常和边权强度，点击可查看节点、路径强度和计算逻辑。`,
+        action: '查看链路',
+        target: 'chain-pressure',
+        watchType: 'chain',
+        watchId: chain.id,
+        watchLabel: tx(chain.name),
+        watchReason: '今日首要传导链',
+      })
+    }
+    return cards.slice(0, 5)
+  }
+  cards.push({
+    id: 'coherence',
+    kicker: 'Coherence',
+    title: 'Signal resonance',
+    value: `${coherence.toFixed(2)}x`,
+    body: `Today’s ${coherence.toFixed(2)}x means multiple risk signals point in the same direction, amplifying base pressure by about ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%. This is generated from today’s active channels, not fixed indicators.`,
+    action: 'Open chains',
+    target: 'chain-pressure',
+  })
+  if (topSub.length) {
+    cards.push({
+      id: 'sub-index',
+      kicker: 'Pressure Pockets',
+      title: 'Where pressure is concentrated',
+      value: topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(' / '),
+      body: 'These are the highest-pressure domains today. Scores are 0-100 pressure readings: around 25 means watch, above 50 means material pressure, and above 75 is close to historical crisis stress.',
       action: 'Open breakdown',
       target: 'sub-index-breakdown',
-    },
-    {
-      kicker: 'Driver',
-      title: 'How to read the top driver?',
-      value: driverValue,
-      body: 'Z-score measures recent change versus historical volatility. Absolute stress measures whether the current level itself is dangerous. Gold Futures means gold futures; Z=-0.17 is not a large recent move, but absolute stress 100 means the level is already extreme.',
-      action: 'Open indicators',
+    })
+  }
+  if (driver) {
+    cards.push({
+      id: `driver-${driver.id}`,
+      kicker: 'Top Driver',
+      title: driver.name,
+      value: `Z=${driver.zscore.toFixed(2)} · ${t('analysis.absScore')} ${driver.absScoreDisplay}`,
+      body: buildIndicatorExplanation(driver.id, driver),
+      action: 'Open indicator',
       target: 'node-contribution',
-    },
-  ]
+      watchType: 'indicator',
+      watchId: driver.id,
+      watchLabel: driver.name,
+      watchReason: 'Top driver today',
+    })
+  }
+  if (hidden.undercurrent > 0) {
+    cards.push({
+      id: 'hidden-risk',
+      kicker: 'Hidden Risk',
+      title: `Hidden risk: ${hidden.statusLabel}`,
+      value: `+${hidden.undercurrent.toFixed(1)}`,
+      body: `Deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the gap is ${hidden.gapDisplay}. Related indicators are extracted dynamically below.`,
+      action: 'Open hidden risk',
+      target: 'hidden-risk-section',
+    })
+  }
+  if (chain) {
+    cards.push({
+      id: `chain-${chain.id}`,
+      kicker: 'Leading Chain',
+      title: tx(chain.name),
+      value: `Stress ${Number(chain.stress || 0).toFixed(0)}`,
+      body: 'This is the strongest active transmission chain today. Chain stress comes from node anomalies and causal path strength.',
+      action: 'Open chain',
+      target: 'chain-pressure',
+      watchType: 'chain',
+      watchId: chain.id,
+      watchLabel: tx(chain.name),
+      watchReason: 'Leading chain today',
+    })
+  }
+  return cards.slice(0, 5)
 })
 
 const watchActionItems = computed(() => {
@@ -1127,17 +1221,33 @@ function indicatorReason(id: string): string {
 }
 
 function isIndicatorWatched(id: string): boolean {
-  return watchedIndicatorIds.value.includes(id)
+  return riskWatch.isWatched('indicator', id)
+}
+
+function isWatched(type: RiskWatchType, id: string): boolean {
+  return riskWatch.isWatched(type, id)
 }
 
 function toggleIndicatorWatch(id: string) {
   selectedWatchIndicatorId.value = id
-  if (isIndicatorWatched(id)) {
-    watchedIndicatorIds.value = watchedIndicatorIds.value.filter(x => x !== id)
-  } else {
-    watchedIndicatorIds.value = [...watchedIndicatorIds.value, id]
-  }
-  localStorage.setItem('gfcri_watched_indicators', JSON.stringify(watchedIndicatorIds.value))
+  const item = indicatorWatchItem(id)
+  riskWatch.toggle({
+    type: 'indicator',
+    id,
+    label: item.name,
+    reason: item.reason,
+  })
+}
+
+function toggleWatchCard(card: EvidenceCard) {
+  if (!card.watchType || !card.watchId) return
+  if (card.watchType === 'indicator') selectedWatchIndicatorId.value = card.watchId
+  riskWatch.toggle({
+    type: card.watchType,
+    id: card.watchId,
+    label: card.watchLabel || card.title,
+    reason: card.watchReason || card.kicker,
+  })
 }
 
 function scrollToSection(id: string) {
@@ -1148,6 +1258,27 @@ function scrollToSection(id: string) {
 function openChainDetail(id: string) {
   expandedChainId.value = id
   scrollToSection('chain-pressure')
+}
+
+function buildIndicatorExplanation(id: string, node: any): string {
+  const name = node?.name || tx(nodeNames[id] || id)
+  const z = Number(node?.zscore || 0)
+  const absRaw = node?.absScore === null || node?.absScore === undefined ? null : Number(node.absScore)
+  const abs = absRaw === null ? null : absRaw * 100
+  const zText = Math.abs(z) >= 2
+    ? (lang.value === 'zh' ? '近期变化已经明显偏离历史波动' : 'recent movement is materially outside historical volatility')
+    : (lang.value === 'zh' ? '近期变化并不极端' : 'recent movement is not extreme')
+  const absText = abs === null
+    ? (lang.value === 'zh' ? '当前缺少绝对压力阈值' : 'no absolute-stress threshold is available')
+    : abs >= 75
+      ? (lang.value === 'zh' ? '但当前水平本身已经处在高压区' : 'but the current level itself is in a high-stress zone')
+      : abs >= 40
+        ? (lang.value === 'zh' ? '当前水平处于中等压力区' : 'the current level is in a medium-stress zone')
+        : (lang.value === 'zh' ? '当前水平压力不高' : 'the current level is not highly stressed')
+  if (lang.value === 'zh') {
+    return `${name} 被选中是因为它在今天的综合排序中贡献最高。Z=${z.toFixed(2)} 表示${zText}；绝对压力 ${node?.absScoreDisplay || '-'} 表示${absText}。如果它同时处在传导链中，就需要观察是否从单点压力扩散为链式压力。`
+  }
+  return `${name} is selected because it contributes most to today’s ranking. Z=${z.toFixed(2)} means ${zText}; absolute stress ${node?.absScoreDisplay || '-'} means ${absText}. If it is also inside an active chain, watch whether isolated pressure spreads into chain pressure.`
 }
 
 const subIndexBreakdownOption = computed(() => ({
@@ -1353,13 +1484,19 @@ function scoreColor(score: number): string {
   margin-top: 8px;
 }
 
+.evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .explain-card button,
 .plain-link {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--accent);
   font-size: 11px;
-  margin-top: 12px;
   padding: 6px 9px;
 }
 

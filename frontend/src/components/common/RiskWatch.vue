@@ -22,7 +22,7 @@
         <div class="mt-4 grid grid-cols-2 gap-2">
           <div class="rounded-lg border border-[var(--border)] bg-white/[0.015] px-3 py-2">
             <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('watch.selected') }}</p>
-            <p class="mt-1 font-mono text-lg text-white">{{ watchedIds.length }}</p>
+            <p class="mt-1 font-mono text-lg text-white">{{ watchItems.length }}</p>
           </div>
           <div class="rounded-lg border border-[var(--border)] bg-white/[0.015] px-3 py-2">
             <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('watch.active') }}</p>
@@ -33,19 +33,19 @@
         </div>
 
         <div class="mt-4 space-y-2">
-          <div v-for="chain in compactChains" :key="chain.id"
+          <div v-for="row in compactWatchRows" :key="row.key"
                class="flex items-center gap-3 rounded-lg border border-[var(--border)]/70 bg-white/[0.012] px-3 py-2">
             <span class="h-2 w-2 shrink-0 rounded-full"
-                  :style="{ backgroundColor: chain.active ? 'var(--red)' : chain.stress > 35 ? 'var(--orange)' : 'var(--muted)' }"></span>
-            <span class="min-w-0 flex-1 truncate text-xs" :class="chain.active ? 'text-white' : 'text-[var(--muted)]'">
-              {{ tx(chain.name) }}
+                  :style="{ backgroundColor: row.color }"></span>
+            <span class="min-w-0 flex-1 truncate text-xs" :class="row.active ? 'text-white' : 'text-[var(--muted)]'">
+              {{ row.name }}
             </span>
             <span class="shrink-0 font-mono text-[10px]"
-                  :style="{ color: chain.stress > 45 ? 'var(--red)' : chain.stress > 30 ? 'var(--orange)' : 'var(--muted)' }">
-              {{ Number(chain.stress || 0).toFixed(0) }}
+                  :style="{ color: row.color }">
+              {{ row.score }}
             </span>
           </div>
-          <p v-if="watchedIds.length === 0" class="text-xs leading-relaxed text-[var(--muted)]">
+          <p v-if="watchItems.length === 0" class="text-xs leading-relaxed text-[var(--muted)]">
             {{ t('watch.hint') }}
           </p>
         </div>
@@ -78,11 +78,11 @@
           <p class="text-[11px] text-[var(--muted)] uppercase tracking-[3px]">{{ t('watch.title') }}</p>
           <span v-if="activeWatchedCount > 0" class="w-2 h-2 rounded-full bg-[var(--red)] animate-pulse"></span>
         </div>
-        <span class="text-xs text-[var(--muted)]">{{ watchedIds.length }} {{ t('watch.watching') }}</span>
+        <span class="text-xs text-[var(--muted)]">{{ watchItems.length }} {{ t('watch.watching') }}</span>
       </div>
 
       <div v-show="expanded" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
-        <p v-if="watchedIds.length === 0" class="text-xs text-[var(--muted)] mb-4">
+        <p v-if="watchItems.length === 0" class="text-xs text-[var(--muted)] mb-4">
           {{ t('watch.hint') }}
         </p>
         <div class="grid gap-2 md:grid-cols-2">
@@ -110,12 +110,15 @@
 import { ref, computed } from 'vue'
 import { useRiskStore } from '@/stores/risk'
 import { useI18n } from '@/composables/useI18n'
+import { useRiskWatch } from '@/composables/useRiskWatch'
 
 const riskStore = useRiskStore()
 const { t, tx } = useI18n()
 defineProps<{ compact?: boolean }>()
 const expanded = ref(false)
-const watchedIds = ref<string[]>(JSON.parse(localStorage.getItem('gfcri_watched_chains') || '[]'))
+const riskWatch = useRiskWatch()
+const watchedIds = riskWatch.watchedChainIds
+const watchItems = riskWatch.items
 
 const chains = computed(() => {
   const raw = riskStore.latest?.chain_details
@@ -125,11 +128,31 @@ const chains = computed(() => {
 })
 
 const activeWatchedCount = computed(() => {
-  return chains.value.filter((c: any) => c.active && watchedIds.value.includes(c.id)).length
+  const activeChains = chains.value.filter((c: any) => c.active && watchedIds.value.includes(c.id)).length
+  const activeIndicators = watchedIndicators.value.filter(item => item.active).length
+  return activeChains + activeIndicators
 })
 
 const watchedChains = computed(() => {
   return chains.value.filter((c: any) => watchedIds.value.includes(c.id))
+})
+
+const watchedIndicators = computed(() => {
+  const nc = riskStore.latest?.node_contributions || {}
+  return watchItems.value
+    .filter(item => item.type === 'indicator')
+    .map(item => {
+      const info: any = (nc as any)[item.id] || {}
+      const abs = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+      const anomaly = Number(info.anomaly_score || 0)
+      const pressure = Math.max(abs || 0, anomaly) * 100
+      return {
+        id: item.id,
+        name: tx(info.display_name || item.label || item.id),
+        pressure,
+        active: pressure >= 40,
+      }
+    })
 })
 
 const compactChains = computed(() => {
@@ -139,14 +162,41 @@ const compactChains = computed(() => {
   return (candidates.length ? candidates : chains.value).slice(0, 3)
 })
 
+const compactWatchRows = computed(() => {
+  const chainRows = watchedChains.value.map((chain: any) => ({
+    key: `chain:${chain.id}`,
+    name: tx(chain.name),
+    score: Number(chain.stress || 0).toFixed(0),
+    color: chain.active ? 'var(--red)' : chain.stress > 35 ? 'var(--orange)' : 'var(--muted)',
+    active: !!chain.active,
+  }))
+  const indicatorRows = watchedIndicators.value.map(item => ({
+    key: `indicator:${item.id}`,
+    name: item.name,
+    score: item.pressure.toFixed(0),
+    color: item.pressure >= 70 ? 'var(--red)' : item.pressure >= 40 ? 'var(--orange)' : 'var(--muted)',
+    active: item.active,
+  }))
+  const watchedRows = [...chainRows, ...indicatorRows]
+  if (watchedRows.length) return watchedRows.slice(0, 4)
+  return compactChains.value.map((chain: any) => ({
+    key: `chain:${chain.id}`,
+    name: tx(chain.name),
+    score: Number(chain.stress || 0).toFixed(0),
+    color: chain.active ? 'var(--red)' : chain.stress > 35 ? 'var(--orange)' : 'var(--muted)',
+    active: !!chain.active,
+  }))
+})
+
 function isWatched(id: string) { return watchedIds.value.includes(id) }
 
 function toggle(id: string) {
-  if (isWatched(id)) {
-    watchedIds.value = watchedIds.value.filter(x => x !== id)
-  } else {
-    watchedIds.value = [...watchedIds.value, id]
-  }
-  localStorage.setItem('gfcri_watched_chains', JSON.stringify(watchedIds.value))
+  const chain = chains.value.find((c: any) => c.id === id)
+  riskWatch.toggle({
+    type: 'chain',
+    id,
+    label: chain ? tx(chain.name) : id,
+    reason: chain?.active ? t('common.active') : t('common.dormant'),
+  })
 }
 </script>

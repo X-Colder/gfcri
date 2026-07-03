@@ -298,6 +298,7 @@ const messages: Record<string, Record<string, string>> = {
   'analysis.selectIndicatorHint': { zh: '从左侧选择一个指标，查看当前值、Z-score、绝对压力、30 日压力曲线和关联传导链。', en: 'Select an indicator on the left to view current value, Z-score, absolute stress, 30-day pressure trend, and related transmission chains.' },
   'analysis.openDataDetail': { zh: '打开指标表', en: 'Open Data Table' },
   'analysis.noIndicatorTrend': { zh: '当前历史快照中暂无该指标的连续曲线，只显示最新证据。', en: 'No continuous trend is available for this indicator in the current history snapshots; showing latest evidence only.' },
+  'analysis.addToWatch': { zh: '加入关注', en: 'Add to Watch' },
   // Forward
   'forward.title': { zh: '前瞻风险监测', en: 'Forward Risk Monitor' },
   'forward.crisis': { zh: '历史压力阈值接近度', en: 'Crisis Proximity' },
