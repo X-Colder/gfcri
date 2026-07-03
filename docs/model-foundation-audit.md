@@ -72,6 +72,7 @@ Current nodes:
 - `SI_CREDIT` now uses direct FRED credit data first, while retaining ETF/proxy nodes as supplementary market confirmation.
 - A machine-readable node data dictionary was added in `src/models/data_dictionary.py`.
 - The data dictionary now covers all 41 current graph nodes with source tier, raw formula, stress direction, limitations, and upgrade plan. Remaining work is source replacement/validation, not missing metadata.
+- FRED `DGS10`, `DGS2`, and `RECPROUSM156N` now replace yfinance/TLT proxies for `ust_10y`, `ust_2y`, and `us_recession_prob`, including historical series used for z-score calculation.
 
 Current online example:
 

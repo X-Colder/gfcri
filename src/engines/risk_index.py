@@ -31,6 +31,8 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "dxy":              ("high", 100, 114),
     "spx":              ("low",  5000, 3500),
     "ust_10y":          ("high", 3.5, 5.2),
+    "ust_2y":           ("high", 3.5, 5.5),
+    "us_recession_prob": ("high", 5.0, 50.0),
     "oil_wti":          ("high", 70, 120),
     "gold":             ("high", 1900, 3000),
     "krw_usd":          ("high", 1250, 1550),

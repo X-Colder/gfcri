@@ -32,20 +32,20 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "upgrade_plan": "Use EFFR/SOFR/OIS curve and central-bank policy rates across major economies.",
     },
     "ust_10y": {
-        "source_tier": "B",
-        "raw_formula": "^TNX adjusted close from yfinance, interpreted as 10Y Treasury yield percent.",
+        "source_tier": "A",
+        "raw_formula": "FRED DGS10 latest observation and history, 10-year Treasury constant maturity rate in percent.",
         "stress_direction": "higher_is_worse_for_duration_and_funding",
         "absolute_threshold": "normal=3.5, crisis=5.2",
-        "known_limitations": "Yahoo yield proxy can differ from official Treasury/FRED series; high yield can reflect growth as well as stress.",
-        "upgrade_plan": "Replace with FRED DGS10 and add real yield / term premium decomposition.",
+        "known_limitations": "Nominal yield mixes real rates, inflation expectations, term premium, and growth expectations.",
+        "upgrade_plan": "Add real yield, term premium, Treasury volatility, and cross-country long-rate comparison.",
     },
     "ust_2y": {
-        "source_tier": "B",
-        "raw_formula": "^IRX adjusted close from yfinance as a short-rate proxy.",
+        "source_tier": "A",
+        "raw_formula": "FRED DGS2 latest observation and history, 2-year Treasury constant maturity rate in percent.",
         "stress_direction": "higher_is_policy_tightness",
-        "absolute_threshold": "not yet defined",
-        "known_limitations": "^IRX is 13-week T-bill, not a true 2Y Treasury yield; node naming should be corrected or source replaced.",
-        "upgrade_plan": "Replace with FRED DGS2 and keep ^IRX only for T-bill/liquidity context.",
+        "absolute_threshold": "normal=3.5, crisis=5.5",
+        "known_limitations": "2Y yield reflects expected policy path, not direct credit stress; can fall during recession fear.",
+        "upgrade_plan": "Add SOFR/OIS curve, Fed funds futures, and rate-cut expectation decomposition.",
     },
     "global_liqd": {
         "source_tier": "C",
@@ -264,12 +264,12 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "upgrade_plan": "Add real consumer delinquency, confidence, unemployment and retail-sales stress.",
     },
     "us_recession_prob": {
-        "source_tier": "C",
-        "raw_formula": "TLT adjusted close from yfinance as temporary recession-fear proxy.",
-        "stress_direction": "higher_proxy_value_interpreted_as_recession_fear",
-        "absolute_threshold": "not yet defined",
-        "known_limitations": "Not actual NY Fed recession probability; bond price can rise for many reasons.",
-        "upgrade_plan": "Replace with NY Fed recession probability and yield-curve model output.",
+        "source_tier": "A",
+        "raw_formula": "FRED RECPROUSM156N latest observation and history, smoothed US recession probability in percent.",
+        "stress_direction": "higher_is_recession_probability",
+        "absolute_threshold": "normal=5, crisis=50",
+        "known_limitations": "Monthly recession-probability model updates slowly and can lag fast market breaks.",
+        "upgrade_plan": "Add NY Fed yield-curve recession probability, Sahm-rule signal, labor deterioration, and PMI nowcast.",
     },
 
     # Commodities / real economy / safe haven
@@ -387,4 +387,3 @@ def build_node_data_dictionary() -> dict[str, dict[str, Any]]:
 
 
 NODE_DATA_DICTIONARY = build_node_data_dictionary()
-

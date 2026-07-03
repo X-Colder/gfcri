@@ -129,7 +129,10 @@ DATA_SOURCE_LABELS["consumer_stress"] = "yfinance XLY/XLP (computed ratio)"
 # ---------------------------------------------------------------------------
 FRED_INDICATORS: dict[str, dict] = {
     "fred_effr": {"series": "EFFR", "name": "联邦基金利率", "frequency": "daily"},
+    "fred_dgs10": {"series": "DGS10", "name": "10年期美国国债收益率", "frequency": "daily"},
+    "fred_dgs2": {"series": "DGS2", "name": "2年期美国国债收益率", "frequency": "daily"},
     "fred_t10y2y": {"series": "T10Y2Y", "name": "10Y-2Y利差", "frequency": "daily"},
+    "fred_recession_prob": {"series": "RECPROUSM156N", "name": "美国衰退概率", "frequency": "monthly"},
     "fred_bbb_spread": {"series": "BAMLC0A4CBBB", "name": "BBB信用利差", "frequency": "daily"},
     "fred_hy_spread": {"series": "BAMLH0A0HYM2", "name": "高收益债利差", "frequency": "daily"},
     "fred_mortgage30": {"series": "MORTGAGE30US", "name": "30年房贷利率", "frequency": "weekly"},
@@ -147,6 +150,13 @@ FRED_INDICATORS: dict[str, dict] = {
 
 for nid, info in FRED_INDICATORS.items():
     DATA_SOURCE_LABELS[nid] = f"FRED {info['series']}"
+
+FRED_NODE_OVERLAYS: dict[str, str] = {
+    "fed_funds": "fred_effr",
+    "ust_10y": "fred_dgs10",
+    "ust_2y": "fred_dgs2",
+    "us_recession_prob": "fred_recession_prob",
+}
 
 
 class MarketDataCollector:
@@ -260,13 +270,10 @@ class MarketDataCollector:
 
         # Overlay FRED data — replaces proxies with real values where available
         fred_data = self._fetch_fred_latest()
-        for nid, proxy in PROXY_TICKER_MAP.items():
-            fred_id = proxy.get("fred_id")
-            if fred_id:
-                fred_key = f"fred_{fred_id.lower()}"
-                if fred_key in fred_data:
-                    result[nid] = fred_data[fred_key]
-                    DATA_SOURCE_LABELS[nid] = f"FRED {fred_id}"
+        for node_id, fred_key in FRED_NODE_OVERLAYS.items():
+            if fred_key in fred_data:
+                result[node_id] = fred_data[fred_key]
+                DATA_SOURCE_LABELS[node_id] = DATA_SOURCE_LABELS.get(fred_key, f"FRED {fred_key}")
 
         result.update(fred_data)
         logger.info(f"fetch_current_data (with FRED): {len(result)} total values")
@@ -343,6 +350,10 @@ class MarketDataCollector:
             series.index = pd.to_datetime(series.index)
             daily = series.reindex(df.index, method="ffill")
             df[key] = daily
+
+        for node_id, fred_key in FRED_NODE_OVERLAYS.items():
+            if fred_key in df.columns:
+                df[node_id] = df[fred_key]
 
         logger.info(
             f"fetch_historical_data: {len(df)} rows x {len(df.columns)} columns "
