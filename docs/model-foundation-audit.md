@@ -71,6 +71,7 @@ Current nodes:
 - FRED high-yield OAS, BBB OAS, and AAA corporate effective-yield nodes are now formal graph nodes.
 - `SI_CREDIT` now uses direct FRED credit data first, while retaining ETF/proxy nodes as supplementary market confirmation.
 - A machine-readable node data dictionary was added in `src/models/data_dictionary.py`.
+- The data dictionary now covers all 41 current graph nodes with source tier, raw formula, stress direction, limitations, and upgrade plan. Remaining work is source replacement/validation, not missing metadata.
 
 Current online example:
 
