@@ -80,6 +80,7 @@ Current nodes:
 - `SI_CREDIT` now uses a dimension-weighted formula instead of a flat node average. Current dimensions are US corporate credit, EM/sovereign credit, and AI/cloud credit; Europe credit, bank funding, defaults/downgrades, and China credit remain planned dimensions.
 - FRED `BAMLHE00EHYIOAS` has been added as `fred_euro_hy_spread`, starting the Europe Credit dimension with a direct Euro high-yield OAS signal.
 - FRED `SOFR` and computed `SOFR - EFFR` have been added as the first Bank Funding dimension signals.
+- FRED `DRALACBS` and `BAA10Y` have been added as the first Default / Downgrade Cycle signals, combining realized bank-loan delinquency with Baa credit-risk pricing.
 
 Current online example:
 
@@ -121,7 +122,7 @@ Keep the product label `Global Credit & Default Pressure`, but make the model wo
 | EM sovereign credit | EMB spread, EMBI Global, major sovereign CDS, FX debt stress | Dollar funding and sovereign default pressure |
 | Bank funding | SOFR and SOFR-EFFR spread now implemented; SOFR-IORB, bank CDS, senior financial spreads, cross-currency basis planned | Funding market stress |
 | Sovereign credit | US, Italy, UK, Japan, China proxy, Korea CDS | Sovereign confidence and refinancing stress |
-| Default/downgrade cycle | trailing default rate, distressed ratio, rating downgrades, bankruptcy filings | Realized credit damage |
+| Default/downgrade cycle | US bank loan delinquency and Baa-10Y spread now implemented; HY default rates, distressed ratios, rating downgrades, bankruptcy filings planned | Realized credit damage |
 | China credit | credit impulse, total social financing, property bond spreads, LGFV stress | Non-US credit channel |
 
 ### Target Formula

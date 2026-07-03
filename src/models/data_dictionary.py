@@ -221,6 +221,22 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "known_limitations": "SOFR-EFFR spread is a narrow US overnight funding proxy; bank credit, term funding, and cross-currency funding are not captured.",
         "upgrade_plan": "Add SOFR-IORB, FRA/OIS-like proxies, cross-currency basis, bank CDS, and senior financial bond spreads.",
     },
+    "fred_all_loan_delinquency": {
+        "source_tier": "A",
+        "raw_formula": "FRED DRALACBS latest observation; delinquency rate on all loans and leases at US commercial banks.",
+        "stress_direction": "higher_is_realized_credit_damage",
+        "absolute_threshold": "normal=1.5, crisis=6.0",
+        "known_limitations": "Quarterly and US banking-system focused; lags market stress and misses non-bank/private credit defaults.",
+        "upgrade_plan": "Add leveraged-loan default rates, HY default rates, bankruptcy filings, and rating downgrade ratios.",
+    },
+    "fred_baa10y_spread": {
+        "source_tier": "A",
+        "raw_formula": "FRED BAA10Y latest observation; Moody's seasoned Baa corporate bond yield minus 10-year Treasury yield.",
+        "stress_direction": "higher_is_downgrade_default_pricing_pressure",
+        "absolute_threshold": "normal=1.5, crisis=5.0",
+        "known_limitations": "Market-implied spread, not realized default rate; US Baa focus only.",
+        "upgrade_plan": "Add rating downgrade counts, distressed debt ratios, and issuer-level default baskets.",
+    },
     "hyg": {
         "source_tier": "B",
         "raw_formula": "HYG adjusted close from yfinance.",

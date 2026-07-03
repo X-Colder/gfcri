@@ -35,6 +35,8 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "us_recession_prob": ("high", 5.0, 50.0),
     "fred_sofr":        ("high", 3.5, 5.5),
     "sofr_effr_spread": ("high", 0.0, 75.0),
+    "fred_all_loan_delinquency": ("high", 1.5, 6.0),
+    "fred_baa10y_spread": ("high", 1.5, 5.0),
     "oil_wti":          ("high", 70, 120),
     "gold":             ("high", 1900, 3000),
     "krw_usd":          ("high", 1250, 1550),
@@ -193,12 +195,12 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
     "us_corporate_credit": {
         "name": "美国企业信用",
         "nodes": ["fred_hy_spread", "fred_bbb_spread", "fred_ic_spread", "hyg", "lqd"],
-        "weight": 0.40,
+        "weight": 0.32,
     },
     "em_sovereign_credit": {
         "name": "新兴市场/主权信用",
         "nodes": ["emb", "kr_cds_5y"],
-        "weight": 0.20,
+        "weight": 0.18,
     },
     "europe_credit": {
         "name": "欧洲企业信用",
@@ -210,10 +212,15 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
         "nodes": ["fred_sofr", "sofr_effr_spread"],
         "weight": 0.15,
     },
+    "default_downgrade_cycle": {
+        "name": "违约/降级周期",
+        "nodes": ["fred_all_loan_delinquency", "fred_baa10y_spread"],
+        "weight": 0.15,
+    },
     "ai_cloud_credit": {
         "name": "AI/云信用压力",
         "nodes": ["orcl_cds"],
-        "weight": 0.10,
+        "weight": 0.05,
     },
 }
 

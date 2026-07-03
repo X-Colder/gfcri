@@ -188,6 +188,8 @@ FRED_INDICATORS: dict[str, dict] = {
     "fred_house": {"series": "CSUSHPINSA", "name": "房价指数", "frequency": "monthly"},
     "fred_ic_spread": {"series": "BAMLC0A1CAAAEY", "name": "投资级利差", "frequency": "daily"},
     "fred_euro_hy_spread": {"series": "BAMLHE00EHYIOAS", "name": "欧元区高收益债利差", "frequency": "daily"},
+    "fred_all_loan_delinquency": {"series": "DRALACBS", "name": "美国商业银行全贷款逾期率", "frequency": "quarterly"},
+    "fred_baa10y_spread": {"series": "BAA10Y", "name": "Baa企业债-10年美债利差", "frequency": "daily"},
     "fred_walcl": {"series": "WALCL", "name": "美联储资产负债表", "frequency": "weekly"},
 }
 
