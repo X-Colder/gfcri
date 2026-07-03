@@ -1,0 +1,191 @@
+# GFCRI Model Foundation Audit
+
+Date: 2026-07-03
+
+## Purpose
+
+GFCRI must be able to defend each model reading with:
+
+- What data is used.
+- Where the data comes from.
+- How raw data becomes node stress.
+- How node stress becomes sub-index pressure.
+- Why the coverage is broad enough for the label being used.
+- Where the current model is incomplete and how it will be improved.
+
+This document records the current implementation and the target standard.
+
+## Current Sub-Index Formula
+
+Current implementation: `src/engines/risk_index.py`.
+
+For each sub-index:
+
+```text
+mean_z = average(node anomaly_score)
+mean_abs = average(node absolute_stress_score where available)
+transmission = inbound transmission pressure from outside this node group
+
+raw_stress = 0.4 * mean_z + 0.6 * mean_abs
+sub_index_score = 100 * (0.6 * raw_stress + 0.4 * transmission)
+```
+
+Definitions:
+
+- `anomaly_score`: `min(1.0, abs(zscore) / 4.0)`.
+- `zscore`: `(current_value - 1Y historical_mean) / 1Y historical_std`.
+- `absolute_stress_score`: stress from hard normal/crisis thresholds.
+- `transmission`: average inbound causal pressure from nodes outside the sub-index.
+
+Strength:
+
+- Captures both sudden change and dangerous absolute levels.
+- Helps avoid the 2008-style false calm problem where z-score normalizes while absolute stress remains high.
+
+Weakness:
+
+- One-year z-score is too short for slow-moving credit cycles.
+- Some nodes use ETF or equity proxies for actual CDS/spread data.
+- Absolute thresholds are incomplete.
+- Sub-index labels can sound broader than current data coverage.
+
+## Current Credit & Default Implementation
+
+Current sub-index id: `SI_CREDIT`.
+
+Current nodes:
+
+| Node | Current data | Intended meaning | Current weakness |
+|---|---|---|---|
+| `hyg` | HYG ETF via yfinance | US high-yield corporate credit stress | ETF price proxy, not direct option-adjusted spread/default risk |
+| `lqd` | LQD ETF via yfinance | US investment-grade credit stress | ETF price proxy affected by duration and rates |
+| `emb` | EMB ETF via yfinance | EM sovereign/hard-currency debt stress | ETF proxy, not direct EM spread/debt service stress |
+| `kr_cds_5y` | EWY inverse proxy | Korea sovereign credit stress | Not actual Korea 5Y CDS |
+| `orcl_cds` | ORCL inverse proxy | AI/cloud credit stress proxy | Not actual Oracle CDS spread |
+
+Current online example:
+
+```text
+SI_CREDIT score = 14.45
+
+node anomaly scores:
+HYG       0.3840
+LQD       0.1981
+EMB       0.3498
+Oracle    0.3560
+Korea CDS 0.3744
+
+mean_z = 0.3325
+mean_abs = 0.0860
+transmission = 0.0843
+
+raw_stress = 0.4 * 0.3325 + 0.6 * 0.0860 = 0.1846
+score = 100 * (0.6 * 0.1846 + 0.4 * 0.0843) = 14.45
+```
+
+Interpretation:
+
+- Current score says credit pressure is visible but not severe.
+- The reading is mostly anomaly-driven.
+- Absolute credit stress is low because only HYG and LQD have absolute thresholds today.
+- This is not yet a complete global credit/default pressure measure.
+
+## Target: Global Credit & Default Pressure
+
+Keep the product label `Global Credit & Default Pressure`, but make the model worthy of that label by expanding coverage.
+
+### Target Dimensions
+
+| Dimension | Required signals | Purpose |
+|---|---|---|
+| US corporate credit | HY OAS, IG OAS, BBB OAS, CDX HY, CDX IG | Core global corporate credit cycle |
+| Europe corporate credit | iTraxx Europe, iTraxx Crossover, EUR HY/IG spreads | Europe credit stress and bank/sovereign feedback |
+| EM sovereign credit | EMB spread, EMBI Global, major sovereign CDS, FX debt stress | Dollar funding and sovereign default pressure |
+| Bank funding | FRA-OIS/SOFR-OIS, bank CDS basket, senior financial spreads, TED-like proxies | Funding market stress |
+| Sovereign credit | US, Italy, UK, Japan, China proxy, Korea CDS | Sovereign confidence and refinancing stress |
+| Default/downgrade cycle | trailing default rate, distressed ratio, rating downgrades, bankruptcy filings | Realized credit damage |
+| China credit | credit impulse, total social financing, property bond spreads, LGFV stress | Non-US credit channel |
+
+### Target Formula
+
+The current formula should evolve from a flat node average into a dimension-weighted structure:
+
+```text
+Global Credit & Default Pressure =
+  0.25 * US corporate credit stress
++ 0.15 * Europe corporate credit stress
++ 0.15 * EM sovereign credit stress
++ 0.15 * bank funding stress
++ 0.10 * sovereign credit stress
++ 0.10 * default/downgrade cycle
++ 0.10 * China credit stress
+
+Each dimension =
+  0.35 * short-term anomaly
++ 0.45 * absolute stress percentile
++ 0.20 * transmission / deterioration momentum
+```
+
+Rationale:
+
+- Credit crises are usually not only price changes.
+- A professional credit module must separate market-implied stress, actual default/downgrade damage, funding liquidity, and regional credit systems.
+- Absolute stress should use long history percentiles or crisis anchors rather than only one-year z-scores.
+
+## Data Source Standard
+
+Each node must be classified by quality:
+
+| Tier | Source type | Use |
+|---|---|---|
+| A | Official or primary index provider API | Core model input |
+| B | Widely used market data vendor / ETF with liquid history | Proxy when direct data is unavailable |
+| C | Equity/ETF inverse proxy for credit/CDS | Temporary fallback only |
+| D | Synthetic or narrative proxy | Research-only, not core scoring |
+
+Current credit module has too many Tier B/C proxies. Target state should use mostly Tier A/B, with C only as fallback.
+
+## Full Node Audit Standard
+
+For every node in `src/models/nodes.py`, maintain:
+
+```text
+node_id
+display_name
+economic meaning
+raw data source
+source tier
+raw formula, if computed
+z-score lookback
+absolute-stress threshold or percentile method
+direction of stress
+sub-index membership
+causal-chain membership
+known limitations
+replacement / upgrade plan
+```
+
+## Immediate Engineering Plan
+
+1. Add a data dictionary table for every node.
+2. Replace proxy credit nodes with direct spread/CDS/default-rate series where available.
+3. Add dimension-level credit model before calculating final `SI_CREDIT`.
+4. Expand absolute thresholds using long-history percentiles and historical crisis anchors.
+5. Add UI drilldown:
+   - formula receipt,
+   - data source,
+   - source tier,
+   - node-level contribution,
+   - dimension-level contribution,
+   - limitations.
+
+## Acceptance Criteria
+
+The credit module should not be considered institution-grade until:
+
+- At least 5 credit dimensions are represented.
+- At least 70% of credit weight comes from Tier A/B direct credit data.
+- ETF inverse proxies contribute less than 15% of total credit score weight.
+- Each node has a documented formula and source tier.
+- Backtests show whether expanded credit data improves early warning before 2000, 2008, 2010, 2020, and 2022.
+
