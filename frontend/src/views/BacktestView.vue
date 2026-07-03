@@ -110,10 +110,27 @@
                       </div>
                     </div>
                     <p class="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">{{ t('backtest.damageVsPressureNote') }}</p>
-                    <div class="mt-4 grid gap-3 lg:grid-cols-2">
-                      <div v-for="item in damageMetrics(c.name)" :key="item.label" class="rounded-lg border border-[var(--border)] p-3">
-                        <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ damageMetricLabel(item) }}</p>
-                        <p class="mt-1 text-xs leading-relaxed text-white">{{ damageMetricValue(item) }}</p>
+                    <div class="mt-4 grid gap-3 xl:grid-cols-2">
+                      <div v-for="item in damageMetrics(c.name)" :key="item.label" class="damage-evidence-card">
+                        <div class="damage-evidence-head">
+                          <div>
+                            <p class="damage-field-label">{{ t('backtest.damageArea') }}</p>
+                            <h5>{{ damageMetricLabel(item) }}</h5>
+                          </div>
+                          <span :style="damageMetricSeverityStyle(item, damageProfile(c.name))">
+                            {{ damageMetricSeverity(item, damageProfile(c.name)) }}
+                          </span>
+                        </div>
+                        <div class="damage-evidence-grid">
+                          <div>
+                            <p class="damage-field-label">{{ t('backtest.damageDegree') }}</p>
+                            <p class="damage-field-value damage-quant">{{ damageMetricValue(item) }}</p>
+                          </div>
+                          <div>
+                            <p class="damage-field-label">{{ t('backtest.damageBreadth') }}</p>
+                            <p class="damage-field-value">{{ damageMetricBreadth(item, damageProfile(c.name)) }}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -670,6 +687,45 @@ function damageMetricValue(metric: DamageMetric): string {
   return lang.value === 'zh' ? metric.value : metric.valueEn
 }
 
+function damageMetricBreadth(metric: DamageMetric, profile: DamageProfile): string {
+  const key = `${metric.label} ${metric.labelEn}`.toLowerCase()
+  if (key.includes('股') || key.includes('equity') || key.includes('market damage')) return t('backtest.breadth.equity')
+  if (key.includes('债券') || key.includes('bond')) return t('backtest.breadth.bond')
+  if (key.includes('汇率') || key.includes('fx') || key.includes('美元') || key.includes('currency')) return t('backtest.breadth.fx')
+  if (key.includes('利率') || key.includes('rate')) return t('backtest.breadth.rate')
+  if (key.includes('信用') || key.includes('credit')) return t('backtest.breadth.credit')
+  if (key.includes('银行') || key.includes('financial') || key.includes('banking')) return t('backtest.breadth.banking')
+  if (key.includes('经济') || key.includes('gdp') || key.includes('economic')) return t('backtest.breadth.economy')
+  if (key.includes('就业') || key.includes('labor')) return t('backtest.breadth.labor')
+  if (key.includes('政策') || key.includes('制度') || key.includes('institutional') || key.includes('policy')) return t('backtest.breadth.policy')
+  if (key.includes('通胀') || key.includes('oil') || key.includes('commodity') || key.includes('inflation')) return t('backtest.breadth.commodity')
+  if (key.includes('外债') || key.includes('external') || key.includes('contagion') || key.includes('传染')) return t('backtest.breadth.external')
+  return profile.level >= 4 ? t('backtest.breadth.credit') : t('backtest.breadth.default')
+}
+
+function damageMetricSeverity(metric: DamageMetric, profile: DamageProfile): string {
+  const value = `${metric.value} ${metric.valueEn}`.toLowerCase()
+  if (value.includes('未造成') || value.includes('有限') || value.includes('limited') || value.includes('did not')) {
+    return t('backtest.severity.contained')
+  }
+  if (profile.level >= 4) return t('backtest.severity.systemic')
+  if (profile.level >= 3) return t('backtest.severity.high')
+  if (profile.level >= 2) return t('backtest.severity.medium')
+  return t('backtest.severity.low')
+}
+
+function damageMetricSeverityStyle(metric: DamageMetric, profile: DamageProfile): Record<string, string> {
+  const value = `${metric.value} ${metric.valueEn}`.toLowerCase()
+  const color = value.includes('未造成') || value.includes('有限') || value.includes('limited') || value.includes('did not')
+    ? '#34d399'
+    : damageColor(profile.level)
+  return {
+    background: color + '18',
+    borderColor: color + '45',
+    color,
+  }
+}
+
 function damageColor(level: number): string {
   if (level >= 5) return '#7f1d1d'
   if (level >= 4) return '#ef4444'
@@ -960,3 +1016,70 @@ const peakChartOption = computed(() => {
   }
 })
 </script>
+
+<style scoped>
+.damage-evidence-card {
+  background: rgba(255,255,255,0.012);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.damage-evidence-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.damage-evidence-head h5 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.damage-evidence-head span {
+  border: 1px solid;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.damage-evidence-grid {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.damage-field-label {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.damage-field-value {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 5px;
+}
+
+.damage-quant {
+  color: var(--text);
+}
+
+@media (max-width: 820px) {
+  .damage-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
