@@ -125,6 +125,17 @@ const messages: Record<string, Record<string, string>> = {
   'regime.forwardPressure': { zh: '前瞻风险压力', en: 'Forward Risk Pressure' },
   'regime.hiddenRisk': { zh: '未兑现隐藏风险', en: 'Unrealized Hidden Risk' },
   'regime.hiddenNote': { zh: '用于识别表面损害不明显、但底层压力已经累积的状态。', en: 'Captures pressure that has not yet turned into visible damage.' },
+  // Causal discovery governance
+  'causal.kicker': { zh: '因果发现治理', en: 'Causal Discovery Governance' },
+  'causal.title': { zh: 'AI 辅助因果扩展实验室', en: 'AI-Assisted Causal Expansion Lab' },
+  'causal.desc': { zh: '当隐藏压力高但实际损害尚未兑现时，系统组织结构化问题，生成候选因果机制，并用数据覆盖、图谱支持和证伪条件约束 AI 假设。AI 只能提出候选，不能直接改正式图谱。', en: 'When hidden pressure is high but realized damage has not materialized, the system frames a structured AI prompt, proposes candidate mechanisms, and constrains them with data coverage, graph support, and falsification tests. AI may propose candidates, but cannot mutate the core graph.' },
+  'causal.gap': { zh: '背离缺口', en: 'Gap' },
+  'causal.prompt': { zh: '结构化 AI 咨询 Prompt', en: 'Structured AI Consultation Prompt' },
+  'causal.confidence': { zh: '综合置信度', en: 'Confidence' },
+  'causal.graphSupport': { zh: '图谱支持', en: 'Graph Support' },
+  'causal.dataCoverage': { zh: '数据覆盖', en: 'Data Coverage' },
+  'causal.tests': { zh: '验证指标', en: 'Observable Tests' },
+  'causal.falsification': { zh: '证伪条件', en: 'Falsification Tests' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
