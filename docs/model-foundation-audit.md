@@ -57,11 +57,20 @@ Current nodes:
 
 | Node | Current data | Intended meaning | Current weakness |
 |---|---|---|---|
+| `fred_hy_spread` | FRED `BAMLH0A0HYM2` | US high-yield option-adjusted spread | US-only; needs CDX/global HY confirmation |
+| `fred_bbb_spread` | FRED `BAMLC0A4CBBB` | US BBB corporate option-adjusted spread | US-only; misses Europe/Asia IG |
+| `fred_ic_spread` | FRED `BAMLC0A1CAAAEY` | AAA corporate funding-cost anchor | Effective yield, not pure spread |
 | `hyg` | HYG ETF via yfinance | US high-yield corporate credit stress | ETF price proxy, not direct option-adjusted spread/default risk |
 | `lqd` | LQD ETF via yfinance | US investment-grade credit stress | ETF price proxy affected by duration and rates |
 | `emb` | EMB ETF via yfinance | EM sovereign/hard-currency debt stress | ETF proxy, not direct EM spread/debt service stress |
 | `kr_cds_5y` | EWY inverse proxy | Korea sovereign credit stress | Not actual Korea 5Y CDS |
 | `orcl_cds` | ORCL inverse proxy | AI/cloud credit stress proxy | Not actual Oracle CDS spread |
+
+2026-07-03 implementation update:
+
+- FRED high-yield OAS, BBB OAS, and AAA corporate effective-yield nodes are now formal graph nodes.
+- `SI_CREDIT` now uses direct FRED credit data first, while retaining ETF/proxy nodes as supplementary market confirmation.
+- A machine-readable node data dictionary was added in `src/models/data_dictionary.py`.
 
 Current online example:
 
@@ -188,4 +197,3 @@ The credit module should not be considered institution-grade until:
 - ETF inverse proxies contribute less than 15% of total credit score weight.
 - Each node has a documented formula and source tier.
 - Backtests show whether expanded credit data improves early warning before 2000, 2008, 2010, 2020, and 2022.
-

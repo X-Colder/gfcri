@@ -145,6 +145,9 @@ FRED_INDICATORS: dict[str, dict] = {
     "fred_walcl": {"series": "WALCL", "name": "美联储资产负债表", "frequency": "weekly"},
 }
 
+for nid, info in FRED_INDICATORS.items():
+    DATA_SOURCE_LABELS[nid] = f"FRED {info['series']}"
+
 
 class MarketDataCollector:
     """Collects market data from yfinance + FRED API."""
