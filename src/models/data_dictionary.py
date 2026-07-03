@@ -48,12 +48,12 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "upgrade_plan": "Add SOFR/OIS curve, Fed funds futures, and rate-cut expectation decomposition.",
     },
     "global_liqd": {
-        "source_tier": "C",
-        "raw_formula": "TLT adjusted close from yfinance as temporary global-liquidity proxy.",
-        "stress_direction": "lower_liquidity_is_worse; proxy interpretation depends on rate regime",
+        "source_tier": "A",
+        "raw_formula": "FRED WALCL latest observation and history, Federal Reserve total assets in USD millions.",
+        "stress_direction": "lower_liquidity_or_fast_balance_sheet_contraction_can_tighten_conditions",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "TLT is a long-duration Treasury ETF, not a global liquidity index; direction can invert across regimes.",
-        "upgrade_plan": "Replace with central-bank balance sheet aggregates, dollar liquidity, and global credit impulse data.",
+        "known_limitations": "Fed balance sheet is US dollar liquidity proxy, not full global liquidity; ECB, BOJ, PBOC and offshore dollar funding are missing.",
+        "upgrade_plan": "Add ECB/BOJ/PBOC balance sheets, cross-currency basis, dollar swap lines, reserve balances, and global credit impulse data.",
     },
 
     # FX
@@ -326,7 +326,7 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "raw_formula": "SMH adjusted close from yfinance as DRAM demand proxy.",
         "stress_direction": "higher_can_indicate_ai_cycle_heat; lower_can_indicate_semiconductor_downturn",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "SMH ETF is not DRAM spot price; current node name overstates data specificity.",
+        "known_limitations": "SMH ETF is not DRAM spot price; it is a broad semiconductor equity-cycle proxy.",
         "upgrade_plan": "Replace with DRAMeXchange/TrendForce spot and contract prices.",
     },
     "nand_spot": {
@@ -334,7 +334,7 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "raw_formula": "SMH adjusted close from yfinance as NAND demand proxy.",
         "stress_direction": "higher_can_indicate_ai_cycle_heat; lower_can_indicate_memory_downturn",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "SMH ETF is not NAND flash spot price; shared proxy duplicates DRAM signal.",
+        "known_limitations": "SMH ETF is not NAND flash spot price; shared proxy duplicates DRAM-cycle signal.",
         "upgrade_plan": "Replace with NAND spot/contract prices from memory-market data provider.",
     },
     "ai_capex": {
@@ -342,7 +342,7 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "raw_formula": "CLOU adjusted close from yfinance as AI/cloud capex proxy.",
         "stress_direction": "higher_can_indicate_crowding_or_capex_cycle_heat",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "Cloud ETF price is not actual hyperscaler capex; equity sentiment contaminates signal.",
+        "known_limitations": "Cloud ETF price is not actual hyperscaler capex; equity sentiment contaminates the signal.",
         "upgrade_plan": "Use company filings for capex guidance and aggregate hyperscaler capex data.",
     },
     "btc": {

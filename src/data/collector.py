@@ -156,6 +156,7 @@ FRED_NODE_OVERLAYS: dict[str, str] = {
     "ust_10y": "fred_dgs10",
     "ust_2y": "fred_dgs2",
     "us_recession_prob": "fred_recession_prob",
+    "global_liqd": "fred_walcl",
 }
 
 
