@@ -7,6 +7,9 @@
           <p class="text-[11px] text-[var(--muted)] uppercase tracking-[3px]">{{ t('causal.kicker') }}</p>
           <h3 class="mt-1 text-sm font-medium text-white">{{ t('causal.title') }}</h3>
           <p class="terminal-copy mt-2">{{ t('causal.desc') }}</p>
+          <p v-if="data.registry?.persisted" class="mt-2 text-[11px] text-[var(--accent)]">
+            {{ t('causal.persisted') }} · {{ data.registry.candidate_count }} {{ t('causal.candidates') }}
+          </p>
         </div>
         <div class="grid grid-cols-3 gap-2 sm:min-w-[390px]">
           <div class="terminal-metric">
@@ -46,7 +49,7 @@
             </div>
             <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-mono"
                   :style="{ color: decisionColor(item.decision), borderColor: decisionColor(item.decision), backgroundColor: decisionColor(item.decision) + '18' }">
-              {{ item.decision }}
+              {{ item.graph_status || item.decision }}
             </span>
           </div>
 

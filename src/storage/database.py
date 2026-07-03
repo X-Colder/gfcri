@@ -287,6 +287,132 @@ def get_risk_index_history(limit: int = 30) -> list[dict]:
         conn.close()
 
 
+def save_causal_candidates(
+    run_date: str,
+    trigger: dict,
+    candidates: list[dict],
+):
+    """Persist AI/rule-generated causal graph expansion candidates.
+
+    Candidates are not promoted into the core graph here. This table is the
+    governance registry for watchlist/candidate/promotion review.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS causal_candidate_edges (
+                    candidate_id TEXT PRIMARY KEY,
+                    first_seen DATE NOT NULL,
+                    last_seen DATE NOT NULL,
+                    trigger JSONB,
+                    title TEXT NOT NULL,
+                    cause_node TEXT,
+                    effect_node TEXT,
+                    mechanism TEXT,
+                    observable_tests JSONB,
+                    falsification JSONB,
+                    scores JSONB,
+                    overall_confidence NUMERIC(5, 4),
+                    decision TEXT,
+                    graph_status TEXT,
+                    validation_note TEXT,
+                    seen_count INTEGER DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+                """
+            )
+            for c in candidates:
+                cur.execute(
+                    """
+                    INSERT INTO causal_candidate_edges
+                        (candidate_id, first_seen, last_seen, trigger, title,
+                         cause_node, effect_node, mechanism, observable_tests,
+                         falsification, scores, overall_confidence, decision,
+                         graph_status, validation_note, seen_count, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, NOW())
+                    ON CONFLICT (candidate_id) DO UPDATE SET
+                        last_seen = EXCLUDED.last_seen,
+                        trigger = EXCLUDED.trigger,
+                        title = EXCLUDED.title,
+                        cause_node = EXCLUDED.cause_node,
+                        effect_node = EXCLUDED.effect_node,
+                        mechanism = EXCLUDED.mechanism,
+                        observable_tests = EXCLUDED.observable_tests,
+                        falsification = EXCLUDED.falsification,
+                        scores = EXCLUDED.scores,
+                        overall_confidence = EXCLUDED.overall_confidence,
+                        decision = EXCLUDED.decision,
+                        graph_status = EXCLUDED.graph_status,
+                        validation_note = EXCLUDED.validation_note,
+                        seen_count = causal_candidate_edges.seen_count + 1,
+                        updated_at = NOW()
+                    """,
+                    (
+                        c.get("id"),
+                        run_date,
+                        run_date,
+                        Json(trigger),
+                        c.get("title", ""),
+                        c.get("cause_node"),
+                        c.get("effect_node"),
+                        c.get("mechanism", ""),
+                        Json(c.get("observable_tests") or []),
+                        Json(c.get("falsification") or []),
+                        Json(c.get("scores") or {}),
+                        c.get("overall_confidence", 0),
+                        c.get("decision"),
+                        c.get("graph_status"),
+                        c.get("validation_note", ""),
+                    ),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_causal_candidates(limit: int = 50) -> list[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS causal_candidate_edges (
+                    candidate_id TEXT PRIMARY KEY,
+                    first_seen DATE NOT NULL,
+                    last_seen DATE NOT NULL,
+                    trigger JSONB,
+                    title TEXT NOT NULL,
+                    cause_node TEXT,
+                    effect_node TEXT,
+                    mechanism TEXT,
+                    observable_tests JSONB,
+                    falsification JSONB,
+                    scores JSONB,
+                    overall_confidence NUMERIC(5, 4),
+                    decision TEXT,
+                    graph_status TEXT,
+                    validation_note TEXT,
+                    seen_count INTEGER DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                SELECT *
+                FROM causal_candidate_edges
+                ORDER BY overall_confidence DESC NULLS LAST, updated_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def save_daily_report(
     report_date: str,
     gfcri_value: float,

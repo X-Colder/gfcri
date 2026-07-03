@@ -136,6 +136,8 @@ const messages: Record<string, Record<string, string>> = {
   'causal.dataCoverage': { zh: '数据覆盖', en: 'Data Coverage' },
   'causal.tests': { zh: '验证指标', en: 'Observable Tests' },
   'causal.falsification': { zh: '证伪条件', en: 'Falsification Tests' },
+  'causal.persisted': { zh: '已写入候选图谱注册表', en: 'Persisted to candidate graph registry' },
+  'causal.candidates': { zh: '条候选', en: 'candidates' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
