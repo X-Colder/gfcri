@@ -7,51 +7,170 @@
 
     <template v-else-if="riskStore.latest">
 
-      <section class="terminal-section dashboard-brief fade-in">
-        <div class="brief-header">
+      <section class="command-center terminal-section fade-in">
+        <div class="command-topbar">
           <div>
             <p class="terminal-kicker">{{ t('dash.eyebrow') }}</p>
             <h1 class="terminal-title">{{ t('dash.title') }}</h1>
             <p class="terminal-copy mt-2">{{ t('dash.subtitle') }}</p>
           </div>
-          <div class="brief-meta">
-            <div class="terminal-metric">
+          <div class="command-meta">
+            <div class="command-meta-cell">
               <span>{{ t('dash.latestObservation') }}</span>
               <strong>{{ riskStore.latest.index_date }}</strong>
             </div>
-            <div class="terminal-metric">
+            <div class="command-meta-cell">
               <span>{{ t('dash.dataCadence') }}</span>
               <strong>06:00 UTC</strong>
             </div>
-            <div class="terminal-metric">
+            <div class="command-meta-cell">
               <span>{{ t('dash.modelVersion') }}</span>
               <strong>GFCRI v1</strong>
             </div>
           </div>
         </div>
 
-        <div class="brief-grid">
-          <div class="risk-score-panel">
-            <p class="terminal-kicker">GFCRI</p>
-            <div class="risk-score-row">
-              <span class="risk-score" :style="{ color: getAlertColor(riskStore.latest.alert_level) }">
-                {{ riskStore.latest.gfcri_value.toFixed(1) }}
-              </span>
-              <span class="risk-alert" :style="{ color: getAlertColor(riskStore.latest.alert_level), borderColor: getAlertColor(riskStore.latest.alert_level) }">
-                {{ t('alert.' + riskStore.latest.alert_level) }}
+        <div class="command-grid">
+          <aside class="score-console">
+            <div class="score-console-head">
+              <div>
+                <p class="terminal-kicker">GFCRI</p>
+                <div class="risk-score-row">
+                  <span class="risk-score" :style="{ color: getAlertColor(riskStore.latest.alert_level) }">
+                    {{ riskStore.latest.gfcri_value.toFixed(1) }}
+                  </span>
+                  <span class="risk-alert" :style="{ color: getAlertColor(riskStore.latest.alert_level), borderColor: getAlertColor(riskStore.latest.alert_level), backgroundColor: getAlertColor(riskStore.latest.alert_level) + '12' }">
+                    {{ t('alert.' + riskStore.latest.alert_level) }}
+                  </span>
+                </div>
+              </div>
+              <span class="score-delta" :class="trendDelta >= 0 ? 'score-delta-up' : 'score-delta-down'">
+                {{ trendDelta >= 0 ? '+' : '' }}{{ trendDelta.toFixed(1) }} 30D
               </span>
             </div>
-            <p class="terminal-copy">{{ heroSummary }}</p>
-          </div>
+            <p class="terminal-copy score-summary">{{ heroSummary }}</p>
 
-          <div class="driver-panel">
-            <p class="terminal-kicker">{{ t('dash.primaryDriver') }}</p>
-            <p class="driver-name">{{ primaryDriver }}</p>
-            <p class="terminal-copy mt-2">{{ t('dash.methodologyShort') }}</p>
-          </div>
+            <div class="regime-stack">
+              <div class="regime-line">
+                <span>{{ t('regime.damage') }}</span>
+                <strong>{{ currentDamageLabel }}</strong>
+              </div>
+              <div class="regime-line">
+                <span>{{ t('regime.pressure') }}</span>
+                <strong :style="{ color: getAlertColor(riskStore.latest.alert_level) }">{{ t('alert.' + riskStore.latest.alert_level) }}</strong>
+              </div>
+              <div class="regime-line">
+                <span>{{ t('regime.hidden') }}</span>
+                <strong :style="{ color: hiddenRiskColor }">{{ hiddenRiskSummary.status }}</strong>
+              </div>
+            </div>
+
+            <div class="score-actions">
+              <router-link to="/analysis">{{ t('dash.openAnalysis') }}</router-link>
+              <router-link to="/methodology">{{ t('nav.methodology') }}</router-link>
+            </div>
+          </aside>
+
+          <main class="decision-console">
+            <div class="console-head">
+              <div>
+                <p class="terminal-kicker">{{ t('dash.commandBrief') }}</p>
+                <h2 class="terminal-subtitle">{{ t('dash.dailyWorkbench') }}</h2>
+              </div>
+              <router-link to="/analysis" class="receipt-link">{{ t('analysis.unlockChain') }}</router-link>
+            </div>
+
+            <div class="judgment-band">
+              <span class="judgment-status" :style="{ color: getAlertColor(riskStore.latest.alert_level) }">
+                {{ t('alert.' + riskStore.latest.alert_level) }}
+              </span>
+              <p>{{ heroSummary }}</p>
+            </div>
+
+            <div class="evidence-grid">
+              <div class="evidence-cell">
+                <span>{{ t('dash.weightedBase') }}</span>
+                <strong>{{ scoreReceipt.weightedBase.toFixed(1) }}</strong>
+              </div>
+              <div class="evidence-cell">
+                <span>{{ t('dash.coherence') }}</span>
+                <strong>{{ scoreReceipt.coherence.toFixed(2) }}x</strong>
+              </div>
+              <div class="evidence-cell">
+                <span>{{ t('dash.hiddenRiskBoost') }}</span>
+                <strong :style="{ color: hiddenRiskColor }">+{{ scoreReceipt.hiddenBoost.toFixed(1) }}</strong>
+              </div>
+              <div class="evidence-cell">
+                <span>{{ t('dash.tradeBoost') }}</span>
+                <strong>+{{ scoreReceipt.tradeBoost.toFixed(1) }}</strong>
+              </div>
+              <div class="evidence-cell">
+                <span>{{ t('dash.marketBreadth') }}</span>
+                <strong>{{ anomalyCount }}</strong>
+              </div>
+              <div class="evidence-cell">
+                <span>{{ t('dash.transmissionState') }}</span>
+                <strong>{{ activeChainCount }}</strong>
+              </div>
+            </div>
+
+            <div class="console-split">
+              <section class="driver-board">
+                <div class="board-head">
+                  <p class="terminal-kicker">{{ t('dash.topEvidence') }}</p>
+                  <span>{{ t('dash.primaryDriver') }}: {{ primaryDriver }}</span>
+                </div>
+                <div class="driver-table">
+                  <div class="driver-table-row driver-table-head">
+                    <span>{{ t('analysis.indicator') }}</span>
+                    <span>{{ t('analysis.current') }}</span>
+                    <span>{{ t('analysis.zscore') }}</span>
+                    <span>{{ t('analysis.absScore') }}</span>
+                  </div>
+                  <div v-for="driver in topDrivers" :key="driver.id" class="driver-table-row">
+                    <span class="driver-label">{{ driver.name }}</span>
+                    <span>{{ driver.current }}</span>
+                    <span :style="{ color: Math.abs(driver.zscore) >= 2 ? COLORS.orange : 'var(--muted)' }">{{ driver.zscore.toFixed(2) }}</span>
+                    <span>{{ driver.absScore }}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="risk-queue">
+                <div class="queue-item queue-next">
+                  <span>{{ t('dash.nextWatch') }}</span>
+                  <p>{{ nextWatchText }}</p>
+                </div>
+                <div class="queue-item">
+                  <span>{{ t('analysis.hiddenRisk') }}</span>
+                  <strong :style="{ color: hiddenRiskColor }">{{ hiddenRiskSummary.status }}</strong>
+                  <p>{{ hiddenRiskSummary.detail }}</p>
+                </div>
+                <div class="queue-item">
+                  <span>{{ t('dash.transmissionState') }}</span>
+                  <strong>{{ activeChainCount }} {{ t('analysis.chainActive') }}</strong>
+                  <p>{{ topChain }}</p>
+                </div>
+              </section>
+            </div>
+          </main>
+
+          <aside class="command-right-rail">
+            <div v-if="riskStore.history.length > 1" class="trend-panel">
+              <div class="section-head">
+                <div>
+                  <p class="terminal-kicker">{{ t('dash.trendWindow') }}</p>
+                  <h2 class="terminal-subtitle">{{ t('analysis.trend') }}</h2>
+                </div>
+                <span class="text-[10px] text-[var(--muted)] font-mono">30D</span>
+              </div>
+              <v-chart :option="trendChartOption" style="height: 230px" autoresize />
+            </div>
+            <RiskWatch compact class="mt-4" />
+          </aside>
         </div>
 
-        <div class="score-receipt">
+        <div class="score-receipt compact-receipt">
           <div class="receipt-head">
             <div>
               <p class="terminal-kicker">{{ t('dash.scoreReceipt') }}</p>
@@ -87,80 +206,9 @@
           </div>
         </div>
 
-        <CrisisRegimePanel compact class="mt-4" />
-        <TradeSpilloverPanel compact class="mt-4" />
-      </section>
-
-      <section class="terminal-section daily-workbench fade-in fade-in-delay-1">
-        <div class="workbench-grid">
-          <div class="daily-judgment-panel">
-            <p class="terminal-kicker">{{ t('analysis.aiTitle') }}</p>
-            <div class="workbench-head">
-              <div>
-                <h2 class="terminal-subtitle">{{ t('dash.dailyWorkbench') }}</h2>
-                <p class="terminal-copy mt-1">{{ heroSummary }}</p>
-              </div>
-              <router-link to="/analysis" class="receipt-link">{{ t('analysis.unlockChain') }}</router-link>
-            </div>
-
-            <div class="decision-strip">
-              <div class="decision-tile">
-                <span>{{ t('regime.damage') }}</span>
-                <strong>{{ currentDamageLabel }}</strong>
-              </div>
-              <div class="decision-tile">
-                <span>{{ t('regime.pressure') }}</span>
-                <strong :style="{ color: getAlertColor(riskStore.latest.alert_level) }">{{ t('alert.' + riskStore.latest.alert_level) }}</strong>
-              </div>
-              <div class="decision-tile">
-                <span>{{ t('regime.hidden') }}</span>
-                <strong>+{{ scoreReceipt.hiddenBoost.toFixed(1) }}</strong>
-              </div>
-            </div>
-
-            <div class="watch-points">
-              <div class="watch-point">
-                <span>{{ t('dash.primaryDriver') }}</span>
-                <strong>{{ primaryDriver }}</strong>
-                <p>{{ primaryDriverDetail }}</p>
-              </div>
-              <div class="watch-point">
-                <span>{{ t('dash.marketBreadth') }}</span>
-                <strong>{{ anomalyCount }} {{ t('analysis.deviating') }}</strong>
-                <p>{{ topAnomalies || '—' }}</p>
-              </div>
-              <div class="watch-point">
-                <span>{{ t('dash.transmissionState') }}</span>
-                <strong>{{ activeChainCount }} {{ t('analysis.chainActive') }}</strong>
-                <p>{{ topChain }}</p>
-              </div>
-            </div>
-
-            <div class="workbench-bottom">
-              <div>
-                <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('dash.nextWatch') }}</p>
-                <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ nextWatchText }}</p>
-              </div>
-              <div class="mini-metrics">
-                <span>{{ t('dash.coherence') }} {{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span>
-                <span>{{ t('dash.tradeBoost') }} +{{ scoreReceipt.tradeBoost.toFixed(1) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="trend-watch-column">
-            <div v-if="riskStore.history.length > 1" class="trend-panel">
-              <div class="section-head">
-                <div>
-                  <p class="terminal-kicker">Historical Trend</p>
-                  <h2 class="terminal-subtitle">{{ t('analysis.trend') }}</h2>
-                </div>
-                <span class="text-[10px] text-[var(--muted)] font-mono">30D</span>
-              </div>
-              <v-chart :option="trendChartOption" style="height: 260px" autoresize />
-            </div>
-            <RiskWatch compact class="mt-4" />
-          </div>
+        <div class="model-lens-grid">
+          <CrisisRegimePanel compact />
+          <TradeSpilloverPanel compact />
         </div>
       </section>
 
@@ -331,6 +379,23 @@ const primaryDriverDetail = computed(() => {
   return `Z ${z.toFixed(2)} · ${t('analysis.absScore')} ${absText}`
 })
 
+const topDrivers = computed(() => {
+  const nc = riskStore.latest?.node_contributions
+  if (!nc) return []
+  return Object.entries(nc)
+    .map(([id, info]: [string, any]) => ({
+      id,
+      name: tx(info.display_name || id),
+      current: formatCurrentValue(info.current_value),
+      zscore: Number(info.zscore || 0),
+      absScore: info.abs_score === null || info.abs_score === undefined
+        ? '-'
+        : (Number(info.abs_score) * 100).toFixed(0),
+    }))
+    .sort((a, b) => Math.abs(b.zscore) - Math.abs(a.zscore))
+    .slice(0, 5)
+})
+
 const currentDamageLabel = computed(() => {
   const score = riskStore.latest?.gfcri_value || 0
   if (score >= 75) return 'D4+'
@@ -341,10 +406,35 @@ const currentDamageLabel = computed(() => {
 })
 
 const nextWatchText = computed(() => {
-  if (scoreReceipt.hiddenBoost >= 15) return t('dash.watchHidden')
+  if (scoreReceipt.value.hiddenBoost >= 15) return t('dash.watchHidden')
   if (activeChainCount.value >= 4) return t('dash.watchTransmission')
   if (anomalyCount.value >= 6) return t('dash.watchAnomalies')
   return t('dash.watchNormal')
+})
+
+const hiddenRiskSummary = computed(() => {
+  const risk = riskStore.latest
+  const divergence = risk?.divergence || {}
+  const status = String(divergence.status || hiddenStatusFromBoost(scoreReceipt.value.hiddenBoost))
+  const rawDetails = Array.isArray(divergence.details) ? divergence.details : []
+  const first = rawDetails[0]
+  const detail = first
+    ? hiddenDetailText(first)
+    : scoreReceipt.value.hiddenBoost > 0
+      ? t('dash.hiddenRiskDetected', { boost: scoreReceipt.value.hiddenBoost.toFixed(1) })
+      : t('analysis.hiddenNone')
+  return {
+    status: hiddenRiskStatusLabel(status),
+    detail,
+  }
+})
+
+const hiddenRiskColor = computed(() => {
+  const status = String(riskStore.latest?.divergence?.status || hiddenStatusFromBoost(scoreReceipt.value.hiddenBoost))
+  if (status === 'critical') return COLORS.red
+  if (status === 'significant') return COLORS.orange
+  if (status === 'mild') return COLORS.yellow
+  return COLORS.green
 })
 
 const SUB_INDEX_WEIGHTS: Record<string, number> = {
@@ -380,6 +470,14 @@ const heroSummary = computed(() => {
   if (ac >= 5) return t('dash.summary.chains', { ac })
   if (an > 5) return t('dash.summary.anomaly', { an })
   return t('dash.summary.normal')
+})
+
+const trendDelta = computed(() => {
+  const data = riskStore.history
+  if (data.length < 2) return 0
+  const latest = Number(riskStore.latest?.gfcri_value ?? data[0]?.gfcri_value ?? 0)
+  const oldest = Number(data[data.length - 1]?.gfcri_value ?? latest)
+  return latest - oldest
 })
 
 const trendChartOption = computed(() => {
@@ -420,6 +518,40 @@ const trendChartOption = computed(() => {
   }
 })
 
+function formatCurrentValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '-'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return tx(value)
+  const abs = Math.abs(n)
+  if (abs >= 1000) return Math.round(n).toLocaleString()
+  if (abs >= 100) return n.toFixed(1)
+  if (abs >= 10) return n.toFixed(2)
+  return n.toFixed(3)
+}
+
+function hiddenStatusFromBoost(boost: number): string {
+  if (boost >= 15) return 'critical'
+  if (boost >= 8) return 'significant'
+  if (boost > 0) return 'mild'
+  return 'none'
+}
+
+function hiddenRiskStatusLabel(status: string): string {
+  if (status === 'critical') return t('dash.hiddenCritical')
+  if (status === 'significant') return t('dash.hiddenSignificant')
+  if (status === 'mild') return t('dash.hiddenMild')
+  return t('dash.hiddenNoneStatus')
+}
+
+function hiddenDetailText(detail: any): string {
+  if (!detail) return t('analysis.hiddenNone')
+  if (detail.detail) return tx(detail.detail)
+  if (detail.type === 'policy_mask') return t('dash.hiddenPolicyMask')
+  if (detail.type === 'zscore_desensitized') return t('dash.hiddenDesensitized')
+  if (detail.type === 'surface_calm_deep_stress') return t('dash.hiddenSurfaceCalm')
+  return tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+}
+
 </script>
 
 <style scoped>
@@ -429,123 +561,11 @@ const trendChartOption = computed(() => {
   isolation: isolate;
 }
 
-.dashboard-brief {
-  margin-bottom: 24px;
-}
-
-.daily-workbench {
-  margin-bottom: 24px;
-}
-
-.workbench-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
-  gap: 18px;
-}
-
-.daily-judgment-panel,
-.trend-panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 18px;
-}
-
-.workbench-head {
-  align-items: start;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.trend-watch-column {
-  min-width: 0;
-}
-
 .terminal-subtitle {
   color: var(--text);
   font-size: 16px;
   font-weight: 400;
   margin-top: 4px;
-}
-
-.decision-strip {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 18px;
-}
-
-.decision-tile {
-  background: rgba(255,255,255,0.016);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.decision-tile span,
-.watch-point span {
-  color: var(--muted);
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.decision-tile strong {
-  color: var(--text);
-  display: block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  margin-top: 5px;
-}
-
-.watch-points {
-  display: grid;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.watch-point {
-  border-left: 2px solid rgba(129, 140, 248, 0.35);
-  padding-left: 12px;
-}
-
-.watch-point strong {
-  color: var(--text);
-  display: block;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-.watch-point p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
-  margin-top: 3px;
-}
-
-.workbench-bottom {
-  align-items: end;
-  border-top: 1px solid var(--border);
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  margin-top: 18px;
-  padding-top: 16px;
-}
-
-.mini-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mini-metrics span {
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-align: right;
 }
 
 .section-head {
@@ -556,32 +576,79 @@ const trendChartOption = computed(() => {
   margin-bottom: 10px;
 }
 
-.brief-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
-  gap: 24px;
-  align-items: start;
+.command-center {
+  margin-bottom: 28px;
+  padding: 22px;
 }
 
-.brief-meta {
+.command-topbar {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.9fr);
+  gap: 24px;
+}
+
+.command-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.brief-grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1fr);
-  gap: 16px;
-  margin-top: 22px;
+.command-meta-cell {
+  background: rgba(255,255,255,0.016);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 70px;
+  padding: 12px;
 }
 
-.risk-score-panel,
-.driver-panel {
+.command-meta-cell span {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-meta-cell strong {
+  color: var(--text);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+.command-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.78fr) minmax(440px, 1.34fr) minmax(310px, 0.9fr);
+  gap: 16px;
+  margin-top: 22px;
+  align-items: stretch;
+}
+
+.score-console,
+.decision-console,
+.trend-panel {
   background: rgba(255,255,255,0.018);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
+}
+
+.score-console {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.score-console-head,
+.console-head,
+.board-head {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
 }
 
 .risk-score-row {
@@ -598,6 +665,23 @@ const trendChartOption = computed(() => {
   line-height: 1;
 }
 
+.score-delta {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.score-delta-up {
+  color: var(--orange);
+}
+
+.score-delta-down {
+  color: var(--green);
+}
+
 .risk-alert {
   border: 1px solid;
   border-radius: 999px;
@@ -608,18 +692,227 @@ const trendChartOption = computed(() => {
   text-transform: uppercase;
 }
 
-.driver-name {
+.score-summary {
+  min-height: 64px;
+}
+
+.regime-stack {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+  overflow: hidden;
+}
+
+.regime-line {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+}
+
+.regime-line:last-child {
+  border-bottom: 0;
+}
+
+.regime-line span,
+.evidence-cell span,
+.queue-item span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.regime-line strong,
+.evidence-cell strong,
+.queue-item strong {
   color: var(--text);
-  font-size: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
   font-weight: 500;
+  text-align: right;
+}
+
+.score-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.score-actions a {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.score-actions a:hover,
+.receipt-link:hover {
+  border-color: rgba(129,140,248,0.45);
+  color: var(--text);
+}
+
+.judgment-band {
+  background: linear-gradient(90deg, rgba(129,140,248,0.10), rgba(255,255,255,0.014));
+  border: 1px solid rgba(129,140,248,0.18);
+  border-radius: 10px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.judgment-status {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.judgment-band p {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  margin-top: 6px;
+}
+
+.evidence-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.evidence-cell {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 72px;
+  padding: 10px;
+}
+
+.evidence-cell strong {
+  display: block;
+  font-size: 18px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.console-split {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(230px, 0.8fr);
+  margin-top: 14px;
+}
+
+.driver-board,
+.risk-queue {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.board-head span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.driver-table {
+  display: grid;
+  gap: 0;
   margin-top: 10px;
+}
+
+.driver-table-row {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1.35fr) 0.72fr 0.62fr 0.62fr;
+  min-height: 34px;
+}
+
+.driver-table-row span {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.driver-table-head {
+  border-top: 0;
+}
+
+.driver-table-head span {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.driver-label {
+  color: var(--text) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.risk-queue {
+  display: grid;
+  gap: 10px;
+}
+
+.queue-item {
+  border-left: 2px solid rgba(129,140,248,0.34);
+  padding-left: 10px;
+}
+
+.queue-next {
+  border-left-color: rgba(249,115,22,0.58);
+}
+
+.queue-item strong {
+  display: block;
+  margin-top: 4px;
+  text-align: left;
+}
+
+.queue-item p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.52;
+  margin-top: 4px;
+}
+
+.command-right-rail {
+  min-width: 0;
+}
+
+.compact-receipt {
+  margin-top: 16px;
+}
+
+.model-lens-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 16px;
 }
 
 .score-receipt {
   background: rgba(255,255,255,0.014);
   border: 1px solid var(--border);
   border-radius: 10px;
-  margin-top: 18px;
   padding: 16px;
 }
 
@@ -919,35 +1212,59 @@ const trendChartOption = computed(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@media (max-width: 1280px) {
+  .command-grid {
+    grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .command-right-rail {
+    grid-column: 1 / -1;
+  }
+
+  .command-right-rail {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+  }
+
+  .command-right-rail .mt-4 {
+    margin-top: 0;
+  }
+}
+
 @media (max-width: 960px) {
-  .brief-header,
-  .brief-grid,
-  .workbench-grid {
+  .command-topbar,
+  .command-grid,
+  .console-split,
+  .command-right-rail,
+  .model-lens-grid {
     grid-template-columns: 1fr;
   }
 
-  .brief-meta,
+  .command-meta,
   .cards-grid,
   .receipt-grid,
-  .decision-strip,
-  .workbench-bottom {
+  .evidence-grid {
     grid-template-columns: 1fr;
   }
 
-  .workbench-head {
+  .command-center {
+    padding: 16px;
+  }
+
+  .score-console-head,
+  .console-head,
+  .board-head,
+  .receipt-head {
     flex-direction: column;
   }
 
-  .mini-metrics span {
-    text-align: left;
+  .score-actions {
+    grid-template-columns: 1fr;
   }
 
   .receipt-op {
     display: none;
-  }
-
-  .receipt-head {
-    flex-direction: column;
   }
 }
 </style>
