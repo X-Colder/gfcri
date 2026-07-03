@@ -20,6 +20,80 @@
                 </div>
               </div>
             </div>
+
+            <div class="judgment-workbench">
+              <div class="explain-grid">
+                <div v-for="card in judgmentExplainCards" :key="card.title" class="explain-card">
+                  <div class="explain-card-head">
+                    <p>{{ card.kicker }}</p>
+                    <strong>{{ card.value }}</strong>
+                  </div>
+                  <h3>{{ card.title }}</h3>
+                  <p>{{ card.body }}</p>
+                  <button type="button" @click="scrollToSection(card.target)">
+                    {{ card.action }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="action-workbench">
+                <div class="action-panel">
+                  <div class="action-head">
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)]">{{ t('analysis.actionPanel') }}</p>
+                      <h3>{{ t('analysis.watchlistTitle') }}</h3>
+                    </div>
+                    <span>{{ watchedIndicatorIds.length }} {{ t('analysis.watched') }}</span>
+                  </div>
+                  <p class="terminal-copy mt-2">{{ t('analysis.watchlistDesc') }}</p>
+                  <div class="watch-chip-grid">
+                    <button v-for="item in watchActionItems" :key="item.id" type="button"
+                            class="watch-chip"
+                            :class="{ 'watch-chip-active': isIndicatorWatched(item.id) }"
+                            @click="toggleIndicatorWatch(item.id)">
+                      <span>{{ item.name }}</span>
+                      <small>{{ item.reason }}</small>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="action-panel">
+                  <div class="action-head">
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)]">{{ t('analysis.fastAccess') }}</p>
+                      <h3>{{ selectedWatchItem?.name || t('analysis.selectIndicator') }}</h3>
+                    </div>
+                    <button type="button" class="plain-link" @click="scrollToSection('node-contribution')">
+                      {{ t('analysis.openDataDetail') }}
+                    </button>
+                  </div>
+                  <div v-if="selectedWatchItem" class="indicator-detail">
+                    <div class="indicator-metrics">
+                      <div>
+                        <span>{{ t('analysis.current') }}</span>
+                        <strong>{{ selectedWatchItem.currentDisplay }}</strong>
+                      </div>
+                      <div>
+                        <span>{{ t('analysis.zscore') }}</span>
+                        <strong>{{ selectedWatchItem.zscoreDisplay }}</strong>
+                      </div>
+                      <div>
+                        <span>{{ t('analysis.absScore') }}</span>
+                        <strong>{{ selectedWatchItem.absScoreDisplay }}</strong>
+                      </div>
+                    </div>
+                    <v-chart v-if="selectedWatchTrend.length > 1" :option="selectedWatchTrendOption" style="height: 180px" autoresize />
+                    <p v-else class="terminal-copy mt-3">{{ t('analysis.noIndicatorTrend') }}</p>
+                    <div class="related-chain-list" v-if="selectedWatchRelatedChains.length">
+                      <button v-for="chain in selectedWatchRelatedChains" :key="chain.id" type="button" @click="openChainDetail(chain.id)">
+                        {{ chain.name }} · {{ t('analysis.stress') }} {{ chain.stress.toFixed(0) }}
+                      </button>
+                    </div>
+                  </div>
+                  <p v-else class="terminal-copy mt-3">{{ t('analysis.selectIndicatorHint') }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -52,7 +126,7 @@
 
         <CausalDiscoveryPanel class="mb-5" />
 
-        <div class="mb-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
+        <div id="hidden-risk-section" class="mb-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
           <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div class="max-w-3xl">
               <div class="flex items-center gap-3">
@@ -98,7 +172,7 @@
         <TradeSpilloverPanel class="mb-5" />
 
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover min-w-0">
+          <div id="sub-index-breakdown" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 lg:p-5 card-hover min-w-0">
             <div class="flex items-center justify-between mb-3">
               <p class="text-sm text-white font-medium">{{ t('analysis.subIndexBreakdown') }}</p>
               <span class="text-[10px] text-[var(--muted)] font-mono">{{ t('dash.coherence') }} {{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span>
@@ -106,7 +180,7 @@
             <v-chart :option="subIndexBreakdownOption" style="height: 320px" autoresize />
           </div>
 
-          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover min-w-0">
+          <div id="node-contribution" class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover min-w-0">
             <div class="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
               <p class="text-sm text-white font-medium">{{ t('analysis.nodeContribution') }}</p>
               <span class="text-[10px] text-[var(--muted)] font-mono">Top {{ topNodeContributions.length }}</span>
@@ -134,7 +208,7 @@
           </div>
         </div>
 
-        <div class="mt-5 bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover">
+        <div id="chain-pressure" class="mt-5 bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover">
           <div class="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <p class="text-sm text-white font-medium">{{ t('analysis.chainPressure') }}</p>
             <span class="text-[10px] text-[var(--muted)] font-mono">{{ activeChains.length }} {{ t('analysis.chainActive') }}</span>
@@ -396,7 +470,7 @@
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
-import { BarChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import MarkdownIt from 'markdown-it'
@@ -413,7 +487,7 @@ import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import CausalDiscoveryPanel from '@/components/common/CausalDiscoveryPanel.vue'
 import client from '@/api/client'
 
-use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
+use([BarChart, LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const md = new MarkdownIt()
 const riskStore = useRiskStore()
@@ -427,9 +501,12 @@ const expandedChainId = ref('')
 const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
 const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
+const watchedIndicatorIds = ref<string[]>(JSON.parse(localStorage.getItem('gfcri_watched_indicators') || '[]'))
+const selectedWatchIndicatorId = ref('')
 
 onMounted(async () => {
   riskStore.loadLatest()
+  riskStore.loadHistory(30)
   reportStore.loadLatest()
   try {
     const [wRes, zRes] = await Promise.allSettled([
@@ -716,6 +793,155 @@ const currentNextWatch = computed(() => {
     : 'Continue monitoring whether trend, transmission channels, and hidden risk deteriorate for several consecutive observations.'
 })
 
+const judgmentExplainCards = computed(() => {
+  const risk = riskStore.latest
+  const coherence = Number(risk?.coherence_multiplier || 1)
+  const topSub = subIndexRows.value.slice(0, 3)
+  const driver = topNodeContributions.value[0]
+  const driverName = driver?.name || (lang.value === 'zh' ? '暂无' : 'None')
+  const driverValue = driver ? `${driverName} · ${t('analysis.absScore')} ${driver.absScoreDisplay}` : '-'
+  const subText = topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(lang.value === 'zh' ? ' / ' : ' / ')
+  if (lang.value === 'zh') {
+    return [
+      {
+        kicker: 'Coherence',
+        title: '信号一致性是什么？',
+        value: `${coherence.toFixed(2)}x`,
+        body: `它衡量多个风险通道是否同时指向同一方向。1.00x 表示没有放大；${coherence.toFixed(2)}x 表示基础压力被同步性放大约 ${((coherence - 1) * 100).toFixed(0)}%。信号包括子指数压力、节点异常、绝对压力和传导链激活。`,
+        action: '查看传导链',
+        target: 'chain-pressure',
+      },
+      {
+        kicker: 'Sub-index',
+        title: '这些分数怎么读？',
+        value: subText || '-',
+        body: '子指数是 0-100 的压力读数，不是涨跌预测。25 附近是关注，50 以上说明该领域压力明显，75 以上接近历史危机压力区。它回答“压力集中在哪个市场/宏观领域”。',
+        action: '查看子指数构成',
+        target: 'sub-index-breakdown',
+      },
+      {
+        kicker: 'Driver',
+        title: '首要驱动怎么理解？',
+        value: driverValue,
+        body: 'Z-score 衡量近期变化相对历史波动是否异常；绝对压力衡量当前水平是否处在危险区。Gold Futures 指黄金期货，Z=-0.17 说明近期变化不异常，但绝对压力 100 表示价格水平本身已经处于极端区间。',
+        action: '查看指标明细',
+        target: 'node-contribution',
+      },
+    ]
+  }
+  return [
+    {
+      kicker: 'Coherence',
+      title: 'What does signal coherence mean?',
+      value: `${coherence.toFixed(2)}x`,
+      body: `It measures whether multiple risk channels point in the same direction. 1.00x means no amplification; ${coherence.toFixed(2)}x means base pressure is amplified by about ${((coherence - 1) * 100).toFixed(0)}%. Signals include sub-index stress, node anomalies, absolute stress, and active transmission chains.`,
+      action: 'Open chains',
+      target: 'chain-pressure',
+    },
+    {
+      kicker: 'Sub-index',
+      title: 'How to read these scores?',
+      value: subText || '-',
+      body: 'Sub-index scores are 0-100 pressure readings, not directional forecasts. Around 25 means watch, above 50 means material pressure, and above 75 is close to historical crisis stress. They answer where pressure is concentrated.',
+      action: 'Open breakdown',
+      target: 'sub-index-breakdown',
+    },
+    {
+      kicker: 'Driver',
+      title: 'How to read the top driver?',
+      value: driverValue,
+      body: 'Z-score measures recent change versus historical volatility. Absolute stress measures whether the current level itself is dangerous. Gold Futures means gold futures; Z=-0.17 is not a large recent move, but absolute stress 100 means the level is already extreme.',
+      action: 'Open indicators',
+      target: 'node-contribution',
+    },
+  ]
+})
+
+const watchActionItems = computed(() => {
+  const ids = new Set<string>()
+  const driver = topNodeContributions.value[0]
+  if (driver?.id) ids.add(driver.id)
+  for (const id of extractHiddenRiskIndicatorIds()) ids.add(id)
+  for (const row of subIndexRows.value.slice(0, 4)) {
+    const top = (riskStore.latest?.sub_index_details as any)?.[row.id]?.top_driver
+    if (top) ids.add(top)
+  }
+  for (const chain of activeChains.value.slice(0, 2)) {
+    for (const id of chain.path || []) ids.add(id)
+  }
+  for (const id of ['gold', 'jpy_usd', 'sox', 'spx', 'hyg', 'kre', 'vnq', 'dxy', 'krw_usd']) ids.add(id)
+
+  return Array.from(ids)
+    .map(id => indicatorWatchItem(id))
+    .filter(Boolean)
+    .slice(0, 10) as Array<ReturnType<typeof indicatorWatchItem> & { id: string }>
+})
+
+const selectedWatchItem = computed(() => {
+  const id = selectedWatchIndicatorId.value || watchedIndicatorIds.value[0] || watchActionItems.value[0]?.id || ''
+  return id ? indicatorWatchItem(id) : null
+})
+
+const selectedWatchTrend = computed(() => {
+  const id = selectedWatchItem.value?.id
+  if (!id) return []
+  return [...riskStore.history].reverse()
+    .map((row: any) => {
+      const info = row.node_contributions?.[id]
+      if (!info) return null
+      const abs = info.abs_score === null || info.abs_score === undefined ? 0 : Number(info.abs_score)
+      const anomaly = Number(info.anomaly_score || 0)
+      return {
+        date: row.index_date,
+        pressure: Math.max(abs, anomaly) * 100,
+        zscore: Number(info.zscore || 0),
+      }
+    })
+    .filter(Boolean) as Array<{ date: string; pressure: number; zscore: number }>
+})
+
+const selectedWatchTrendOption = computed(() => ({
+  backgroundColor: 'transparent',
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: '#111214',
+    borderColor: 'rgba(255,255,255,0.08)',
+    textStyle: { color: '#eff1f5', fontSize: 11 },
+  },
+  grid: { left: 36, right: 14, top: 16, bottom: 24 },
+  xAxis: {
+    type: 'category',
+    data: selectedWatchTrend.value.map(p => p.date),
+    axisLabel: { color: '#8a93a3', fontSize: 9 },
+    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+    axisTick: { show: false },
+  },
+  yAxis: {
+    type: 'value',
+    min: 0,
+    max: 100,
+    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+    axisLabel: { color: '#8a93a3', fontSize: 9 },
+  },
+  series: [{
+    type: 'line',
+    data: selectedWatchTrend.value.map(p => Number(p.pressure.toFixed(1))),
+    smooth: true,
+    showSymbol: false,
+    lineStyle: { color: COLORS.accent, width: 2 },
+    areaStyle: { color: COLORS.accent + '12' },
+  }],
+}))
+
+const selectedWatchRelatedChains = computed(() => {
+  const id = selectedWatchItem.value?.id
+  if (!id) return []
+  return chainPressureRows.value.filter((chain: any) => {
+    const raw = sortedChains.value.find((c: any) => c.id === chain.id)
+    return (raw?.path || []).includes(id)
+  })
+})
+
 const anomalousNodes = computed(() => {
   const nc = riskStore.latest?.node_contributions
   if (!nc) return []
@@ -849,6 +1075,79 @@ const subIndexRows = computed(() => {
 function currentSubIndexScore(key: string): number {
   const details = riskStore.latest?.sub_index_details || {}
   return Number((details as any)[key]?.score || 0)
+}
+
+function extractHiddenRiskIndicatorIds(): string[] {
+  const details = riskStore.latest?.divergence?.details
+  if (!Array.isArray(details)) return []
+  const ids = new Set<string>()
+  const add = (id: any) => {
+    if (typeof id === 'string' && id.trim()) ids.add(id)
+  }
+  for (const detail of details) {
+    ;(detail.desensitized_indicators || []).forEach(add)
+    ;(detail.stressed_indicators || []).forEach(add)
+    ;(detail.calm_indicators || []).forEach(add)
+    ;(detail.indicators || []).forEach((x: any) => add(x?.id || x))
+    ;(detail.unhealed || []).forEach((x: any) => add(x?.id))
+    ;(detail.healed || []).forEach((x: any) => add(x?.id))
+    ;(detail.leading_warnings || []).forEach((x: any) => add(x?.id))
+  }
+  return Array.from(ids)
+}
+
+function indicatorWatchItem(id: string) {
+  const info: any = (riskStore.latest?.node_contributions || {})[id] || {}
+  const zscore = Number(info.zscore || 0)
+  const absScore = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
+  return {
+    id,
+    name: tx(info.display_name || nodeNames[id] || id),
+    reason: indicatorReason(id),
+    currentDisplay: formatCurrentValue(info.current_value),
+    zscore,
+    zscoreDisplay: zscore.toFixed(2),
+    absScoreDisplay: absScore === null ? '-' : (absScore * 100).toFixed(0),
+  }
+}
+
+function indicatorReason(id: string): string {
+  const hiddenIds = new Set(extractHiddenRiskIndicatorIds())
+  const activeChain = activeChains.value.find((chain: any) => (chain.path || []).includes(id))
+  if (lang.value === 'zh') {
+    if (hiddenIds.has(id)) return '隐藏风险证据'
+    if (activeChain) return '活跃传导链节点'
+    if (id === topNodeContributions.value[0]?.id) return '首要驱动'
+    return '重点观察'
+  }
+  if (hiddenIds.has(id)) return 'Hidden-risk evidence'
+  if (activeChain) return 'Active-chain node'
+  if (id === topNodeContributions.value[0]?.id) return 'Top driver'
+  return 'Watch item'
+}
+
+function isIndicatorWatched(id: string): boolean {
+  return watchedIndicatorIds.value.includes(id)
+}
+
+function toggleIndicatorWatch(id: string) {
+  selectedWatchIndicatorId.value = id
+  if (isIndicatorWatched(id)) {
+    watchedIndicatorIds.value = watchedIndicatorIds.value.filter(x => x !== id)
+  } else {
+    watchedIndicatorIds.value = [...watchedIndicatorIds.value, id]
+  }
+  localStorage.setItem('gfcri_watched_indicators', JSON.stringify(watchedIndicatorIds.value))
+}
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id)
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function openChainDetail(id: string) {
+  expandedChainId.value = id
+  scrollToSection('chain-pressure')
 }
 
 const subIndexBreakdownOption = computed(() => ({
@@ -993,6 +1292,169 @@ function scoreColor(score: number): string {
 </script>
 
 <style scoped>
+.judgment-workbench {
+  border-top: 1px solid var(--border);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.explain-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.explain-card,
+.action-panel {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.explain-card-head,
+.action-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.explain-card-head p,
+.indicator-metrics span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.explain-card-head strong,
+.action-head span {
+  color: var(--accent);
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-align: right;
+}
+
+.explain-card h3,
+.action-head h3 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+
+.explain-card > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 8px;
+}
+
+.explain-card button,
+.plain-link {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  margin-top: 12px;
+  padding: 6px 9px;
+}
+
+.explain-card button:hover,
+.plain-link:hover,
+.related-chain-list button:hover {
+  border-color: rgba(129,140,248,0.45);
+  color: var(--text);
+}
+
+.action-workbench {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+  margin-top: 12px;
+}
+
+.watch-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.watch-chip {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  display: grid;
+  gap: 3px;
+  max-width: 210px;
+  min-height: 54px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.watch-chip span {
+  color: var(--text);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-chip small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.watch-chip-active {
+  background: rgba(129,140,248,0.10);
+  border-color: rgba(129,140,248,0.48);
+}
+
+.indicator-detail {
+  margin-top: 12px;
+}
+
+.indicator-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.indicator-metrics div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px;
+}
+
+.indicator-metrics strong {
+  color: var(--text);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+.related-chain-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.related-chain-list button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
 .judgment-markdown :deep(h1),
 .judgment-markdown :deep(h2),
 .judgment-markdown :deep(h3) {
@@ -1011,5 +1473,18 @@ function scoreColor(score: number): string {
 .judgment-markdown :deep(ul),
 .judgment-markdown :deep(ol) {
   padding-left: 1.2em;
+}
+
+@media (max-width: 1180px) {
+  .explain-grid,
+  .action-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .indicator-metrics {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
