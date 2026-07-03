@@ -1,12 +1,12 @@
 <template>
   <div>
-    <LoadingSpinner v-if="riskStore.loading || reportStore.loading" />
+    <LoadingSpinner v-if="riskStore.loading && !riskStore.latest" />
 
     <template v-else-if="riskStore.latest">
 
       <!-- Section 1: Judgment -->
       <div class="mb-12 fade-in">
-        <div v-if="reportStore.latest?.llm_narrative" class="min-w-0">
+        <div v-if="riskStore.latest" class="min-w-0">
           <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">AI Analysis</p>
           <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 lg:p-7 card-hover">
@@ -427,20 +427,17 @@ const expandedChainId = ref('')
 const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
 const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
-const enNarrative = ref('')
 
 onMounted(async () => {
   riskStore.loadLatest()
   reportStore.loadLatest()
   try {
-    const [wRes, zRes, enRes] = await Promise.allSettled([
+    const [wRes, zRes] = await Promise.allSettled([
       client.get('/social/wechat/latest'),
       client.get('/social/zsxq/latest'),
-      client.get('/intraday/narrative-en'),
     ])
     if (wRes.status === 'fulfilled') socialContent.value.wechat = wRes.value.data?.content || ''
     if (zRes.status === 'fulfilled') socialContent.value.zsxq = zRes.value.data?.content || ''
-    if (enRes.status === 'fulfilled') enNarrative.value = enRes.value.data?.content || ''
   } catch {}
 })
 
@@ -471,16 +468,12 @@ const nodeNames: Record<string, string> = {
 }
 
 const renderedNarrative = computed(() => {
-  const narr = lang.value === 'en'
-    ? englishJudgmentMarkdown.value
-    : reportStore.latest?.llm_narrative
+  const narr = currentJudgmentMarkdown.value
   return narr ? md.render(narr) : ''
 })
 
 const truncatedNarrative = computed(() => {
-  const narr = lang.value === 'en'
-    ? englishJudgmentMarkdown.value
-    : reportStore.latest?.llm_narrative
+  const narr = currentJudgmentMarkdown.value
   if (!narr) return ''
   const paragraphs = narr.split('\n\n').filter((p: string) => p.trim())
   return md.render(paragraphs.slice(0, 2).join('\n\n'))
@@ -507,7 +500,7 @@ const englishFullReportMarkdown = computed(() => {
   lines.push('')
 
   lines.push(`## Key Judgment`)
-  lines.push(englishJudgmentMarkdown.value)
+  lines.push(currentJudgmentMarkdown.value)
   lines.push('')
 
   const subDetails = risk.sub_index_details || {}
@@ -579,36 +572,53 @@ const englishFullReportMarkdown = computed(() => {
   return lines.join('\n')
 })
 
-const englishJudgmentMarkdown = computed(() => {
-  const clean = enNarrative.value.trim()
-  if (clean && !containsCjk(clean)) return clean
-
+const currentJudgmentMarkdown = computed(() => {
   const risk = riskStore.latest
-  if (!risk) return 'No risk data is available.'
+  if (!risk) return lang.value === 'zh' ? '暂无风险数据。' : 'No risk data is available.'
 
   const active = activeChains.value.length
   const anomalies = anomalousNodes.value.length
-  const driver = topNodeContributions.value[0]?.name || 'no dominant single indicator'
-  const chain = activeChains.value[0] ? tx(activeChains.value[0].name) : 'no active transmission channel'
+  const driver = topNodeContributions.value[0]
+  const chain = activeChains.value[0]
   const hidden = hiddenRisk.value
+  const topSub = subIndexRows.value.slice(0, 3)
+  const topSubText = topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(lang.value === 'zh' ? '、' : ', ')
+  const chainName = chain ? tx(chain.name) : (lang.value === 'zh' ? '暂无活跃传导链' : 'no active transmission channel')
+  const chainStress = chain ? Number(chain.stress || 0).toFixed(0) : '-'
+  const driverName = driver?.name || (lang.value === 'zh' ? '暂无单一主导指标' : 'no dominant single indicator')
+  const driverDetail = driver
+    ? `${driverName} Z=${driver.zscore.toFixed(2)}, ${t('analysis.absScore')} ${driver.absScoreDisplay}`
+    : driverName
+  const realizedDamage = currentRealizedDamageLabel.value
+  const damageAnchor = currentDamageAnchor.value
+  const nextWatch = currentNextWatch.value
 
-  const lines = [
-    `GFCRI is at **${risk.gfcri_value.toFixed(1)} / 100** (${t(`alert.${risk.alert_level}`)}). The main driver is **${driver}**, with **${active}** active transmission ${active === 1 ? 'channel' : 'channels'} and **${anomalies}** anomalous ${anomalies === 1 ? 'indicator' : 'indicators'}.`,
-    '',
-    `The leading active channel is **${chain}**. Signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**, indicating ${active >= 2 ? 'stress is appearing across multiple channels' : 'risk remains relatively concentrated'}.`,
-  ]
-
-  if (hidden.status !== 'none' || hidden.undercurrent > 0) {
-    lines.push('')
-    lines.push(`Hidden-risk scan is **${hidden.statusLabel}**: deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the hidden-risk boost is **+${hidden.undercurrent.toFixed(1)}**.`)
+  if (lang.value === 'zh') {
+    return [
+      `**核心判断：当前不是“已经发生危机”的读数，而是“前瞻压力偏高、实际损害尚未充分兑现”的状态。** GFCRI 当前为 **${risk.gfcri_value.toFixed(1)} / 100（${t(`alert.${risk.alert_level}`)}）**，应主要解读为风险压力和传导概率上升，而不是事后损害等级已经升高。`,
+      '',
+      `**实际损害锚点：${realizedDamage}。** ${damageAnchor} 因此，当前更接近“压力累积/隐藏风险暴露前阶段”，不能简单等同于 2008 或 2020 式已经兑现的系统性损害。`,
+      '',
+      `**为什么仍需警惕：** 当前有 **${active}** 条活跃传导链、**${anomalies}** 个异常指标，信号一致性为 **${(risk.coherence_multiplier || 1).toFixed(2)}x**。主要压力来自 **${topSubText || '暂无显著子指数'}**；首要驱动为 **${driverDetail}**；首要传导链为 **${chainName}（压力 ${chainStress}）**。`,
+      '',
+      `**隐藏风险：${hidden.statusLabel}，暗流加分 +${hidden.undercurrent.toFixed(1)}。** 深层压力 ${hidden.deepAvgDisplay}，表层压力 ${hidden.surfaceAvgDisplay}，缺口 ${hidden.gapDisplay}。这说明部分风险可能被低波动、政策缓冲或市场拥挤交易掩盖，尤其需要关注日元、黄金、AI/半导体和信用/银行链条是否从“估值压力”转化为“现金流/融资损害”。`,
+      '',
+      `**下一步观察：** ${nextWatch}`,
+    ].join('\n')
   }
 
-  return lines.join('\n')
+  return [
+    `**Key judgment: this is not a reading that a crisis has already materialized; it is a high forward-pressure state with limited realized damage so far.** GFCRI is **${risk.gfcri_value.toFixed(1)} / 100 (${t(`alert.${risk.alert_level}`)})**, so it should be read as rising pressure and transmission probability, not as proof that realized damage has already reached crisis levels.`,
+    '',
+    `**Realized-damage anchor: ${realizedDamage}.** ${damageAnchor} The current state is closer to pressure accumulation before full damage realization than to a 2008- or 2020-style systemic damage event.`,
+    '',
+    `**Why it still matters:** there are **${active}** active transmission channels, **${anomalies}** anomalous indicators, and signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**. The main pressure pockets are **${topSubText || 'no dominant sub-index'}**. The top driver is **${driverDetail}** and the leading channel is **${chainName} (stress ${chainStress})**.`,
+    '',
+    `**Hidden risk: ${hidden.statusLabel}, undercurrent boost +${hidden.undercurrent.toFixed(1)}.** Deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the gap is ${hidden.gapDisplay}. This means some risk may be masked by low volatility, policy buffers, or crowded momentum trades. Watch JPY, gold, AI/semiconductors, and credit/banking channels for conversion from valuation pressure into cash-flow or funding damage.`,
+    '',
+    `**Next watch:** ${nextWatch}`,
+  ].join('\n')
 })
-
-function containsCjk(text: string): boolean {
-  return /[\u3400-\u9fff]/.test(text)
-}
 
 const sortedChains = computed(() => {
   const chains = riskStore.latest?.chain_details
@@ -658,6 +668,52 @@ const hiddenRiskColor = computed(() => {
   if (status === 'significant') return COLORS.orange
   if (status === 'mild') return COLORS.yellow
   return COLORS.green
+})
+
+const currentRealizedDamageLabel = computed(() => {
+  const risk = riskStore.latest
+  if (!risk) return lang.value === 'zh' ? '暂无数据' : 'No data'
+  const credit = currentSubIndexScore('SI_CREDIT')
+  const banking = currentSubIndexScore('SI_BANKING')
+  const stress = Math.max(credit, banking)
+  if (stress >= 60) return lang.value === 'zh' ? 'D2-D3 · 信用/金融损害已显著' : 'D2-D3 · material credit/financial damage'
+  if (risk.gfcri_value >= 75 && activeChains.value.length >= 5) return lang.value === 'zh' ? 'D2 · 广泛市场损害风险' : 'D2 · broad market-damage risk'
+  if (risk.gfcri_value >= 50 || hiddenRisk.value.undercurrent > 0) return lang.value === 'zh' ? 'D0-D1 · 市场压力，实体损害未充分兑现' : 'D0-D1 · market pressure, limited realized damage'
+  return lang.value === 'zh' ? 'D0 · 未见显著实际损害' : 'D0 · no material realized damage'
+})
+
+const currentDamageAnchor = computed(() => {
+  const risk = riskStore.latest
+  if (!risk) return ''
+  const credit = currentSubIndexScore('SI_CREDIT')
+  const banking = currentSubIndexScore('SI_BANKING')
+  const sentiment = currentSubIndexScore('SI_SENTIMENT')
+  if (lang.value === 'zh') {
+    return `当前信用子指数为 ${credit.toFixed(1)}，银行/房产子指数为 ${banking.toFixed(1)}，情绪/风险偏好子指数为 ${sentiment.toFixed(1)}。这些读数说明市场压力存在，但尚未形成类似信用冻结、银行系统连锁损害或就业崩塌的强证据。`
+  }
+  return `Current credit stress is ${credit.toFixed(1)}, banking/real-estate stress is ${banking.toFixed(1)}, and sentiment/risk-appetite stress is ${sentiment.toFixed(1)}. These readings show pressure, but not yet strong evidence of credit freeze, cascading banking damage, or labor-market collapse.`
+})
+
+const currentNextWatch = computed(() => {
+  const hidden = hiddenRisk.value
+  if (hidden.undercurrent >= 15) {
+    return lang.value === 'zh'
+      ? '优先观察隐藏压力是否转化为可见损害：信用利差是否扩张、银行/房产链条是否恶化、日元贬值和套利交易是否反转、AI/半导体高位交易是否出现拥挤踩踏。'
+      : 'Watch whether hidden pressure converts into visible damage: wider credit spreads, weaker banking/real-estate channels, JPY/carry reversal, or crowded AI/semiconductor unwind.'
+  }
+  if (activeChains.value.length >= 4) {
+    return lang.value === 'zh'
+      ? '优先观察活跃传导链是否继续扩散，尤其是从汇率和权益估值扩散到信用、银行融资、企业盈利和贸易需求。'
+      : 'Watch whether active channels keep spreading, especially from FX and equity valuation into credit, bank funding, earnings, and trade demand.'
+  }
+  if (anomalousNodes.value.length >= 6) {
+    return lang.value === 'zh'
+      ? '优先观察异常指标是快速回归还是同步扩散；同步扩散比单点异常更重要。'
+      : 'Watch whether anomalous indicators normalize or spread together; synchronized spread matters more than isolated outliers.'
+  }
+  return lang.value === 'zh'
+    ? '继续观察趋势、传导链和隐藏风险是否出现连续多日恶化。'
+    : 'Continue monitoring whether trend, transmission channels, and hidden risk deteriorate for several consecutive observations.'
 })
 
 const anomalousNodes = computed(() => {
@@ -789,6 +845,11 @@ const subIndexRows = computed(() => {
     }))
     .sort((a, b) => b.score - a.score)
 })
+
+function currentSubIndexScore(key: string): number {
+  const details = riskStore.latest?.sub_index_details || {}
+  return Number((details as any)[key]?.score || 0)
+}
 
 const subIndexBreakdownOption = computed(() => ({
   backgroundColor: 'transparent',
