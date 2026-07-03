@@ -33,6 +33,8 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "ust_10y":          ("high", 3.5, 5.2),
     "ust_2y":           ("high", 3.5, 5.5),
     "us_recession_prob": ("high", 5.0, 50.0),
+    "fred_sofr":        ("high", 3.5, 5.5),
+    "sofr_effr_spread": ("high", 0.0, 75.0),
     "oil_wti":          ("high", 70, 120),
     "gold":             ("high", 1900, 3000),
     "krw_usd":          ("high", 1250, 1550),
@@ -191,16 +193,21 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
     "us_corporate_credit": {
         "name": "美国企业信用",
         "nodes": ["fred_hy_spread", "fred_bbb_spread", "fred_ic_spread", "hyg", "lqd"],
-        "weight": 0.50,
+        "weight": 0.40,
     },
     "em_sovereign_credit": {
         "name": "新兴市场/主权信用",
         "nodes": ["emb", "kr_cds_5y"],
-        "weight": 0.25,
+        "weight": 0.20,
     },
     "europe_credit": {
         "name": "欧洲企业信用",
         "nodes": ["fred_euro_hy_spread", "italy_etf"],
+        "weight": 0.15,
+    },
+    "bank_funding": {
+        "name": "银行/隔夜融资",
+        "nodes": ["fred_sofr", "sofr_effr_spread"],
         "weight": 0.15,
     },
     "ai_cloud_credit": {

@@ -169,6 +169,7 @@ def _proxy_series(close: pd.DataFrame, proxy_info: dict, node_id: str) -> pd.Ser
 # ---------------------------------------------------------------------------
 FRED_INDICATORS: dict[str, dict] = {
     "fred_effr": {"series": "EFFR", "name": "联邦基金利率", "frequency": "daily"},
+    "fred_sofr": {"series": "SOFR", "name": "担保隔夜融资利率", "frequency": "daily"},
     "fred_dgs10": {"series": "DGS10", "name": "10年期美国国债收益率", "frequency": "daily"},
     "fred_dgs2": {"series": "DGS2", "name": "2年期美国国债收益率", "frequency": "daily"},
     "fred_t10y2y": {"series": "T10Y2Y", "name": "10Y-2Y利差", "frequency": "daily"},
@@ -192,6 +193,7 @@ FRED_INDICATORS: dict[str, dict] = {
 
 for nid, info in FRED_INDICATORS.items():
     DATA_SOURCE_LABELS[nid] = f"FRED {info['series']}"
+DATA_SOURCE_LABELS["sofr_effr_spread"] = "FRED SOFR - EFFR (computed bps)"
 
 FRED_NODE_OVERLAYS: dict[str, str] = {
     "fed_funds": "fred_effr",
@@ -307,6 +309,8 @@ class MarketDataCollector:
 
         # Overlay FRED data — replaces proxies with real values where available
         fred_data = self._fetch_fred_latest()
+        if "fred_sofr" in fred_data and "fred_effr" in fred_data:
+            result["sofr_effr_spread"] = (fred_data["fred_sofr"] - fred_data["fred_effr"]) * 100.0
         for node_id, fred_key in FRED_NODE_OVERLAYS.items():
             if fred_key in fred_data:
                 result[node_id] = fred_data[fred_key]
@@ -388,6 +392,8 @@ class MarketDataCollector:
         for node_id, fred_key in FRED_NODE_OVERLAYS.items():
             if fred_key in df.columns:
                 df[node_id] = df[fred_key]
+        if "fred_sofr" in df.columns and "fred_effr" in df.columns:
+            df["sofr_effr_spread"] = (df["fred_sofr"] - df["fred_effr"]) * 100.0
 
         logger.info(
             f"fetch_historical_data: {len(df)} rows x {len(df.columns)} columns "

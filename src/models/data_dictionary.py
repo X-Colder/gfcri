@@ -205,6 +205,22 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "known_limitations": "European high-yield credit only; does not cover European investment-grade credit, bank funding, or sovereign-bank feedback.",
         "upgrade_plan": "Add iTraxx Crossover, iTraxx Europe, European IG OAS, and bank CDS/bond spreads.",
     },
+    "fred_sofr": {
+        "source_tier": "A",
+        "raw_formula": "FRED SOFR latest observation; secured overnight financing rate in percent.",
+        "stress_direction": "higher_is_tighter_repo_funding",
+        "absolute_threshold": "normal=3.5, crisis=5.5",
+        "known_limitations": "SOFR level includes policy-rate regime; level alone is not pure funding stress.",
+        "upgrade_plan": "Use SOFR-EFFR, SOFR-IORB, repo specials, and funding-market dispersion indicators.",
+    },
+    "sofr_effr_spread": {
+        "source_tier": "A",
+        "raw_formula": "(FRED SOFR - FRED EFFR) * 100, computed in basis points.",
+        "stress_direction": "higher_is_repo_funding_pressure",
+        "absolute_threshold": "normal=0 bps, crisis=75 bps",
+        "known_limitations": "SOFR-EFFR spread is a narrow US overnight funding proxy; bank credit, term funding, and cross-currency funding are not captured.",
+        "upgrade_plan": "Add SOFR-IORB, FRA/OIS-like proxies, cross-currency basis, bank CDS, and senior financial bond spreads.",
+    },
     "hyg": {
         "source_tier": "B",
         "raw_formula": "HYG adjusted close from yfinance.",
