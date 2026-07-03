@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from api.dependencies import get_graph
 from src.engines.causal_expansion import CausalExpansionEngine
+from src.engines.causal_promotion import CausalPromotionGate
 from src.engines.crisis_taxonomy import CrisisRegimeAssessmentEngine
 from src.storage.database import (
     get_causal_candidates,
@@ -60,6 +61,15 @@ def update_candidate(candidate_id: str, update: CandidateReviewUpdate):
     if not row:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return row
+
+
+@router.get("/candidates/{candidate_id}/promotion-check")
+def promotion_check(candidate_id: str):
+    rows = get_causal_candidates(limit=500)
+    row = next((r for r in rows if r.get("candidate_id") == candidate_id), None)
+    if not row:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return CausalPromotionGate().evaluate(row)
 
 
 def _latest_ehs_scores():

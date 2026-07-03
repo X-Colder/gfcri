@@ -102,7 +102,27 @@
                 {{ savingId === item.id ? t('common.loading') : t('causal.saveReview') }}
               </button>
             </div>
-            <p v-if="reviewSaved[item.id]" class="mt-2 text-[10px] text-[var(--green)]">{{ t('causal.reviewSaved') }}</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <p v-if="reviewSaved[item.id]" class="text-[10px] text-[var(--green)]">{{ t('causal.reviewSaved') }}</p>
+              <button @click="checkPromotion(item.id)"
+                      class="text-[10px] text-[var(--muted)] underline decoration-dotted hover:text-white">
+                {{ t('causal.promotionCheck') }}
+              </button>
+            </div>
+            <div v-if="promotionChecks[item.id]" class="mt-3 rounded-lg border border-[var(--border)] bg-white/[0.012] p-3">
+              <div class="mb-2 flex items-center justify-between">
+                <p class="text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('causal.promotionGate') }}</p>
+                <span class="text-[10px] font-mono" :style="{ color: promotionChecks[item.id].eligible ? 'var(--green)' : 'var(--yellow)' }">
+                  {{ promotionChecks[item.id].recommended_action }}
+                </span>
+              </div>
+              <div class="grid gap-1 md:grid-cols-2">
+                <div v-for="check in promotionChecks[item.id].checks" :key="check.name" class="flex items-center justify-between gap-2 text-[10px]">
+                  <span :class="check.passed ? 'text-[var(--green)]' : 'text-[var(--muted)]'">{{ check.passed ? '✓' : '○' }} {{ check.name }}</span>
+                  <span class="text-right text-[var(--muted)]">{{ check.detail }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -123,6 +143,7 @@ const savingId = ref('')
 const reviewState = ref<Record<string, string>>({})
 const reviewNotes = ref<Record<string, string>>({})
 const reviewSaved = ref<Record<string, boolean>>({})
+const promotionChecks = ref<Record<string, any>>({})
 
 onMounted(load)
 
@@ -160,6 +181,11 @@ async function saveReview(id: string) {
   } finally {
     savingId.value = ''
   }
+}
+
+async function checkPromotion(id: string) {
+  const res = await client.get(`/causal-discovery/candidates/${id}/promotion-check`)
+  promotionChecks.value[id] = res.data
 }
 
 function decisionColor(decision: string): string {

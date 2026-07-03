@@ -141,6 +141,8 @@ const messages: Record<string, Record<string, string>> = {
   'causal.reviewNote': { zh: '审核备注：为什么保留、拒绝或升级？', en: 'Review note: why keep, reject, or promote?' },
   'causal.saveReview': { zh: '保存审核', en: 'Save Review' },
   'causal.reviewSaved': { zh: '审核状态已保存', en: 'Review saved' },
+  'causal.promotionCheck': { zh: '检查升级门槛', en: 'Check promotion gate' },
+  'causal.promotionGate': { zh: 'Core Graph 升级门槛', en: 'Core Graph Promotion Gate' },
   // Globe
   'globe.live': { zh: '实时传导', en: 'Live' },
   'globe.activeChains': { zh: '活跃传导链', en: 'Active Chains' },
