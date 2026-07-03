@@ -18,6 +18,7 @@ from typing import Any, TYPE_CHECKING
 from loguru import logger
 
 from src.engines.trade_dependency import TradeDependencyEngine
+from src.models.stress import stress_direction_for_node
 
 if TYPE_CHECKING:
     from src.models.graph import MacroRiskCausalGraph
@@ -578,6 +579,7 @@ class GFCRIEngine:
                 "abs_score": round(abs_s, 4) if abs_s is not None else None,
                 "is_anomalous": node.is_anomalous,
                 "direction": "above" if zscore > 0 else "below",
+                "stress_direction": stress_direction_for_node(nid),
             }
         return contributions
 

@@ -15,6 +15,7 @@ import pandas as pd
 from loguru import logger
 
 from src.models.graph import MacroRiskCausalGraph
+from src.models.stress import stress_score_from_zscore
 from src.engines.risk_index import GFCRIEngine
 
 
@@ -261,7 +262,7 @@ class StressTestEngine:
             if node:
                 node.value_zscore = z
                 node.is_anomalous = abs(z) > 2.0
-                node.anomaly_score = min(1.0, abs(z) / 4.0)
+                node.anomaly_score = stress_score_from_zscore(nid, z)
 
         stressed_engine = GFCRIEngine(self.graph)
         stressed_result = stressed_engine.compute()
@@ -274,7 +275,7 @@ class StressTestEngine:
             if node:
                 node.value_zscore = z
                 node.is_anomalous = abs(z) > 2.0
-                node.anomaly_score = min(1.0, abs(z) / 4.0)
+                node.anomaly_score = stress_score_from_zscore(nid, z)
 
         # 5. Find most vulnerable nodes
         vuln = []

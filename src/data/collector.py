@@ -17,6 +17,8 @@ import pandas as pd
 import yfinance as yf
 from loguru import logger
 
+from src.models.stress import stress_score_from_zscore
+
 if TYPE_CHECKING:
     from src.models.graph import MacroRiskCausalGraph
 
@@ -433,14 +435,16 @@ class MarketDataCollector:
                     if std > 0:
                         node.value_zscore = (value - mean) / std
                         node.is_anomalous = abs(node.value_zscore) > 2.0
-                        node.anomaly_score = min(1.0, abs(node.value_zscore) / 4.0)
+                        node.anomaly_score = stress_score_from_zscore(node_id, node.value_zscore)
                     else:
                         node.value_zscore = 0.0
+                        node.anomaly_score = 0.0
             elif node.historical_mean is not None and node.historical_std:
                 std = node.historical_std
                 if std > 0:
                     node.value_zscore = (value - node.historical_mean) / std
                     node.is_anomalous = abs(node.value_zscore) > 2.0
+                    node.anomaly_score = stress_score_from_zscore(node_id, node.value_zscore)
 
             updated_count += 1
 

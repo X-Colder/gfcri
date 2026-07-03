@@ -32,7 +32,7 @@ sub_index_score = 100 * (0.6 * raw_stress + 0.4 * transmission)
 
 Definitions:
 
-- `anomaly_score`: `min(1.0, abs(zscore) / 4.0)`.
+- `anomaly_score`: directional stress score. For high-is-worse nodes, `max(zscore, 0) / 4`; for low-is-worse nodes, `max(-zscore, 0) / 4`; for two-sided stress nodes, `abs(zscore) / 4`. Capped at 1.0.
 - `zscore`: `(current_value - 1Y historical_mean) / 1Y historical_std`.
 - `absolute_stress_score`: stress from hard normal/crisis thresholds.
 - `transmission`: average inbound causal pressure from nodes outside the sub-index.
@@ -81,6 +81,7 @@ Current nodes:
 - FRED `BAMLHE00EHYIOAS` has been added as `fred_euro_hy_spread`, starting the Europe Credit dimension with a direct Euro high-yield OAS signal.
 - FRED `SOFR` and computed `SOFR - EFFR` have been added as the first Bank Funding dimension signals.
 - FRED `DRALACBS` and `BAA10Y` have been added as the first Default / Downgrade Cycle signals, combining realized bank-loan delinquency with Baa credit-risk pricing.
+- `anomaly_score` is now directional rather than absolute. Risk-improving anomalies no longer automatically add pressure to sub-indices.
 
 Current online example:
 
