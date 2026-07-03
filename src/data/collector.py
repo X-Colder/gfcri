@@ -133,6 +133,7 @@ FRED_INDICATORS: dict[str, dict] = {
     "fred_dgs2": {"series": "DGS2", "name": "2年期美国国债收益率", "frequency": "daily"},
     "fred_t10y2y": {"series": "T10Y2Y", "name": "10Y-2Y利差", "frequency": "daily"},
     "fred_recession_prob": {"series": "RECPROUSM156N", "name": "美国衰退概率", "frequency": "monthly"},
+    "fred_kr_current_account": {"series": "KORB6BLTT02STSAQ", "name": "韩国经常账户余额/GDP", "frequency": "quarterly"},
     "fred_bbb_spread": {"series": "BAMLC0A4CBBB", "name": "BBB信用利差", "frequency": "daily"},
     "fred_hy_spread": {"series": "BAMLH0A0HYM2", "name": "高收益债利差", "frequency": "daily"},
     "fred_mortgage30": {"series": "MORTGAGE30US", "name": "30年房贷利率", "frequency": "weekly"},
@@ -157,6 +158,7 @@ FRED_NODE_OVERLAYS: dict[str, str] = {
     "ust_2y": "fred_dgs2",
     "us_recession_prob": "fred_recession_prob",
     "global_liqd": "fred_walcl",
+    "kr_ca": "fred_kr_current_account",
 }
 
 

@@ -74,6 +74,7 @@ Current nodes:
 - The data dictionary now covers all 41 current graph nodes with source tier, raw formula, stress direction, limitations, and upgrade plan. Remaining work is source replacement/validation, not missing metadata.
 - FRED `DGS10`, `DGS2`, and `RECPROUSM156N` now replace yfinance/TLT proxies for `ust_10y`, `ust_2y`, and `us_recession_prob`, including historical series used for z-score calculation.
 - FRED `WALCL` now replaces TLT as the `global_liqd` source, making the node an official Fed balance-sheet liquidity proxy. `dram_spot`, `nand_spot`, and `ai_capex` display names were corrected to explicit proxy names until direct memory-price and capex-filing data are added.
+- FRED `KORB6BLTT02STSAQ` now replaces EWY as the `kr_ca` source, making Korea current account a real official macro node. `kr_cds_5y` was renamed to an explicit EWY-inverted Korea credit stress proxy until actual Korea CDS data is available.
 
 Current online example:
 

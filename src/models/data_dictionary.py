@@ -226,7 +226,7 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "raw_formula": "-EWY adjusted close from yfinance as temporary inverse proxy.",
         "stress_direction": "higher_is_worse after inversion",
         "absolute_threshold": "not yet defined",
-        "known_limitations": "Not actual Korea CDS; equity proxy can move for non-credit reasons.",
+        "known_limitations": "Not actual Korea CDS; equity proxy can move for non-credit reasons and should be treated as Korea credit/equity stress proxy only.",
         "upgrade_plan": "Replace with actual Korea 5Y sovereign CDS or official sovereign spread proxy.",
     },
     "orcl_cds": {
@@ -354,12 +354,12 @@ NODE_DATA_OVERRIDES: dict[str, dict[str, Any]] = {
         "upgrade_plan": "Add stablecoin flows, crypto credit stress, and cross-asset risk appetite confirmation.",
     },
     "kr_ca": {
-        "source_tier": "C",
-        "raw_formula": "EWY adjusted close from yfinance as Korea current-account health proxy.",
-        "stress_direction": "lower_proxy_is_worse",
-        "absolute_threshold": "not yet defined",
-        "known_limitations": "Equity ETF is not current account data; this should not be treated as macro balance data.",
-        "upgrade_plan": "Replace with Bank of Korea current account time series.",
+        "source_tier": "A",
+        "raw_formula": "FRED KORB6BLTT02STSAQ latest observation and history; Korea current account balance as percent of GDP.",
+        "stress_direction": "lower_current_account_balance_is_worse",
+        "absolute_threshold": "normal=4.0, crisis=-3.0",
+        "known_limitations": "Quarterly macro series updates slowly and may lag market FX pressure.",
+        "upgrade_plan": "Add Bank of Korea monthly current account value, export growth, semiconductor exports, and FX reserve change.",
     },
 }
 

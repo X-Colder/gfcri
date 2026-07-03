@@ -40,6 +40,7 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "kospi":            ("low",  2600, 1800),
     "hsi":              ("low",  22000, 14000),
     "eurusd":           ("low",  1.10, 0.95),
+    "kr_ca":            ("low",  4.0, -3.0),
     "lqd":              ("low",  110, 90),
     "fred_hy_spread":   ("high", 3.5, 10.0),
     "fred_bbb_spread":  ("high", 1.2, 4.0),
