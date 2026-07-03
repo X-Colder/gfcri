@@ -71,3 +71,38 @@ export interface SocialContent {
   content: string
   content_type: string
 }
+
+export interface SubIndexNodeReceipt {
+  node_id: string
+  display_name: string
+  current_value: number | null
+  zscore: number | null
+  anomaly_score: number | null
+  abs_score: number | null
+  source_tier: string
+  data_source: string
+  raw_formula: string
+  known_limitations: string
+}
+
+export interface SubIndexReceipt {
+  sub_index_id: string
+  name: string
+  score: number
+  formula: string
+  mean_stress: number
+  mean_abs_stress: number
+  transmission: number
+  top_driver: string | null
+  node_count: number
+  source_tier_summary: Record<string, number>
+  nodes: SubIndexNodeReceipt[]
+  limitations: string[]
+  config: Record<string, any> | null
+}
+
+export interface ModelFoundation {
+  index_date: string
+  sub_index_receipts: Record<string, SubIndexReceipt>
+  data_dictionary: Record<string, Record<string, any>>
+}

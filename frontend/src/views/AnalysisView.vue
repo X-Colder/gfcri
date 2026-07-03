@@ -183,6 +183,56 @@
               <span class="text-[10px] text-[var(--muted)] font-mono">{{ t('dash.coherence') }} {{ (riskStore.latest.coherence_multiplier || 1).toFixed(2) }}x</span>
             </div>
             <v-chart :option="subIndexBreakdownOption" style="height: 320px" autoresize />
+            <div class="receipt-tabs">
+              <button v-for="row in subIndexRows" :key="row.id" type="button"
+                      :class="{ 'receipt-tab-active': selectedSubIndexId === row.id }"
+                      @click="selectedSubIndexId = row.id">
+                {{ row.name }}
+              </button>
+            </div>
+            <div v-if="selectedSubIndexReceipt" class="formula-receipt">
+              <div class="formula-receipt-head">
+                <div>
+                  <p>{{ t('analysis.formulaReceipt') }}</p>
+                  <h3>{{ selectedSubIndexReceipt.name }} · {{ selectedSubIndexReceipt.score.toFixed(1) }}</h3>
+                </div>
+                <span>{{ t('analysis.sourceTier') }} {{ sourceTierSummaryText(selectedSubIndexReceipt.source_tier_summary) }}</span>
+              </div>
+              <div class="formula-steps">
+                <div>
+                  <span>{{ t('analysis.anomalyStress') }}</span>
+                  <strong>{{ (selectedSubIndexReceipt.mean_stress * 100).toFixed(1) }}</strong>
+                </div>
+                <div>
+                  <span>{{ t('analysis.absoluteStress') }}</span>
+                  <strong>{{ (selectedSubIndexReceipt.mean_abs_stress * 100).toFixed(1) }}</strong>
+                </div>
+                <div>
+                  <span>{{ t('analysis.transmissionAmp') }}</span>
+                  <strong>{{ (selectedSubIndexReceipt.transmission * 100).toFixed(1) }}</strong>
+                </div>
+              </div>
+              <p class="formula-text">{{ selectedSubIndexReceipt.formula }}</p>
+              <div class="receipt-node-table">
+                <div class="receipt-node-row receipt-node-head">
+                  <span>{{ t('analysis.node') }}</span>
+                  <span>{{ t('analysis.current') }}</span>
+                  <span>{{ t('analysis.zscore') }}</span>
+                  <span>{{ t('analysis.absScore') }}</span>
+                  <span>{{ t('analysis.sourceTier') }}</span>
+                </div>
+                <div v-for="node in selectedSubIndexReceipt.nodes" :key="node.node_id" class="receipt-node-row">
+                  <span>{{ tx(node.display_name) }}</span>
+                  <span>{{ formatCurrentValue(node.current_value) }}</span>
+                  <span>{{ node.zscore === null || node.zscore === undefined ? '-' : Number(node.zscore).toFixed(2) }}</span>
+                  <span>{{ node.abs_score === null || node.abs_score === undefined ? '-' : (Number(node.abs_score) * 100).toFixed(0) }}</span>
+                  <span :class="'tier-' + node.source_tier">{{ node.source_tier }}</span>
+                </div>
+              </div>
+              <p v-if="selectedSubIndexReceipt.limitations.length" class="formula-limit">
+                {{ selectedSubIndexReceipt.limitations[0] }}
+              </p>
+            </div>
           </div>
 
           <div id="node-contribution" class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden card-hover min-w-0">
@@ -486,6 +536,8 @@ import { COLORS } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
 import { useRiskWatch, type RiskWatchType } from '@/composables/useRiskWatch'
+import { fetchModelFoundation } from '@/api/modelFoundation'
+import type { ModelFoundation, SubIndexReceipt } from '@/api/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
@@ -511,6 +563,8 @@ const selectedWatchIndicatorId = ref('')
 const riskWatch = useRiskWatch()
 const watchItems = riskWatch.items
 const watchedIndicatorIds = riskWatch.watchedIndicatorIds
+const modelFoundation = ref<ModelFoundation | null>(null)
+const selectedSubIndexId = ref('SI_CREDIT')
 
 onMounted(async () => {
   riskStore.loadLatest()
@@ -523,6 +577,9 @@ onMounted(async () => {
     ])
     if (wRes.status === 'fulfilled') socialContent.value.wechat = wRes.value.data?.content || ''
     if (zRes.status === 'fulfilled') socialContent.value.zsxq = zRes.value.data?.content || ''
+  } catch {}
+  try {
+    modelFoundation.value = await fetchModelFoundation()
   } catch {}
 })
 
@@ -1166,6 +1223,20 @@ const subIndexRows = computed(() => {
     .sort((a, b) => b.score - a.score)
 })
 
+const selectedSubIndexReceipt = computed<SubIndexReceipt | null>(() => {
+  const receipts = modelFoundation.value?.sub_index_receipts || {}
+  if (receipts[selectedSubIndexId.value]) return receipts[selectedSubIndexId.value]
+  const first = Object.keys(receipts)[0]
+  return first ? receipts[first] : null
+})
+
+function sourceTierSummaryText(summary: Record<string, number>): string {
+  return Object.entries(summary || {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([tier, count]) => `${tier}:${count}`)
+    .join(' · ') || '-'
+}
+
 function currentSubIndexScore(key: string): number {
   const details = riskStore.latest?.sub_index_details || {}
   return Number((details as any)[key]?.score || 0)
@@ -1591,6 +1662,135 @@ function scoreColor(score: number): string {
   font-size: 10px;
   padding: 5px 8px;
 }
+
+.receipt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.receipt-tabs button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.receipt-tab-active {
+  background: rgba(129,140,248,0.12);
+  border-color: rgba(129,140,248,0.45) !important;
+  color: var(--text) !important;
+}
+
+.formula-receipt {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.formula-receipt-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.formula-receipt-head p,
+.formula-steps span,
+.receipt-node-head span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.formula-receipt-head h3 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.formula-receipt-head > span {
+  color: var(--accent);
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+}
+
+.formula-steps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.formula-steps div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px;
+}
+
+.formula-steps strong {
+  color: var(--text);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.formula-text,
+.formula-limit {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 10px;
+}
+
+.receipt-node-table {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.receipt-node-row {
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.25fr) 0.75fr 0.55fr 0.55fr 0.45fr;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.receipt-node-row:first-child {
+  border-top: 0;
+}
+
+.receipt-node-row span {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-node-row span:first-child {
+  color: var(--text);
+  font-family: inherit;
+}
+
+.tier-A { color: var(--green) !important; }
+.tier-B { color: var(--yellow) !important; }
+.tier-C { color: var(--orange) !important; }
+.tier-D { color: var(--red) !important; }
 
 .judgment-markdown :deep(h1),
 .judgment-markdown :deep(h2),

@@ -299,6 +299,8 @@ const messages: Record<string, Record<string, string>> = {
   'analysis.openDataDetail': { zh: '打开指标表', en: 'Open Data Table' },
   'analysis.noIndicatorTrend': { zh: '当前历史快照中暂无该指标的连续曲线，只显示最新证据。', en: 'No continuous trend is available for this indicator in the current history snapshots; showing latest evidence only.' },
   'analysis.addToWatch': { zh: '加入关注', en: 'Add to Watch' },
+  'analysis.formulaReceipt': { zh: '公式收据', en: 'Formula Receipt' },
+  'analysis.sourceTier': { zh: '来源等级', en: 'Source Tier' },
   // Forward
   'forward.title': { zh: '前瞻风险监测', en: 'Forward Risk Monitor' },
   'forward.crisis': { zh: '历史压力阈值接近度', en: 'Crisis Proximity' },
