@@ -30,12 +30,12 @@
       <div class="mt-4 rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
         <div class="mb-3 flex items-center justify-between">
           <p class="text-xs font-medium text-white">{{ t('causal.prompt') }}</p>
-          <span class="text-[10px] text-[var(--muted)]">{{ trigger.type }}</span>
+          <span class="text-[10px] text-[var(--muted)]">{{ lt(trigger.type) }}</span>
         </div>
-        <p class="text-[11px] leading-relaxed text-[var(--muted)]">{{ promptTask }}</p>
+        <p class="text-[11px] leading-relaxed text-[var(--muted)]">{{ lt(promptTask) }}</p>
         <div class="mt-3 flex flex-wrap gap-2">
           <span v-for="rule in promptConstraints" :key="rule" class="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--muted)]">
-            {{ rule }}
+            {{ lt(rule) }}
           </span>
         </div>
       </div>
@@ -44,8 +44,8 @@
         <div v-for="item in candidates" :key="item.id" class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-xs font-medium text-white">{{ item.title }}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ item.mechanism }}</p>
+              <p class="text-xs font-medium text-white">{{ lt(item.title) }}</p>
+              <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ lt(item.mechanism) }}</p>
             </div>
             <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-mono"
                   :style="{ color: decisionColor(item.decision), borderColor: decisionColor(item.decision), backgroundColor: decisionColor(item.decision) + '18' }">
@@ -72,27 +72,27 @@
             <div>
               <p class="mb-2 text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('causal.tests') }}</p>
               <ul class="space-y-1">
-                <li v-for="test in item.observable_tests || []" :key="test" class="text-[11px] leading-relaxed text-[var(--muted)]">• {{ test }}</li>
+                <li v-for="test in item.observable_tests || []" :key="test" class="text-[11px] leading-relaxed text-[var(--muted)]">• {{ lt(test) }}</li>
               </ul>
             </div>
             <div>
               <p class="mb-2 text-[10px] uppercase tracking-[2px] text-[var(--muted)]">{{ t('causal.falsification') }}</p>
               <ul class="space-y-1">
-                <li v-for="test in item.falsification || []" :key="test" class="text-[11px] leading-relaxed text-[var(--muted)]">• {{ test }}</li>
+                <li v-for="test in item.falsification || []" :key="test" class="text-[11px] leading-relaxed text-[var(--muted)]">• {{ lt(test) }}</li>
               </ul>
             </div>
           </div>
 
-          <p class="mt-3 text-[11px] leading-relaxed text-[var(--accent)]">{{ item.validation_note }}</p>
+          <p class="mt-3 text-[11px] leading-relaxed text-[var(--accent)]">{{ lt(item.validation_note) }}</p>
 
           <div class="mt-4 rounded-lg border border-[var(--border)] bg-black/10 p-3">
             <div class="grid gap-2 md:grid-cols-[170px_1fr_auto]">
               <select v-model="reviewState[item.id]"
                       class="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-white focus:border-[var(--accent)] focus:outline-none">
-                <option value="watchlist">watchlist</option>
-                <option value="candidate_graph">candidate_graph</option>
-                <option value="eligible_for_promotion">eligible_for_promotion</option>
-                <option value="rejected">rejected</option>
+                <option value="watchlist">{{ lt('watchlist') }}</option>
+                <option value="candidate_graph">{{ lt('candidate_graph') }}</option>
+                <option value="eligible_for_promotion">{{ lt('eligible_for_promotion') }}</option>
+                <option value="rejected">{{ lt('rejected') }}</option>
               </select>
               <input v-model="reviewNotes[item.id]"
                      :placeholder="t('causal.reviewNote')"
@@ -118,7 +118,7 @@
               </div>
               <div class="grid gap-1 md:grid-cols-2">
                 <div v-for="check in promotionChecks[item.id].checks" :key="check.name" class="flex items-center justify-between gap-2 text-[10px]">
-                  <span :class="check.passed ? 'text-[var(--green)]' : 'text-[var(--muted)]'">{{ check.passed ? '✓' : '○' }} {{ check.name }}</span>
+                  <span :class="check.passed ? 'text-[var(--green)]' : 'text-[var(--muted)]'">{{ check.passed ? '✓' : '○' }} {{ lt(check.name) }}</span>
                   <span class="text-right text-[var(--muted)]">{{ check.detail }}</span>
                 </div>
               </div>
@@ -135,8 +135,9 @@ import { computed, onMounted, ref } from 'vue'
 import client from '@/api/client'
 import { COLORS } from '@/composables/useTheme'
 import { useI18n } from '@/composables/useI18n'
+import { localizeDomainText } from '@/composables/useDomainLabels'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const data = ref<any>(null)
 const loading = ref(false)
 const savingId = ref('')
@@ -193,5 +194,9 @@ function decisionColor(decision: string): string {
   if (decision === 'candidate_graph') return COLORS.accent
   if (decision === 'watchlist') return COLORS.yellow
   return COLORS.red
+}
+
+function lt(value: unknown): string {
+  return localizeDomainText(value, lang.value)
 }
 </script>

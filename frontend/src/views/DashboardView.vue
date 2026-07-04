@@ -167,6 +167,7 @@
               <v-chart :option="trendChartOption" style="height: 230px" autoresize />
             </div>
             <RiskWatch compact class="mt-4" />
+            <AlertSubscription class="mt-4" />
           </aside>
         </div>
 
@@ -184,12 +185,12 @@
             <article v-for="theme in topCoreThemes" :key="theme.theme_id" class="core-theme-card">
               <div class="theme-card-head">
                 <div>
-                  <p class="theme-status">{{ theme.status }}</p>
-                  <h3>{{ theme.title }}</h3>
+                  <p class="theme-status">{{ lt(theme.status) }}</p>
+                  <h3>{{ lt(theme.title) }}</h3>
                 </div>
                 <strong>{{ theme.priority_score.toFixed(0) }}</strong>
               </div>
-              <p class="theme-desc">{{ theme.description }}</p>
+              <p class="theme-desc">{{ lt(theme.description) }}</p>
               <div class="theme-bars">
                 <span>{{ t('dash.modelPressure') }} {{ theme.model_pressure.toFixed(0) }}</span>
                 <span>{{ t('dash.institutionalAttention') }} {{ theme.institutional_attention.toFixed(0) }}</span>
@@ -197,10 +198,10 @@
               </div>
               <div class="theme-evidence">
                 <p v-for="item in theme.evidence.slice(0, 3)" :key="`${theme.theme_id}-${item.type}-${item.label}`">
-                  {{ item.type }} · {{ item.label || '-' }} · {{ formatThemeValue(item.value) }}
+                  {{ lt(item.type) }} · {{ lt(item.label || '-') }} · {{ formatThemeValue(item.value) }}
                 </p>
               </div>
-              <p class="theme-why">{{ theme.why_it_matters }}</p>
+              <p class="theme-why">{{ lt(theme.why_it_matters) }}</p>
             </article>
           </div>
           <div v-if="coreThemes?.causal?.candidate_count" class="theme-causal-note">
@@ -351,14 +352,16 @@ import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import RiskWatch from '@/components/common/RiskWatch.vue'
+import AlertSubscription from '@/components/common/AlertSubscription.vue'
 import { fetchCoreThemes } from '@/api/coreThemes'
 import type { CoreThemes } from '@/api/types'
+import { localizeDomainText } from '@/composables/useDomainLabels'
 
 use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
-const { t, tx } = useI18n()
+const { t, tx, lang: currentLang } = useI18n()
 const coreThemes = ref<CoreThemes | null>(null)
 const coreThemeLoading = ref(false)
 const coreThemeError = ref('')
@@ -607,6 +610,10 @@ function hiddenDetailText(detail: any): string {
 
 function formatThemeValue(value: number | null | undefined): string {
   return value === null || value === undefined ? '-' : Number(value).toFixed(0)
+}
+
+function lt(value: unknown): string {
+  return localizeDomainText(value, currentLang.value)
 }
 
 </script>

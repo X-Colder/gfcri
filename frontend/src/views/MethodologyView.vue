@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
     <section class="terminal-section">
-      <p class="terminal-kicker">GFCRI Governance</p>
+      <p class="terminal-kicker">{{ t('trust.governance') }}</p>
       <h1 class="terminal-title">{{ t('trust.title') }}</h1>
       <p class="terminal-copy max-w-3xl">{{ t('trust.subtitle') }}</p>
     </section>
@@ -19,7 +19,7 @@
           <span class="terminal-chip">yfinance</span>
           <span class="terminal-chip">OECD</span>
           <span class="terminal-chip">AKShare</span>
-          <span class="terminal-chip">Public market data</span>
+          <span class="terminal-chip">{{ t('trust.publicMarketData') }}</span>
         </div>
       </article>
       <article class="terminal-card">
@@ -33,7 +33,7 @@
     </section>
 
     <section class="terminal-card">
-      <p class="terminal-kicker">Model Transparency</p>
+      <p class="terminal-kicker">{{ t('trust.modelTransparency') }}</p>
       <div class="mt-4 grid gap-3 md:grid-cols-4">
         <div class="terminal-metric">
           <span>{{ t('dash.indicatorCount') }}</span>
@@ -80,7 +80,7 @@
           <p class="text-sm text-white font-medium">{{ t('trust.sourceTierMix') }}</p>
           <div class="mt-3 space-y-2">
             <div v-for="(count, tier) in coverageSummary?.source_tier_counts || {}" :key="tier" class="flex items-center justify-between text-xs">
-              <span class="text-[var(--muted)]">Tier {{ tier }}</span>
+              <span class="text-[var(--muted)]">{{ t('common.level') }} {{ tier }}</span>
               <strong class="font-mono text-white">{{ count }}</strong>
             </div>
           </div>
@@ -91,7 +91,7 @@
             <div v-for="item in upgradePriorities" :key="item.node_id" class="border-t border-[var(--border)] py-2 first:border-t-0">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-xs text-white">{{ item.display_name }}</p>
-                <span class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">Tier {{ item.source_tier }}</span>
+                <span class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{{ t('common.level') }} {{ item.source_tier }}</span>
               </div>
               <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ item.upgrade_plan || item.reason }}</p>
             </div>
@@ -104,15 +104,15 @@
       <p class="terminal-kicker">{{ t('institutional.causalRigor') }}</p>
       <div class="mt-4 grid gap-3 md:grid-cols-3">
         <div class="terminal-metric">
-          <span>Candidate Edges</span>
+          <span>{{ t('trust.candidateEdges') }}</span>
           <strong>{{ readiness?.causal_validation?.candidate_count ?? '-' }}</strong>
         </div>
         <div class="terminal-metric">
-          <span>Validated</span>
+          <span>{{ t('trust.validated') }}</span>
           <strong>{{ readiness?.causal_validation?.validated_count ?? '-' }}</strong>
         </div>
         <div class="terminal-metric">
-          <span>Promotion Ready</span>
+          <span>{{ t('trust.promotionReady') }}</span>
           <strong>{{ readiness?.causal_validation?.promotion_ready_count ?? '-' }}</strong>
         </div>
       </div>
@@ -121,15 +121,15 @@
         <table class="w-full text-xs">
           <thead>
             <tr class="text-[var(--muted)] border-b border-[var(--border)]">
-              <th class="text-left py-2 pr-3">Candidate</th>
-              <th class="text-left py-2 px-3">Stage</th>
-              <th class="text-right py-2 pl-3">Score</th>
+              <th class="text-left py-2 pr-3">{{ t('trust.candidate') }}</th>
+              <th class="text-left py-2 px-3">{{ t('trust.stage') }}</th>
+              <th class="text-right py-2 pl-3">{{ t('trust.score') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in causalRows" :key="row.candidate_id" class="border-b border-[var(--border)]/40">
-              <td class="py-2 pr-3 text-white">{{ row.title }}</td>
-              <td class="py-2 px-3 text-[var(--muted)]">{{ row.stage }}</td>
+              <td class="py-2 pr-3 text-white">{{ lt(row.title) }}</td>
+              <td class="py-2 px-3 text-[var(--muted)]">{{ lt(row.stage) }}</td>
               <td class="py-2 pl-3 text-right font-mono">{{ Math.round(row.validation_score * 100) }}</td>
             </tr>
           </tbody>
@@ -156,7 +156,7 @@
             <tr class="text-[var(--muted)] border-b border-[var(--border)]">
               <th class="text-left py-2 pr-3">{{ t('analysis.subIndexBreakdown') }}</th>
               <th class="text-right py-2 px-3">{{ t('trust.weight') }}</th>
-              <th class="text-left py-2 pl-3">Nodes</th>
+              <th class="text-left py-2 pl-3">{{ t('trust.nodes') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -187,7 +187,7 @@
               <td class="py-2 pr-3 text-white">{{ row.node }}</td>
               <td class="py-2 px-3 text-right font-mono">{{ row.normal }}</td>
               <td class="py-2 px-3 text-right font-mono">{{ row.crisis }}</td>
-              <td class="py-2 pl-3 text-[var(--muted)]">{{ row.direction }}</td>
+              <td class="py-2 pl-3 text-[var(--muted)]">{{ lt(row.direction) }}</td>
             </tr>
           </tbody>
         </table>
@@ -212,8 +212,9 @@ import { useI18n } from '@/composables/useI18n'
 import { fetchModelFoundation } from '@/api/modelFoundation'
 import { fetchCommercialReadiness } from '@/api/commercialReadiness'
 import type { ModelFoundation } from '@/api/types'
+import { localizeDomainText } from '@/composables/useDomainLabels'
 
-const { t, tx } = useI18n()
+const { t, tx, lang } = useI18n()
 const foundation = ref<ModelFoundation | null>(null)
 const readiness = ref<any | null>(null)
 
@@ -234,28 +235,28 @@ const coverageSummary = computed(() => foundation.value?.coverage_summary || nul
 const upgradePriorities = computed(() => foundation.value?.upgrade_priorities || [])
 const causalRows = computed(() => readiness.value?.causal_validation?.candidates?.slice(0, 8) ?? [])
 
-const formulas = [
+const formulas = computed(() => [
   {
-    name: 'Indicator anomaly',
+    name: lang.value === 'zh' ? '指标异常' : 'Indicator anomaly',
     formula: 'Anomaly Score = min(1.0, abs(Z-score) / 4.0)',
-    note: 'Captures fast deviations from recent historical behavior.',
+    note: lang.value === 'zh' ? '捕捉指标相对近期历史行为的快速偏离。' : 'Captures fast deviations from recent historical behavior.',
   },
   {
-    name: 'Sub-index stress',
+    name: lang.value === 'zh' ? '子指数压力' : 'Sub-index stress',
     formula: 'Sub-index = 100 x (0.6 x raw stress + 0.4 x transmission)',
-    note: 'Combines anomaly stress, absolute stress, and external transmission pressure.',
+    note: lang.value === 'zh' ? '综合异常压力、绝对压力和外部传导压力。' : 'Combines anomaly stress, absolute stress, and external transmission pressure.',
   },
   {
-    name: 'Transmission channel',
+    name: lang.value === 'zh' ? '传导链压力' : 'Transmission channel',
     formula: 'Chain Stress = average(node anomaly scores) x 100',
-    note: 'Shows whether linked indicators are becoming stressed together.',
+    note: lang.value === 'zh' ? '衡量同一传导链上的相关指标是否同步承压。' : 'Shows whether linked indicators are becoming stressed together.',
   },
   {
-    name: 'Final GFCRI',
+    name: lang.value === 'zh' ? '最终 GFCRI' : 'Final GFCRI',
     formula: 'GFCRI = weighted base x signal coherence + hidden risk boost + trade spillover boost',
-    note: 'Adds synchronization, hidden-risk, and cross-economy trade-spillover effects to the weighted base score.',
+    note: lang.value === 'zh' ? '在加权基础分上叠加信号一致性、隐藏风险和跨经济体贸易传导影响。' : 'Adds synchronization, hidden-risk, and cross-economy trade-spillover effects to the weighted base score.',
   },
-]
+])
 
 const weights = [
   { id: 'SI_RATES', name: tx('利率与央行'), weight: '14%', nodes: 'fed_funds, ust_10y, ust_2y' },
@@ -267,19 +268,19 @@ const weights = [
   { id: 'SI_BANKING', name: tx('银行与房产'), weight: '8%', nodes: 'kre, vnq' },
   { id: 'SI_COMMODITY', name: tx('商品与贸易'), weight: '10%', nodes: 'oil_wti, copper, gold, natgas, wheat, dram, nand, bdry' },
   { id: 'SI_SENTIMENT', name: tx('情绪与风险偏好'), weight: '12%', nodes: 'vix, recession_prob, btc, consumer_stress, eem' },
-  { id: 'SI_TRADE_SPILLOVER', name: tx('贸易依赖传导'), weight: 'Additive, max +8 pts', nodes: 'static-v1 trade dependency matrix' },
+  { id: 'SI_TRADE_SPILLOVER', name: tx('贸易依赖传导'), weight: lang.value === 'zh' ? '加分项，最高 +8 分' : 'Additive, max +8 pts', nodes: lang.value === 'zh' ? 'static-v1 贸易依赖矩阵' : 'static-v1 trade dependency matrix' },
 ]
 
-const thresholds = [
-  { node: 'VIX', normal: '15', crisis: '45', direction: 'Higher is worse' },
-  { node: 'DXY', normal: '100', crisis: '114', direction: 'Higher is worse' },
-  { node: 'S&P 500', normal: '5000', crisis: '3500', direction: 'Lower is worse' },
-  { node: 'US 10Y Treasury', normal: '3.5', crisis: '5.2', direction: 'Higher is worse' },
-  { node: 'WTI Crude', normal: '70', crisis: '120', direction: 'Higher is worse' },
-  { node: 'KRW/USD', normal: '1250', crisis: '1550', direction: 'Higher is worse' },
-  { node: 'KOSPI', normal: '2600', crisis: '1800', direction: 'Lower is worse' },
-  { node: 'Hang Seng', normal: '22000', crisis: '14000', direction: 'Lower is worse' },
-]
+const thresholds = computed(() => [
+  { node: 'VIX', normal: '15', crisis: '45', direction: lang.value === 'zh' ? '越高压力越大' : 'Higher is worse' },
+  { node: 'DXY', normal: '100', crisis: '114', direction: lang.value === 'zh' ? '越高压力越大' : 'Higher is worse' },
+  { node: lang.value === 'zh' ? '标普500' : 'S&P 500', normal: '5000', crisis: '3500', direction: lang.value === 'zh' ? '越低压力越大' : 'Lower is worse' },
+  { node: lang.value === 'zh' ? '美国10年期国债' : 'US 10Y Treasury', normal: '3.5', crisis: '5.2', direction: lang.value === 'zh' ? '越高压力越大' : 'Higher is worse' },
+  { node: lang.value === 'zh' ? 'WTI 原油' : 'WTI Crude', normal: '70', crisis: '120', direction: lang.value === 'zh' ? '越高压力越大' : 'Higher is worse' },
+  { node: lang.value === 'zh' ? '韩元兑美元' : 'KRW/USD', normal: '1250', crisis: '1550', direction: lang.value === 'zh' ? '越高压力越大' : 'Higher is worse' },
+  { node: lang.value === 'zh' ? '韩国 KOSPI' : 'KOSPI', normal: '2600', crisis: '1800', direction: lang.value === 'zh' ? '越低压力越大' : 'Lower is worse' },
+  { node: lang.value === 'zh' ? '恒生指数' : 'Hang Seng', normal: '22000', crisis: '14000', direction: lang.value === 'zh' ? '越低压力越大' : 'Lower is worse' },
+])
 
 const chains = [
   { name: tx('央行加息冲击波'), path: 'Fed Funds -> US 10Y -> DXY -> KRW/USD' },
@@ -291,6 +292,10 @@ const chains = [
   { name: tx('日元套利平仓'), path: 'USD/JPY -> Nikkei -> VIX' },
   { name: tx('粮食能源冲击'), path: 'Wheat -> Natural Gas -> Euro Stoxx 50' },
 ]
+
+function lt(value: unknown): string {
+  return localizeDomainText(value, lang.value)
+}
 </script>
 
 <style scoped>

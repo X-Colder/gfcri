@@ -3,7 +3,7 @@
     <!-- Header with run button -->
     <div class="flex items-center justify-between mb-8 fade-in">
       <div>
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Forward Looking</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('forward.kicker') }}</p>
         <h2 class="text-lg font-light text-white">{{ t('forward.title') }}</h2>
       </div>
       <button @click="loadAll" :disabled="loading"
@@ -16,7 +16,7 @@
 
       <!-- Section 1: Crisis Distance — How far from crisis? -->
       <div class="mb-12 fade-in">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Threshold Monitor</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('forward.thresholdKicker') }}</p>
         <div class="mb-6 flex items-center justify-between gap-4">
           <h3 class="text-lg font-light text-white">{{ t('forward.crisis') }}</h3>
           <span v-if="crisisLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
@@ -56,7 +56,7 @@
         <div v-if="crisisData" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
           <div v-for="tierNum in [1,2,3]" :key="tierNum" class="mb-5 last:mb-0">
             <p class="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-3">
-              Tier {{ tierNum }} — {{ tierNum === 1 ? t('forward.global') : tierNum === 2 ? t('forward.usCore') : t('forward.regional') }}
+              {{ t('common.level') }} {{ tierNum }} — {{ tierNum === 1 ? t('forward.global') : tierNum === 2 ? t('forward.usCore') : t('forward.regional') }}
             </p>
             <div class="space-y-3">
               <div v-for="d in crisisData.distances.filter((x: any) => x.tier === tierNum)" :key="d.node_id">
@@ -83,7 +83,7 @@
 
       <!-- Section 2: Stress Test Scenarios — What if? -->
       <div class="mb-12 fade-in fade-in-delay-1">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Stress Test</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('forward.stressKicker') }}</p>
         <div class="mb-6 flex items-center justify-between gap-4">
           <h3 class="text-lg font-light text-white">{{ t('forward.stress') }}</h3>
           <span v-if="stressLoading" class="text-[10px] text-[var(--muted)] font-mono">{{ t('common.loading') }}</span>
@@ -115,7 +115,7 @@
 
       <!-- Policy buffers -->
       <div class="mb-12 fade-in fade-in-delay-3" v-if="crisisData?.policies?.length">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Policy Buffer</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('forward.policyKicker') }}</p>
         <h3 class="text-lg font-light text-white mb-6">{{ t('forward.policy') }}</h3>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -134,24 +134,6 @@
       </div>
 
       </Paywall>
-
-      <!-- Alert Subscription (P1) -->
-      <div class="mt-12 fade-in">
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 card-hover max-w-lg mx-auto text-center">
-          <p class="text-[10px] text-[var(--muted)] uppercase tracking-[3px] mb-3">Alert Beta</p>
-          <h3 class="text-white font-medium mb-2">{{ t('forward.alertSub') }}</h3>
-          <p class="text-xs text-[var(--muted)] mb-5">{{ t('forward.alertDesc') }}</p>
-          <div v-if="!subscribed" class="flex gap-2 max-w-sm mx-auto">
-            <input v-model="alertEmail" type="email" placeholder="your@email.com"
-                   class="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-white text-sm focus:border-[var(--accent)] focus:outline-none" />
-            <button @click="subscribe"
-                    class="px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/80 transition-colors">
-              {{ t('common.subscribe') }}
-            </button>
-          </div>
-          <p v-else class="text-sm text-[var(--green)]">✓ {{ t('forward.subscribed') }} {{ alertEmail }}</p>
-        </div>
-      </div>
   </div>
 </template>
 
@@ -165,8 +147,6 @@ import client from '@/api/client'
 
 const { isPro } = useAuth()
 const { t, tx } = useI18n()
-const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
-const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const crisisData = ref<any>(null)
 const stressResults = ref<any[]>([])
 const crisisLoading = ref(false)
@@ -218,10 +198,4 @@ async function loadStress() {
 
 onMounted(() => loadAll())
 
-function subscribe() {
-  if (alertEmail.value && alertEmail.value.includes('@')) {
-    localStorage.setItem('gfcri_alert_email', alertEmail.value)
-    subscribed.value = true
-  }
-}
 </script>

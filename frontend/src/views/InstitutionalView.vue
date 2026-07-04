@@ -55,14 +55,14 @@
         <article v-for="theme in topCoreThemes" :key="theme.theme_id" class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ theme.status }}</p>
-              <h3 class="mt-1 text-sm font-medium text-white">{{ theme.title }}</h3>
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ lt(theme.status) }}</p>
+              <h3 class="mt-1 text-sm font-medium text-white">{{ lt(theme.title) }}</h3>
             </div>
             <strong class="font-mono text-xl font-medium text-[var(--accent)]">{{ theme.priority_score.toFixed(0) }}</strong>
           </div>
-          <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{{ theme.why_it_matters }}</p>
+          <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{{ lt(theme.why_it_matters) }}</p>
           <div class="mt-3 flex flex-wrap gap-1.5">
-            <span v-for="metric in theme.watch_metrics.slice(0, 4)" :key="metric" class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{{ metric }}</span>
+            <span v-for="metric in theme.watch_metrics.slice(0, 4)" :key="metric" class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{{ lt(metric) }}</span>
           </div>
         </article>
       </div>
@@ -73,7 +73,7 @@
         <div>
           <p class="terminal-kicker">{{ t('institutional.commercialReadiness') }}</p>
           <h2 class="mt-1 text-base font-medium text-white">{{ t('institutional.readinessScore') }}</h2>
-          <p class="terminal-copy mt-2 max-w-3xl">{{ readiness?.readiness_score?.interpretation || t('institutional.pilotReady') }}</p>
+          <p class="terminal-copy mt-2 max-w-3xl">{{ lt(readiness?.readiness_score?.interpretation || t('institutional.pilotReady')) }}</p>
         </div>
         <div class="terminal-metric lg:min-w-[160px]">
           <span>{{ t('institutional.readinessScore') }}</span>
@@ -92,7 +92,7 @@
           <p class="text-sm font-medium text-white">{{ t('trust.upgradePriorities') }}</p>
           <div class="mt-3 space-y-2">
             <p v-for="node in dataUpgradeNodes" :key="node.node_id" class="text-xs leading-relaxed text-[var(--muted)]">
-              {{ node.display_name }} · Tier {{ node.source_tier }}
+              {{ node.display_name }} · {{ t('common.level') }} {{ node.source_tier }}
             </p>
           </div>
         </div>
@@ -100,7 +100,7 @@
           <p class="text-sm font-medium text-white">{{ t('institutional.privateDelivery') }}</p>
           <div class="mt-3 space-y-2">
             <p v-for="mode in privateModes" :key="mode.id" class="text-xs leading-relaxed text-[var(--muted)]">
-              {{ mode.name }} · {{ mode.status }}
+              {{ lt(mode.name) }} · {{ lt(mode.status) }}
             </p>
           </div>
         </div>
@@ -108,7 +108,7 @@
           <p class="text-sm font-medium text-white">{{ t('institutional.reportQuality') }}</p>
           <div class="mt-3 space-y-2">
             <p v-for="section in reportSections" :key="section.id" class="text-xs leading-relaxed text-[var(--muted)]">
-              {{ section.title }}
+              {{ lt(section.title) }}
             </p>
           </div>
         </div>
@@ -219,9 +219,9 @@
             <div v-for="source in radar?.source_health || []" :key="source.source_id" class="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-white/[0.012] px-3 py-2">
               <div>
                 <p class="text-xs text-white">{{ source.source_name }}</p>
-                <p class="text-[10px] text-[var(--muted)]">Tier {{ source.source_tier }} · {{ source.latency_ms }}ms</p>
+                <p class="text-[10px] text-[var(--muted)]">{{ t('common.level') }} {{ source.source_tier }} · {{ source.latency_ms }}ms</p>
               </div>
-              <span class="rounded px-2 py-1 text-[10px]" :class="source.status === 'ok' ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-400/10 text-amber-100'">{{ source.status }}</span>
+              <span class="rounded px-2 py-1 text-[10px]" :class="source.status === 'ok' ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-400/10 text-amber-100'">{{ lt(source.status) }}</span>
             </div>
           </div>
         </div>
@@ -273,6 +273,7 @@ import { fetchCoreThemes } from '@/api/coreThemes'
 import { fetchCommercialReadiness } from '@/api/commercialReadiness'
 import type { CommercialReadiness, CoreThemes, InstitutionalRadar } from '@/api/types'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
+import { localizeDomainText } from '@/composables/useDomainLabels'
 
 const { t, lang } = useI18n()
 
@@ -380,27 +381,33 @@ const readinessCards = computed(() => {
     {
       title: t('institutional.dataDepth'),
       metric: `${r?.data_quality?.tier_a_b_share ?? '-'}%`,
-      detail: `${r?.data_quality?.node_count ?? '-'} nodes; ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} upgrade candidates surfaced.`,
+      detail: lang.value === 'zh'
+        ? `${r?.data_quality?.node_count ?? '-'} 个指标；已识别 ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} 个待升级数据项。`
+        : `${r?.data_quality?.node_count ?? '-'} nodes; ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} upgrade candidates surfaced.`,
     },
     {
       title: t('institutional.causalRigor'),
       metric: `${r?.causal_validation?.validated_count ?? 0}/${r?.causal_validation?.candidate_count ?? 0}`,
-      detail: `${r?.causal_validation?.promotion_ready_count ?? 0} promotion-ready candidates under governance checks.`,
+      detail: lang.value === 'zh'
+        ? `${r?.causal_validation?.promotion_ready_count ?? 0} 条候选机制达到升级检查门槛。`
+        : `${r?.causal_validation?.promotion_ready_count ?? 0} promotion-ready candidates under governance checks.`,
     },
     {
       title: t('institutional.reportQuality'),
       metric: r?.institutional_report?.quality_controls?.evidence_table ? 'V2' : '-',
-      detail: 'Evidence table, falsification section, source links, and compliance footer.',
+      detail: lt('Evidence table, falsification section, source links, and compliance footer.'),
     },
     {
       title: t('institutional.conversion'),
       metric: `${r?.subscription_packaging?.plans?.length ?? '-'}`,
-      detail: r?.subscription_packaging?.conversion_principle || '-',
+      detail: lt(r?.subscription_packaging?.conversion_principle || '-'),
     },
     {
       title: t('institutional.privateDelivery'),
       metric: `${r?.private_deployment?.deployment_modes?.length ?? '-'}`,
-      detail: `${r?.private_deployment?.capabilities?.length ?? '-'} delivery capabilities documented.`,
+      detail: lang.value === 'zh'
+        ? `已记录 ${r?.private_deployment?.capabilities?.length ?? '-'} 项交付能力。`
+        : `${r?.private_deployment?.capabilities?.length ?? '-'} delivery capabilities documented.`,
     },
   ]
 })
@@ -481,6 +488,10 @@ function compactList(values: string[], limit: number): string {
 
 function formatScore(value: number | null | undefined): string {
   return value === null || value === undefined ? '-' : Number(value).toFixed(0)
+}
+
+function lt(value: unknown): string {
+  return localizeDomainText(value, lang.value)
 }
 
 onMounted(() => {

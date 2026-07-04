@@ -7,7 +7,7 @@
       <!-- Section 1: Judgment -->
       <div class="mb-12 fade-in">
         <div v-if="riskStore.latest" class="min-w-0">
-          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">AI Analysis</p>
+          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('analysis.aiKicker') }}</p>
           <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 lg:p-7 card-hover">
             <div v-if="isPro" class="prose prose-invert prose-sm max-w-none judgment-markdown" v-html="renderedNarrative"></div>
@@ -103,28 +103,9 @@
         </div>
       </div>
 
-      <div v-if="lang === 'en'" class="mb-12 fade-in bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Alert Beta</p>
-            <h2 class="text-base font-medium text-white">{{ t('forward.alertSub') }}</h2>
-            <p class="terminal-copy mt-1">{{ t('forward.alertDesc') }}</p>
-          </div>
-          <div v-if="!subscribed" class="flex w-full gap-2 lg:max-w-sm">
-            <input v-model="alertEmail" type="email" placeholder="your@email.com"
-                   class="min-w-0 flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-white text-sm focus:border-[var(--accent)] focus:outline-none" />
-            <button @click="subscribe"
-                    class="px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/80 transition-colors">
-              {{ t('common.subscribe') }}
-            </button>
-          </div>
-          <p v-else class="text-sm text-[var(--green)]">✓ {{ t('forward.subscribed') }} {{ alertEmail }}</p>
-        </div>
-      </div>
-
       <!-- Section 2: Model Logic Breakdown -->
       <div class="mb-12 fade-in fade-in-delay-1">
-        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Model Explainability</p>
+        <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('analysis.explainabilityKicker') }}</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.modelLogic') }}</h2>
 
         <CrisisRegimePanel class="mb-5" />
@@ -556,8 +537,6 @@ const showFullReport = ref(false)
 const activeExport = ref('')
 const copied = ref(false)
 const expandedChainId = ref('')
-const alertEmail = ref(localStorage.getItem('gfcri_alert_email') || '')
-const subscribed = ref(!!localStorage.getItem('gfcri_alert_email'))
 const socialContent = ref<{ wechat: string; zsxq: string; cardUrl: string }>({ wechat: '', zsxq: '', cardUrl: '' })
 const selectedWatchIndicatorId = ref('')
 const riskWatch = useRiskWatch()
@@ -587,13 +566,6 @@ function copyText(text: string) {
   navigator.clipboard.writeText(text)
   copied.value = true
   setTimeout(() => copied.value = false, 2000)
-}
-
-function subscribe() {
-  if (alertEmail.value && alertEmail.value.includes('@')) {
-    localStorage.setItem('gfcri_alert_email', alertEmail.value)
-    subscribed.value = true
-  }
 }
 
 const nodeNames: Record<string, string> = {

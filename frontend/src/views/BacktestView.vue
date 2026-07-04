@@ -242,7 +242,7 @@
 
     <!-- Key Findings -->
     <div class="mb-14 fade-in">
-      <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Key Findings</p>
+      <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('backtest.keyFindings') }}</p>
       <h3 class="text-lg font-light text-white mb-6">{{ t('backtest.keyFindings') }}</h3>
 
       <div class="grid grid-cols-2 gap-5">
@@ -282,7 +282,7 @@
 
     <!-- Methodology Note -->
     <div class="text-center py-10 border-t border-[var(--border)]">
-      <p class="text-[11px] text-[var(--muted)]/40 uppercase tracking-[3px] mb-2">Methodology</p>
+      <p class="text-[11px] text-[var(--muted)]/40 uppercase tracking-[3px] mb-2">{{ t('backtest.methodologyKicker') }}</p>
       <p class="text-xs text-[var(--muted)]/30 max-w-lg mx-auto leading-relaxed">
         {{ t('backtest.methodology') }}
       </p>
