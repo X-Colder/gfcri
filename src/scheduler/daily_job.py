@@ -385,6 +385,21 @@ def run_daily_analysis():
             generation_time_ms=report_gen_ms,
         )
 
+        # --- Phase 8.5: Institutional radar and dynamic core themes ---
+        try:
+            from src.engines.institutional_radar import latest_institutional_radar
+            from src.engines.core_themes import latest_core_risk_themes
+
+            radar = latest_institutional_radar(limit=80, force_refresh=True)
+            themes = latest_core_risk_themes(limit=6, include_causal=True, graph=graph)
+            logger.info(
+                f"Institutional radar refreshed: items={radar.get('item_count')}, "
+                f"themes={len(themes.get('themes') or [])}, "
+                f"causal_candidates={(themes.get('causal') or {}).get('candidate_count', 0)}"
+            )
+        except Exception as e:
+            logger.warning(f"Institutional radar/core theme refresh failed (non-fatal): {e}")
+
         # --- Phase 9: Generate social content ---
         try:
             from src.engines.social_content import (

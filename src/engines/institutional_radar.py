@@ -125,14 +125,20 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
 
     items: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
+    source_latency_ms: dict[str, int] = {}
     for source in SOURCES:
+        started = time.perf_counter()
         try:
-            items.extend(_fetch_source(source))
+            fetched = _fetch_source(source)
+            source_latency_ms[source.id] = int((time.perf_counter() - started) * 1000)
+            items.extend(fetched)
         except Exception as exc:
+            source_latency_ms[source.id] = int((time.perf_counter() - started) * 1000)
             logger.warning(f"Institutional radar fetch failed for {source.id}: {exc}")
             errors.append({"source": source.name, "error": str(exc)})
 
     items.sort(key=lambda x: x.get("published_at") or "", reverse=True)
+    items.sort(key=lambda x: float(x.get("importance_score") or 0), reverse=True)
 
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -142,6 +148,8 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
         "items": items,
         "theme_summary": _theme_summary(items),
         "errors": errors,
+        "source_health": _source_health_from_fetch(source_latency_ms, errors, items),
+        "source_latency_ms": source_latency_ms,
         "methodology": (
             "Institutional Radar v1 fetches public RSS/Atom metadata from official institutional sources "
             "and maps titles/summaries to GFCRI themes, nodes and chains using transparent keyword rules. "
@@ -150,6 +158,7 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
     }
     _CACHE["ts"] = now
     _CACHE["data"] = data
+    _persist_snapshot(data)
     return _limited_response(data, limit)
 
 
@@ -162,6 +171,43 @@ def _limited_response(data: dict[str, Any], limit: int) -> dict[str, Any]:
     return response
 
 
+def cached_or_persisted_institutional_radar(limit: int = 50) -> dict[str, Any]:
+    """Return radar data without outbound network calls."""
+    if _CACHE["data"]:
+        return _limited_response(_CACHE["data"], limit)
+    try:
+        from src.storage.database import get_institutional_radar_items, get_institutional_radar_source_health
+
+        rows = get_institutional_radar_items(limit=limit)
+        items = [_item_from_row(row) for row in rows]
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "source_count": len(SOURCES),
+            "item_count": len(items),
+            "sources": [source.__dict__ for source in SOURCES],
+            "items": items,
+            "theme_summary": _theme_summary(items),
+            "errors": [],
+            "source_health": get_institutional_radar_source_health(),
+            "source_latency_ms": {},
+            "methodology": "Returned from persisted Institutional Radar metadata without outbound network calls.",
+        }
+    except Exception as exc:
+        logger.warning(f"Institutional radar persisted fallback failed: {exc}")
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "source_count": len(SOURCES),
+            "item_count": 0,
+            "sources": [source.__dict__ for source in SOURCES],
+            "items": [],
+            "theme_summary": [],
+            "errors": [{"source": "persisted_radar", "error": str(exc)}],
+            "source_health": [],
+            "source_latency_ms": {},
+            "methodology": "Institutional Radar persisted fallback returned no data.",
+        }
+
+
 def _fetch_source(source: RadarSource) -> list[dict[str, Any]]:
     resp = requests.get(source.url, timeout=12, headers=_REQUEST_HEADERS)
     resp.raise_for_status()
@@ -170,6 +216,7 @@ def _fetch_source(source: RadarSource) -> list[dict[str, Any]]:
     output = []
     for entry in entries[:12]:
         mapped = _map_item(entry["title"], entry.get("summary", ""))
+        importance = _importance_score(source, entry, mapped)
         output.append({
             "id": _stable_id(source.id, entry.get("link", ""), entry["title"]),
             "source": source.name,
@@ -184,8 +231,104 @@ def _fetch_source(source: RadarSource) -> list[dict[str, Any]]:
             "affected_chains": mapped["chains"],
             "risk_direction": mapped["risk_direction"],
             "confidence": mapped["confidence"],
+            "importance_score": importance["score"],
+            "importance_reasons": importance["reasons"],
         })
     return output
+
+
+def _importance_score(source: RadarSource, entry: dict[str, Any], mapped: dict[str, Any]) -> dict[str, Any]:
+    score = 35.0 if source.tier == "A" else 24.0
+    reasons = [f"Tier {source.tier} official source"]
+    theme_count = len([t for t in mapped.get("themes", []) if t != "General Macro / Policy"])
+    if theme_count:
+        score += min(25.0, 8.0 * theme_count)
+        reasons.append(f"{theme_count} mapped GFCRI risk theme(s)")
+    node_count = len(mapped.get("nodes") or [])
+    chain_count = len(mapped.get("chains") or [])
+    if node_count:
+        score += min(18.0, 2.5 * node_count)
+        reasons.append(f"{node_count} affected model node(s)")
+    if chain_count:
+        score += min(16.0, 5.0 * chain_count)
+        reasons.append(f"{chain_count} affected transmission channel(s)")
+
+    text = f"{entry.get('title', '')} {entry.get('summary', '')}".lower()
+    report_keywords = ("financial stability", "systemic", "risk", "credit", "liquidity", "bank", "stress", "inflation", "debt")
+    hits = [kw for kw in report_keywords if kw in text]
+    if hits:
+        score += min(18.0, 4.0 * len(hits))
+        reasons.append(f"Contains institutional risk keyword(s): {', '.join(hits[:4])}")
+
+    published_at = entry.get("published_at")
+    try:
+        if published_at:
+            dt = datetime.fromisoformat(str(published_at).replace("Z", "+00:00"))
+            age_days = max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds() / 86400)
+            recency_bonus = max(0.0, 12.0 - age_days)
+            score += recency_bonus
+            if recency_bonus >= 6:
+                reasons.append("Fresh institutional signal")
+    except Exception:
+        pass
+
+    return {"score": round(min(100.0, score), 2), "reasons": reasons[:6]}
+
+
+def _source_health_from_fetch(
+    source_latency_ms: dict[str, int],
+    errors: list[dict[str, str]],
+    items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    error_by_name = {e.get("source"): e.get("error") for e in errors}
+    item_count_by_source: dict[str, int] = {}
+    for item in items:
+        sid = item.get("source_id")
+        item_count_by_source[sid] = item_count_by_source.get(sid, 0) + 1
+    rows = []
+    for source in SOURCES:
+        err = error_by_name.get(source.name)
+        rows.append({
+            "source_id": source.id,
+            "source_name": source.name,
+            "source_tier": source.tier,
+            "url": source.url,
+            "status": "error" if err else "ok",
+            "last_error": err,
+            "item_count": item_count_by_source.get(source.id, 0),
+            "latency_ms": source_latency_ms.get(source.id, 0),
+        })
+    return rows
+
+
+def _persist_snapshot(data: dict[str, Any]) -> None:
+    try:
+        from src.storage.database import save_institutional_radar_snapshot
+
+        save_institutional_radar_snapshot(data)
+    except Exception as exc:
+        logger.warning(f"Institutional radar persistence failed: {exc}")
+
+
+def _item_from_row(row: dict[str, Any]) -> dict[str, Any]:
+    published = row.get("published_at")
+    return {
+        "id": row.get("item_id"),
+        "source": row.get("source_name"),
+        "source_id": row.get("source_id"),
+        "source_tier": row.get("source_tier"),
+        "title": row.get("title"),
+        "summary": row.get("summary") or "",
+        "url": row.get("url"),
+        "published_at": published.isoformat() if hasattr(published, "isoformat") else published,
+        "risk_themes": row.get("risk_themes") or [],
+        "affected_nodes": row.get("affected_nodes") or [],
+        "affected_chains": row.get("affected_chains") or [],
+        "risk_direction": row.get("risk_direction") or "monitoring",
+        "confidence": float(row.get("confidence") or 0),
+        "importance_score": float(row.get("importance_score") or 0),
+        "importance_reasons": row.get("importance_reasons") or [],
+    }
 
 
 def _rss_entries(root: ET.Element) -> list[dict[str, Any]]:

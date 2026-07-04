@@ -94,9 +94,39 @@ def latest_model_foundation():
         node_id: NodeDataDictionaryEntry(**entry)
         for node_id, entry in NODE_DATA_DICTIONARY.items()
     }
+    tier_counter: Counter[str] = Counter(str(entry.get("source_tier") or "D") for entry in NODE_DATA_DICTIONARY.values())
+    total_nodes = max(1, len(NODE_DATA_DICTIONARY))
+    upgrade_priorities = []
+    for node_id, entry in NODE_DATA_DICTIONARY.items():
+        tier = str(entry.get("source_tier") or "D")
+        limitations = str(entry.get("known_limitations") or "")
+        if tier in {"C", "D"} or "proxy" in limitations.lower() or "missing" in limitations.lower():
+            upgrade_priorities.append({
+                "node_id": node_id,
+                "display_name": entry.get("display_name") or node_id,
+                "source_tier": tier,
+                "reason": limitations,
+                "upgrade_plan": entry.get("upgrade_plan") or "",
+            })
+    upgrade_priorities.sort(key=lambda row: (row["source_tier"], row["node_id"]), reverse=True)
+    coverage_summary = {
+        "node_count": len(NODE_DATA_DICTIONARY),
+        "source_tier_counts": dict(tier_counter),
+        "tier_a_b_share": round(
+            100.0 * (tier_counter.get("A", 0) + tier_counter.get("B", 0)) / total_nodes,
+            1,
+        ),
+        "proxy_or_low_tier_count": len(upgrade_priorities),
+        "professional_standard": (
+            "Institutional-grade coverage requires each core node to expose source tier, raw formula, "
+            "stress direction, absolute threshold, limitations, and an upgrade path."
+        ),
+    }
 
     return ModelFoundationResponse(
         index_date=str(data["index_date"]),
         sub_index_receipts=receipts,
         data_dictionary=dictionary,
+        coverage_summary=coverage_summary,
+        upgrade_priorities=upgrade_priorities[:12],
     )

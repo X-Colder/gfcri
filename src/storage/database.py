@@ -287,6 +287,183 @@ def get_risk_index_history(limit: int = 30) -> list[dict]:
         conn.close()
 
 
+def _ensure_institutional_radar_tables(cur):
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS institutional_radar_items (
+            item_id TEXT PRIMARY KEY,
+            source_id TEXT NOT NULL,
+            source_name TEXT NOT NULL,
+            source_tier TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT,
+            url TEXT NOT NULL,
+            published_at TIMESTAMPTZ,
+            risk_themes JSONB,
+            affected_nodes JSONB,
+            affected_chains JSONB,
+            risk_direction TEXT,
+            confidence NUMERIC(5, 4),
+            importance_score NUMERIC(6, 2),
+            importance_reasons JSONB,
+            first_seen TIMESTAMPTZ DEFAULT NOW(),
+            last_seen TIMESTAMPTZ DEFAULT NOW()
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS institutional_radar_source_health (
+            source_id TEXT PRIMARY KEY,
+            source_name TEXT NOT NULL,
+            source_tier TEXT NOT NULL,
+            url TEXT NOT NULL,
+            status TEXT NOT NULL,
+            last_checked_at TIMESTAMPTZ DEFAULT NOW(),
+            last_success_at TIMESTAMPTZ,
+            last_error TEXT,
+            item_count INTEGER DEFAULT 0,
+            latency_ms INTEGER DEFAULT 0
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_institutional_radar_published ON institutional_radar_items (published_at DESC NULLS LAST)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_institutional_radar_importance ON institutional_radar_items (importance_score DESC NULLS LAST)")
+
+
+def save_institutional_radar_snapshot(data: dict) -> None:
+    """Persist institutional radar metadata and source health.
+
+    The radar stores public metadata and GFCRI mapping only; it does not store
+    copyrighted full report bodies.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _ensure_institutional_radar_tables(cur)
+            sources = {s.get("id"): s for s in data.get("sources") or []}
+            error_by_source = {e.get("source"): e.get("error") for e in data.get("errors") or []}
+            source_item_counts: dict[str, int] = {}
+            for item in data.get("items") or []:
+                source_item_counts[item.get("source_id")] = source_item_counts.get(item.get("source_id"), 0) + 1
+                cur.execute(
+                    """
+                    INSERT INTO institutional_radar_items
+                        (item_id, source_id, source_name, source_tier, title, summary, url,
+                         published_at, risk_themes, affected_nodes, affected_chains,
+                         risk_direction, confidence, importance_score, importance_reasons,
+                         first_seen, last_seen)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    ON CONFLICT (item_id) DO UPDATE SET
+                        source_id = EXCLUDED.source_id,
+                        source_name = EXCLUDED.source_name,
+                        source_tier = EXCLUDED.source_tier,
+                        title = EXCLUDED.title,
+                        summary = EXCLUDED.summary,
+                        url = EXCLUDED.url,
+                        published_at = EXCLUDED.published_at,
+                        risk_themes = EXCLUDED.risk_themes,
+                        affected_nodes = EXCLUDED.affected_nodes,
+                        affected_chains = EXCLUDED.affected_chains,
+                        risk_direction = EXCLUDED.risk_direction,
+                        confidence = EXCLUDED.confidence,
+                        importance_score = EXCLUDED.importance_score,
+                        importance_reasons = EXCLUDED.importance_reasons,
+                        last_seen = NOW()
+                    """,
+                    (
+                        item.get("id"),
+                        item.get("source_id"),
+                        item.get("source"),
+                        item.get("source_tier"),
+                        item.get("title"),
+                        item.get("summary", ""),
+                        item.get("url"),
+                        item.get("published_at"),
+                        Json(item.get("risk_themes") or []),
+                        Json(item.get("affected_nodes") or []),
+                        Json(item.get("affected_chains") or []),
+                        item.get("risk_direction"),
+                        item.get("confidence", 0),
+                        item.get("importance_score", 0),
+                        Json(item.get("importance_reasons") or []),
+                    ),
+                )
+
+            for source_id, source in sources.items():
+                error = error_by_source.get(source.get("name"))
+                status = "error" if error else "ok"
+                item_count = source_item_counts.get(source_id, 0)
+                cur.execute(
+                    """
+                    INSERT INTO institutional_radar_source_health
+                        (source_id, source_name, source_tier, url, status, last_checked_at,
+                         last_success_at, last_error, item_count, latency_ms)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), CASE WHEN %s THEN NOW() ELSE NULL END, %s, %s, %s)
+                    ON CONFLICT (source_id) DO UPDATE SET
+                        source_name = EXCLUDED.source_name,
+                        source_tier = EXCLUDED.source_tier,
+                        url = EXCLUDED.url,
+                        status = EXCLUDED.status,
+                        last_checked_at = NOW(),
+                        last_success_at = CASE WHEN EXCLUDED.status = 'ok' THEN NOW() ELSE institutional_radar_source_health.last_success_at END,
+                        last_error = EXCLUDED.last_error,
+                        item_count = EXCLUDED.item_count,
+                        latency_ms = EXCLUDED.latency_ms
+                    """,
+                    (
+                        source_id,
+                        source.get("name"),
+                        source.get("tier"),
+                        source.get("url"),
+                        status,
+                        status == "ok",
+                        error,
+                        item_count,
+                        int((data.get("source_latency_ms") or {}).get(source_id, 0)),
+                    ),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_institutional_radar_items(limit: int = 50) -> list[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_institutional_radar_tables(cur)
+            cur.execute(
+                """
+                SELECT *
+                FROM institutional_radar_items
+                ORDER BY published_at DESC NULLS LAST, importance_score DESC NULLS LAST, last_seen DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_institutional_radar_source_health() -> list[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_institutional_radar_tables(cur)
+            cur.execute(
+                """
+                SELECT *
+                FROM institutional_radar_source_health
+                ORDER BY source_tier, source_name
+                """
+            )
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def save_causal_candidates(
     run_date: str,
     trigger: dict,

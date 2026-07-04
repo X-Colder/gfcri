@@ -105,6 +105,8 @@ export interface ModelFoundation {
   index_date: string
   sub_index_receipts: Record<string, SubIndexReceipt>
   data_dictionary: Record<string, Record<string, any>>
+  coverage_summary?: Record<string, any> | null
+  upgrade_priorities?: Record<string, any>[] | null
 }
 
 export interface InstitutionalRadarSource {
@@ -129,6 +131,8 @@ export interface InstitutionalRadarItem {
   affected_chains: string[]
   risk_direction: string
   confidence: number
+  importance_score: number
+  importance_reasons: string[]
 }
 
 export interface InstitutionalThemeSummary {
@@ -144,6 +148,17 @@ export interface InstitutionalRadarError {
   error: string
 }
 
+export interface InstitutionalRadarSourceHealth {
+  source_id: string
+  source_name: string
+  source_tier: string
+  url: string
+  status: string
+  last_error: string | null
+  item_count: number
+  latency_ms: number
+}
+
 export interface InstitutionalRadar {
   generated_at: string
   source_count: number
@@ -152,5 +167,48 @@ export interface InstitutionalRadar {
   items: InstitutionalRadarItem[]
   theme_summary: InstitutionalThemeSummary[]
   errors: InstitutionalRadarError[]
+  source_health: InstitutionalRadarSourceHealth[]
+  source_latency_ms: Record<string, number>
   methodology: string
+}
+
+export interface CoreThemeEvidence {
+  type: string
+  label: string | null
+  value: number | null
+  detail: string | null
+  node_id?: string | null
+  chain_id?: string | null
+  sub_index_id?: string | null
+  source?: string | null
+  url?: string | null
+}
+
+export interface CoreRiskTheme {
+  theme_id: string
+  title: string
+  description: string
+  priority_score: number
+  status: string
+  model_pressure: number
+  transmission_pressure: number
+  institutional_attention: number
+  hidden_risk_alignment: number
+  watch_metrics: string[]
+  affected_nodes: string[]
+  affected_chains: string[]
+  evidence: CoreThemeEvidence[]
+  why_it_matters: string
+  next_questions: string[]
+}
+
+export interface CoreThemes {
+  generated_at: string
+  index_date: string | null
+  gfcri_value: number | null
+  alert_level: string | null
+  themes: CoreRiskTheme[]
+  methodology: string
+  radar_context: Record<string, any>
+  causal: Record<string, any>
 }

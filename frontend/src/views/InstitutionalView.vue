@@ -33,6 +33,41 @@
       </div>
     </section>
 
+    <section class="terminal-section p-5">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p class="terminal-kicker">{{ t('institutional.coreThemeLink') }}</p>
+          <h2 class="mt-1 text-base font-medium text-white">{{ t('dash.coreThemes') }}</h2>
+          <p class="terminal-copy mt-2 max-w-3xl">{{ t('institutional.coreThemeLinkBody') }}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 lg:min-w-[260px]">
+          <div class="terminal-metric">
+            <span>{{ t('dash.causalCandidates') }}</span>
+            <strong>{{ coreThemes?.causal?.candidate_count ?? '-' }}</strong>
+          </div>
+          <div class="terminal-metric">
+            <span>{{ t('institutional.themes') }}</span>
+            <strong>{{ coreThemes?.themes.length ?? '-' }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 grid gap-3 lg:grid-cols-3">
+        <article v-for="theme in topCoreThemes" :key="theme.theme_id" class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ theme.status }}</p>
+              <h3 class="mt-1 text-sm font-medium text-white">{{ theme.title }}</h3>
+            </div>
+            <strong class="font-mono text-xl font-medium text-[var(--accent)]">{{ theme.priority_score.toFixed(0) }}</strong>
+          </div>
+          <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{{ theme.why_it_matters }}</p>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <span v-for="metric in theme.watch_metrics.slice(0, 4)" :key="metric" class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{{ metric }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section class="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.8fr)]">
       <div class="terminal-section p-5">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -76,6 +111,7 @@
                 </a>
               </div>
               <div class="flex shrink-0 items-center gap-2 text-[11px]">
+                <span class="rounded border border-[var(--border)] px-2 py-1 text-white">{{ t('institutional.importance') }} {{ formatScore(item.importance_score) }}</span>
                 <span class="rounded bg-[var(--accent)]/10 px-2 py-1 text-[var(--accent)]">{{ directionLabel(item.risk_direction) }}</span>
                 <span class="rounded border border-[var(--border)] px-2 py-1 text-[var(--muted)]">{{ Math.round(item.confidence * 100) }}%</span>
               </div>
@@ -129,6 +165,19 @@
             <p class="mt-1 text-[11px] text-amber-100/70">{{ errorSources }}</p>
           </div>
         </div>
+
+        <div class="terminal-section p-5">
+          <p class="terminal-kicker">{{ t('institutional.sourceHealth') }}</p>
+          <div class="mt-4 space-y-2">
+            <div v-for="source in radar?.source_health || []" :key="source.source_id" class="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-white/[0.012] px-3 py-2">
+              <div>
+                <p class="text-xs text-white">{{ source.source_name }}</p>
+                <p class="text-[10px] text-[var(--muted)]">Tier {{ source.source_tier }} · {{ source.latency_ms }}ms</p>
+              </div>
+              <span class="rounded px-2 py-1 text-[10px]" :class="source.status === 'ok' ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-400/10 text-amber-100'">{{ source.status }}</span>
+            </div>
+          </div>
+        </div>
       </aside>
     </section>
 
@@ -173,7 +222,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { fetchInstitutionalRadar } from '@/api/institutionalRadar'
-import type { InstitutionalRadar } from '@/api/types'
+import { fetchCoreThemes } from '@/api/coreThemes'
+import type { CoreThemes, InstitutionalRadar } from '@/api/types'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 
 const { t, lang } = useI18n()
@@ -182,6 +232,7 @@ const radar = ref<InstitutionalRadar | null>(null)
 const loading = ref(true)
 const refreshing = ref(false)
 const error = ref('')
+const coreThemes = ref<CoreThemes | null>(null)
 
 const themeLabels: Record<string, { zh: string; en: string }> = {
   'AI Capex / Tech Bubble': { zh: 'AI 资本开支 / 科技泡沫', en: 'AI Capex / Tech Bubble' },
@@ -273,6 +324,7 @@ const packageItems = computed(() => [
 const topItems = computed(() => radar.value?.items.slice(0, 10) ?? [])
 const topThemes = computed(() => radar.value?.theme_summary.slice(0, 6) ?? [])
 const errorSources = computed(() => radar.value?.errors.map((item) => item.source).join(', ') ?? '')
+const topCoreThemes = computed(() => coreThemes.value?.themes.slice(0, 3) ?? [])
 
 async function loadRadar(refresh = false) {
   error.value = ''
@@ -285,6 +337,14 @@ async function loadRadar(refresh = false) {
   } finally {
     loading.value = false
     refreshing.value = false
+  }
+}
+
+async function loadCoreThemes() {
+  try {
+    coreThemes.value = await fetchCoreThemes(3, false)
+  } catch {
+    coreThemes.value = null
   }
 }
 
@@ -329,5 +389,12 @@ function compactList(values: string[], limit: number): string {
   return extra > 0 ? `${visible.join(', ')} +${extra}` : visible.join(', ')
 }
 
-onMounted(() => loadRadar(false))
+function formatScore(value: number | null | undefined): string {
+  return value === null || value === undefined ? '-' : Number(value).toFixed(0)
+}
+
+onMounted(() => {
+  loadRadar(false)
+  loadCoreThemes()
+})
 </script>

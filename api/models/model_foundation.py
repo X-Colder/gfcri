@@ -56,3 +56,5 @@ class ModelFoundationResponse(BaseModel):
     index_date: str
     sub_index_receipts: dict[str, SubIndexReceipt]
     data_dictionary: dict[str, NodeDataDictionaryEntry]
+    coverage_summary: dict[str, Any] | None = None
+    upgrade_priorities: list[dict[str, Any]] | None = None

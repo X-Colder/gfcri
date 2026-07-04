@@ -170,6 +170,44 @@
           </aside>
         </div>
 
+        <section class="core-theme-panel">
+          <div class="receipt-head">
+            <div>
+              <p class="terminal-kicker">{{ t('dash.coreThemes') }}</p>
+              <p class="terminal-copy mt-1">{{ t('dash.coreThemesDesc') }}</p>
+            </div>
+            <router-link to="/institutional" class="receipt-link">{{ t('nav.institutional') }}</router-link>
+          </div>
+          <div v-if="coreThemeLoading" class="theme-loading">{{ t('common.loading') }}</div>
+          <div v-else-if="coreThemeError" class="theme-loading">{{ coreThemeError }}</div>
+          <div v-else class="core-theme-grid">
+            <article v-for="theme in topCoreThemes" :key="theme.theme_id" class="core-theme-card">
+              <div class="theme-card-head">
+                <div>
+                  <p class="theme-status">{{ theme.status }}</p>
+                  <h3>{{ theme.title }}</h3>
+                </div>
+                <strong>{{ theme.priority_score.toFixed(0) }}</strong>
+              </div>
+              <p class="theme-desc">{{ theme.description }}</p>
+              <div class="theme-bars">
+                <span>{{ t('dash.modelPressure') }} {{ theme.model_pressure.toFixed(0) }}</span>
+                <span>{{ t('dash.institutionalAttention') }} {{ theme.institutional_attention.toFixed(0) }}</span>
+                <span>{{ t('dash.hiddenAlignment') }} {{ theme.hidden_risk_alignment.toFixed(0) }}</span>
+              </div>
+              <div class="theme-evidence">
+                <p v-for="item in theme.evidence.slice(0, 3)" :key="`${theme.theme_id}-${item.type}-${item.label}`">
+                  {{ item.type }} · {{ item.label || '-' }} · {{ formatThemeValue(item.value) }}
+                </p>
+              </div>
+              <p class="theme-why">{{ theme.why_it_matters }}</p>
+            </article>
+          </div>
+          <div v-if="coreThemes?.causal?.candidate_count" class="theme-causal-note">
+            {{ t('dash.causalCandidates') }}: {{ coreThemes.causal.candidate_count }}
+          </div>
+        </section>
+
         <div class="score-receipt compact-receipt">
           <div class="receipt-head">
             <div>
@@ -296,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
@@ -313,17 +351,37 @@ import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
 import TradeSpilloverPanel from '@/components/common/TradeSpilloverPanel.vue'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import RiskWatch from '@/components/common/RiskWatch.vue'
+import { fetchCoreThemes } from '@/api/coreThemes'
+import type { CoreThemes } from '@/api/types'
 
 use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
 const { t, tx } = useI18n()
+const coreThemes = ref<CoreThemes | null>(null)
+const coreThemeLoading = ref(false)
+const coreThemeError = ref('')
 
 onMounted(() => {
   riskStore.loadLatest()
   riskStore.loadHistory()
+  loadCoreThemes()
 })
+
+async function loadCoreThemes() {
+  coreThemeLoading.value = true
+  coreThemeError.value = ''
+  try {
+    coreThemes.value = await fetchCoreThemes(3, false)
+  } catch (err: any) {
+    coreThemeError.value = err?.message || 'Core themes failed to load'
+  } finally {
+    coreThemeLoading.value = false
+  }
+}
+
+const topCoreThemes = computed(() => coreThemes.value?.themes.slice(0, 3) ?? [])
 
 const anomalyCount = computed(() => {
   const nc = riskStore.latest?.node_contributions
@@ -364,19 +422,6 @@ const primaryDriver = computed(() => {
     .sort((a: any, b: any) => driverSortScore(b[1]) - driverSortScore(a[1]))[0]
   if (!item) return t('dash.noDriver')
   return tx((item[1] as any).display_name || item[0])
-})
-
-const primaryDriverDetail = computed(() => {
-  const nc = riskStore.latest?.node_contributions
-  if (!nc) return '—'
-  const item = Object.entries(nc)
-    .sort((a: any, b: any) => driverSortScore(b[1]) - driverSortScore(a[1]))[0]
-  if (!item) return '—'
-  const info: any = item[1]
-  const z = Number(info.zscore || 0)
-  const abs = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
-  const absText = abs === null ? '-' : `${(abs * 100).toFixed(0)}`
-  return `Z ${z.toFixed(2)} · ${t('analysis.anomalyScore')} ${((Number(info.anomaly_score || 0)) * 100).toFixed(0)} · ${t('analysis.absScore')} ${absText}`
 })
 
 const topDrivers = computed(() => {
@@ -558,6 +603,10 @@ function hiddenDetailText(detail: any): string {
   if (detail.type === 'zscore_desensitized') return t('dash.hiddenDesensitized')
   if (detail.type === 'surface_calm_deep_stress') return t('dash.hiddenSurfaceCalm')
   return tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+}
+
+function formatThemeValue(value: number | null | undefined): string {
+  return value === null || value === undefined ? '-' : Number(value).toFixed(0)
 }
 
 </script>
@@ -910,6 +959,119 @@ function hiddenDetailText(detail: any): string {
   margin-top: 16px;
 }
 
+.core-theme-panel {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.core-theme-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.core-theme-card {
+  background: rgba(255,255,255,0.016);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 13px;
+}
+
+.theme-card-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.theme-card-head h3 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
+.theme-card-head strong {
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.theme-status {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.theme-desc,
+.theme-why,
+.theme-evidence p,
+.theme-loading,
+.theme-causal-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.48;
+}
+
+.theme-desc {
+  margin-top: 9px;
+  min-height: 48px;
+}
+
+.theme-bars {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.theme-bars span {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 7px;
+}
+
+.theme-evidence {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 9px;
+}
+
+.theme-evidence p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-why {
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
+  margin-top: 9px;
+}
+
+.theme-loading {
+  margin-top: 12px;
+}
+
+.theme-causal-note {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
 .model-lens-grid {
   display: grid;
   gap: 16px;
@@ -1252,7 +1414,8 @@ function hiddenDetailText(detail: any): string {
   .command-meta,
   .cards-grid,
   .receipt-grid,
-  .evidence-grid {
+  .evidence-grid,
+  .core-theme-grid {
     grid-template-columns: 1fr;
   }
 

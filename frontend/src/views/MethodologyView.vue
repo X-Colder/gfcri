@@ -55,6 +55,52 @@
     </section>
 
     <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('trust.coverageAudit') }}</p>
+      <div class="mt-4 grid gap-3 md:grid-cols-4">
+        <div class="terminal-metric">
+          <span>{{ t('dash.indicatorCount') }}</span>
+          <strong>{{ coverageSummary?.node_count ?? '-' }}</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>{{ t('trust.tierABShare') }}</span>
+          <strong>{{ coverageSummary?.tier_a_b_share ?? '-' }}%</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>{{ t('trust.proxyLowTier') }}</span>
+          <strong>{{ coverageSummary?.proxy_or_low_tier_count ?? '-' }}</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>{{ t('dash.modelVersion') }}</span>
+          <strong>Audit v1</strong>
+        </div>
+      </div>
+      <p class="terminal-copy mt-4">{{ coverageSummary?.professional_standard || t('trust.sourcesBody') }}</p>
+      <div class="mt-4 grid gap-3 lg:grid-cols-[0.75fr_1.25fr]">
+        <div class="method-block">
+          <p class="text-sm text-white font-medium">{{ t('trust.sourceTierMix') }}</p>
+          <div class="mt-3 space-y-2">
+            <div v-for="(count, tier) in coverageSummary?.source_tier_counts || {}" :key="tier" class="flex items-center justify-between text-xs">
+              <span class="text-[var(--muted)]">Tier {{ tier }}</span>
+              <strong class="font-mono text-white">{{ count }}</strong>
+            </div>
+          </div>
+        </div>
+        <div class="method-block">
+          <p class="text-sm text-white font-medium">{{ t('trust.upgradePriorities') }}</p>
+          <div class="mt-3 max-h-[260px] overflow-y-auto">
+            <div v-for="item in upgradePriorities" :key="item.node_id" class="border-t border-[var(--border)] py-2 first:border-t-0">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs text-white">{{ item.display_name }}</p>
+                <span class="rounded border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">Tier {{ item.source_tier }}</span>
+              </div>
+              <p class="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{{ item.upgrade_plan || item.reason }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="terminal-card">
       <p class="terminal-kicker">{{ t('trust.formulas') }}</p>
       <div class="mt-4 grid gap-3 lg:grid-cols-2">
         <div v-for="item in formulas" :key="item.name" class="method-block">
@@ -124,9 +170,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { fetchModelFoundation } from '@/api/modelFoundation'
+import type { ModelFoundation } from '@/api/types'
 
 const { t, tx } = useI18n()
+const foundation = ref<ModelFoundation | null>(null)
+
+onMounted(async () => {
+  try {
+    foundation.value = await fetchModelFoundation()
+  } catch {
+    foundation.value = null
+  }
+})
+
+const coverageSummary = computed(() => foundation.value?.coverage_summary || null)
+const upgradePriorities = computed(() => foundation.value?.upgrade_priorities || [])
 
 const formulas = [
   {

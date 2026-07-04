@@ -23,6 +23,8 @@ class InstitutionalRadarItem(BaseModel):
     affected_chains: list[str] = Field(default_factory=list)
     risk_direction: str
     confidence: float
+    importance_score: float = 0
+    importance_reasons: list[str] = Field(default_factory=list)
 
 
 class InstitutionalThemeSummary(BaseModel):
@@ -38,6 +40,17 @@ class InstitutionalRadarError(BaseModel):
     error: str
 
 
+class InstitutionalRadarSourceHealth(BaseModel):
+    source_id: str
+    source_name: str
+    source_tier: str
+    url: str
+    status: str
+    last_error: str | None = None
+    item_count: int = 0
+    latency_ms: int = 0
+
+
 class InstitutionalRadarResponse(BaseModel):
     generated_at: str
     source_count: int
@@ -46,4 +59,6 @@ class InstitutionalRadarResponse(BaseModel):
     items: list[InstitutionalRadarItem]
     theme_summary: list[InstitutionalThemeSummary]
     errors: list[InstitutionalRadarError] = Field(default_factory=list)
+    source_health: list[InstitutionalRadarSourceHealth] = Field(default_factory=list)
+    source_latency_ms: dict[str, int] = Field(default_factory=dict)
     methodology: str
