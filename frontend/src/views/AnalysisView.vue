@@ -423,7 +423,7 @@
                 <td class="px-5 py-3 text-right font-mono" :style="{ color: Math.abs(node.zscore) > 3 ? 'var(--red)' : 'var(--yellow)' }">
                   {{ Math.abs(node.zscore).toFixed(1) }}×
                 </td>
-                <td class="px-5 py-3 text-right font-mono text-[var(--muted)]">{{ (node.anomalyScore * 100).toFixed(0) }}</td>
+                <td class="px-5 py-3 text-right font-mono" :style="{ color: node.anomalyScore > 0 ? 'var(--orange)' : 'var(--muted)' }">{{ (node.anomalyScore * 100).toFixed(0) }}</td>
                 <td class="px-5 py-3 text-right font-mono text-[var(--muted)]">{{ node.absScoreDisplay }}</td>
                 <td class="px-5 py-3 text-right">
                   <span :class="node.zscore > 0 ? 'text-[var(--red)]' : 'text-[var(--green)]'">
@@ -683,12 +683,12 @@ const englishFullReportMarkdown = computed(() => {
   lines.push(`## Anomalous Indicators`)
   lines.push('')
   if (anomalousNodes.value.length) {
-    lines.push(`| Indicator | Current | Deviation | Direction |`)
-    lines.push(`|---|---:|---:|---|`)
+    lines.push(`| Indicator | Current | Deviation | Direction | Directional pressure |`)
+    lines.push(`|---|---:|---:|---|---:|`)
     for (const node of anomalousNodes.value) {
       const direction = node.zscore > 0 ? 'High' : 'Low'
       const value = typeof node.value === 'number' ? node.value.toFixed(2) : '-'
-      lines.push(`| ${tx(node.name)} | ${value} | ${Math.abs(node.zscore).toFixed(1)}x | ${direction} |`)
+      lines.push(`| ${tx(node.name)} | ${value} | ${Math.abs(node.zscore).toFixed(1)}x | ${direction} | ${(node.anomalyScore * 100).toFixed(0)} |`)
     }
   } else {
     lines.push(`No indicators are currently outside the anomaly threshold.`)
@@ -741,7 +741,7 @@ const currentJudgmentMarkdown = computed(() => {
       '',
       `**实际损害锚点：${realizedDamage}。** ${damageAnchor} 因此，当前更接近“压力累积/隐藏风险暴露前阶段”，不能简单等同于 2008 或 2020 式已经兑现的系统性损害。`,
       '',
-      `**为什么仍需警惕：** 当前有 **${active}** 条活跃传导链、**${anomalies}** 个异常指标，信号一致性为 **${(risk.coherence_multiplier || 1).toFixed(2)}x**。主要压力来自 **${topSubText || '暂无显著子指数'}**；首要驱动为 **${driverDetail}**；首要传导链为 **${chainName}（压力 ${chainStress}）**。`,
+      `**为什么仍需观察：** 当前有 **${active}** 条活跃传导链、**${anomalies}** 个统计异常指标，信号一致性为 **${(risk.coherence_multiplier || 1).toFixed(2)}x**。注意：统计异常不等于风险压力，系统现在只把“朝风险方向移动”的异常计入压力。主要压力来自 **${topSubText || '暂无显著子指数'}**；首要驱动为 **${driverDetail}**；首要传导链为 **${chainName}（压力 ${chainStress}）**。`,
       '',
       `**隐藏风险：${hidden.statusLabel}，暗流加分 +${hidden.undercurrent.toFixed(1)}。** 深层压力 ${hidden.deepAvgDisplay}，表层压力 ${hidden.surfaceAvgDisplay}，缺口 ${hidden.gapDisplay}。这说明部分风险可能被低波动、政策缓冲或市场拥挤交易掩盖，尤其需要关注日元、黄金、AI/半导体和信用/银行链条是否从“估值压力”转化为“现金流/融资损害”。`,
       '',
@@ -754,7 +754,7 @@ const currentJudgmentMarkdown = computed(() => {
     '',
     `**Realized-damage anchor: ${realizedDamage}.** ${damageAnchor} The current state is closer to pressure accumulation before full damage realization than to a 2008- or 2020-style systemic damage event.`,
     '',
-    `**Why it still matters:** there are **${active}** active transmission channels, **${anomalies}** anomalous indicators, and signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**. The main pressure pockets are **${topSubText || 'no dominant sub-index'}**. The top driver is **${driverDetail}** and the leading channel is **${chainName} (stress ${chainStress})**.`,
+    `**Why it still matters:** there are **${active}** active transmission channels, **${anomalies}** statistically anomalous indicators, and signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**. Statistical anomaly is not the same as risk pressure: the model now only adds pressure when the move is in the risk direction. The main pressure pockets are **${topSubText || 'no dominant sub-index'}**. The top driver is **${driverDetail}** and the leading channel is **${chainName} (stress ${chainStress})**.`,
     '',
     `**Hidden risk: ${hidden.statusLabel}, undercurrent boost +${hidden.undercurrent.toFixed(1)}.** Deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the gap is ${hidden.gapDisplay}. This means some risk may be masked by low volatility, policy buffers, or crowded momentum trades. Watch JPY, gold, AI/semiconductors, and credit/banking channels for conversion from valuation pressure into cash-flow or funding damage.`,
     '',
@@ -886,7 +886,7 @@ const todayEvidenceCards = computed<EvidenceCard[]>(() => {
       kicker: 'Coherence',
       title: '信号共振',
       value: `${coherence.toFixed(2)}x`,
-      body: `今天的 ${coherence.toFixed(2)}x 表示多个风险信号同向出现，基础压力被放大约 ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%。系统会根据当天活跃链路自动判断，不依赖固定指标。`,
+        body: `今天的 ${coherence.toFixed(2)}x 表示多个方向性风险信号同向出现，基础压力被放大约 ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%。改善型异常不会再被计入压力。`,
       action: '查看传导链',
       target: 'chain-pressure',
     })
@@ -949,7 +949,7 @@ const todayEvidenceCards = computed<EvidenceCard[]>(() => {
     kicker: 'Coherence',
     title: 'Signal resonance',
     value: `${coherence.toFixed(2)}x`,
-    body: `Today’s ${coherence.toFixed(2)}x means multiple risk signals point in the same direction, amplifying base pressure by about ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%. This is generated from today’s active channels, not fixed indicators.`,
+      body: `Today’s ${coherence.toFixed(2)}x means multiple directional risk signals point in the same direction, amplifying base pressure by about ${Math.max(0, (coherence - 1) * 100).toFixed(0)}%. Improvement-side anomalies are no longer counted as pressure.`,
     action: 'Open chains',
     target: 'chain-pressure',
   })
@@ -1347,9 +1347,9 @@ function buildIndicatorExplanation(id: string, node: any): string {
         ? (lang.value === 'zh' ? '当前水平处于中等压力区' : 'the current level is in a medium-stress zone')
         : (lang.value === 'zh' ? '当前水平压力不高' : 'the current level is not highly stressed')
   if (lang.value === 'zh') {
-    return `${name} 被选中是因为它在今天的综合排序中贡献最高。Z=${z.toFixed(2)} 表示${zText}；绝对压力 ${node?.absScoreDisplay || '-'} 表示${absText}。如果它同时处在传导链中，就需要观察是否从单点压力扩散为链式压力。`
+    return `${name} 被选中是因为它在今天的方向性压力排序中贡献较高。Z=${z.toFixed(2)} 表示${zText}；方向性压力分 ${((node?.anomalyScore || 0) * 100).toFixed(0)} 表示该变化是否朝风险方向移动；绝对压力 ${node?.absScoreDisplay || '-'} 表示${absText}。如果它同时处在传导链中，就需要观察是否从单点压力扩散为链式压力。`
   }
-  return `${name} is selected because it contributes most to today’s ranking. Z=${z.toFixed(2)} means ${zText}; absolute stress ${node?.absScoreDisplay || '-'} means ${absText}. If it is also inside an active chain, watch whether isolated pressure spreads into chain pressure.`
+  return `${name} is selected because it contributes materially to today’s directional pressure ranking. Z=${z.toFixed(2)} means ${zText}; directional pressure ${((node?.anomalyScore || 0) * 100).toFixed(0)} shows whether the move is in the risk direction; absolute stress ${node?.absScoreDisplay || '-'} means ${absText}. If it is also inside an active chain, watch whether isolated pressure spreads into chain pressure.`
 }
 
 const subIndexBreakdownOption = computed(() => ({

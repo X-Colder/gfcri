@@ -130,7 +130,7 @@
                   <div v-for="driver in topDrivers" :key="driver.id" class="driver-table-row">
                     <span class="driver-label">{{ driver.name }}</span>
                     <span>{{ driver.current }}</span>
-                    <span :style="{ color: Math.abs(driver.zscore) >= 2 ? COLORS.orange : 'var(--muted)' }">{{ driver.zscore.toFixed(2) }}</span>
+                    <span :style="{ color: driver.pressure > 0 ? COLORS.orange : 'var(--muted)' }">{{ driver.zscore.toFixed(2) }}</span>
                     <span>{{ driver.absScore }}</span>
                   </div>
                 </div>
@@ -361,7 +361,7 @@ const primaryDriver = computed(() => {
   const nc = riskStore.latest?.node_contributions
   if (!nc) return t('dash.noDriver')
   const item = Object.entries(nc)
-    .sort((a: any, b: any) => Math.abs(b[1].zscore || 0) - Math.abs(a[1].zscore || 0))[0]
+    .sort((a: any, b: any) => driverSortScore(b[1]) - driverSortScore(a[1]))[0]
   if (!item) return t('dash.noDriver')
   return tx((item[1] as any).display_name || item[0])
 })
@@ -370,13 +370,13 @@ const primaryDriverDetail = computed(() => {
   const nc = riskStore.latest?.node_contributions
   if (!nc) return '—'
   const item = Object.entries(nc)
-    .sort((a: any, b: any) => Math.abs(b[1].zscore || 0) - Math.abs(a[1].zscore || 0))[0]
+    .sort((a: any, b: any) => driverSortScore(b[1]) - driverSortScore(a[1]))[0]
   if (!item) return '—'
   const info: any = item[1]
   const z = Number(info.zscore || 0)
   const abs = info.abs_score === null || info.abs_score === undefined ? null : Number(info.abs_score)
   const absText = abs === null ? '-' : `${(abs * 100).toFixed(0)}`
-  return `Z ${z.toFixed(2)} · ${t('analysis.absScore')} ${absText}`
+  return `Z ${z.toFixed(2)} · ${t('analysis.anomalyScore')} ${((Number(info.anomaly_score || 0)) * 100).toFixed(0)} · ${t('analysis.absScore')} ${absText}`
 })
 
 const topDrivers = computed(() => {
@@ -388,13 +388,21 @@ const topDrivers = computed(() => {
       name: tx(info.display_name || id),
       current: formatCurrentValue(info.current_value),
       zscore: Number(info.zscore || 0),
+      pressure: Number(info.anomaly_score || 0) * 100,
       absScore: info.abs_score === null || info.abs_score === undefined
         ? '-'
         : (Number(info.abs_score) * 100).toFixed(0),
+      sortScore: driverSortScore(info),
     }))
-    .sort((a, b) => Math.abs(b.zscore) - Math.abs(a.zscore))
+    .sort((a, b) => b.sortScore - a.sortScore)
     .slice(0, 5)
 })
+
+function driverSortScore(info: any): number {
+  const anomaly = Number(info?.anomaly_score || 0)
+  const abs = info?.abs_score === null || info?.abs_score === undefined ? 0 : Number(info.abs_score)
+  return Math.max(anomaly, abs)
+}
 
 const currentDamageLabel = computed(() => {
   const score = riskStore.latest?.gfcri_value || 0
