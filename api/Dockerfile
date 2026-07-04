@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir \
 
 COPY src/ ./src/
 COPY api/ ./api/
+COPY scripts/ ./scripts/
 COPY dashboard/style.py ./dashboard/style.py
 
 ENV PYTHONPATH=/app
