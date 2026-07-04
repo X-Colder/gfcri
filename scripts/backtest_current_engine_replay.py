@@ -31,6 +31,7 @@ from scripts.backtest_multi_crisis import CRISES, compute_gfcri as compute_legac
 from src.engines.crisis_taxonomy import CrisisRegimeAssessmentEngine
 from src.engines.risk_index import GFCRIEngine, SUB_INDEX_CONFIG
 from src.models.graph import build_initial_causal_graph
+from src.models.stress import stress_score_from_zscore
 
 
 NATIVE_NODE_SERIES = {
@@ -126,7 +127,7 @@ def apply_native_series(graph, data: dict[str, pd.Series], date: pd.Timestamp) -
         node.historical_mean = mean
         node.historical_std = float(hist.iloc[-13:-1].std()) if len(hist) >= 13 else None
         node.value_zscore = value_z
-        node.anomaly_score = min(1.0, abs(value_z) / 4.0)
+        node.anomaly_score = stress_score_from_zscore(node_id, value_z)
         node.is_anomalous = abs(value_z) > 2.0
         covered.add(node_id)
     return covered
@@ -141,11 +142,11 @@ def apply_proxy_anomalies(graph, data: dict[str, pd.Series], date: pd.Timestamp,
         if z is None:
             continue
         _, _, value_z = z
-        anomaly = min(1.0, abs(value_z) / 4.0)
         for node_id in node_ids:
             node = graph.nodes.get(node_id)
             if node is None:
                 continue
+            anomaly = stress_score_from_zscore(node_id, value_z)
             if anomaly > node.anomaly_score:
                 # Keep current_value untouched to avoid absolute benchmark misuse.
                 node.value_zscore = value_z
