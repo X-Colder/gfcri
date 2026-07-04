@@ -267,8 +267,8 @@ const alertColor = computed(() => {
 })
 
 function scoreColor(s: number): string {
-  if (s >= 75) return '#f85149'
-  if (s >= 50) return '#db6d28'
+  if (s >= 60) return '#f85149'
+  if (s >= 45) return '#db6d28'
   if (s >= 25) return '#d29922'
   return '#2ea043'
 }

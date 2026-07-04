@@ -134,8 +134,8 @@ const trendChartOption = computed(() => {
         lineStyle: { type: 'dashed' },
         data: [
           { yAxis: 25, lineStyle: { color: COLORS.green } },
-          { yAxis: 50, lineStyle: { color: COLORS.yellow } },
-          { yAxis: 75, lineStyle: { color: COLORS.red } },
+          { yAxis: 45, lineStyle: { color: COLORS.orange } },
+          { yAxis: 60, lineStyle: { color: COLORS.red } },
         ],
       },
     }],

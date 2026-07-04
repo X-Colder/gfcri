@@ -105,7 +105,7 @@
             <div class="flex items-center gap-3">
               <span class="text-[var(--muted)] font-mono text-sm">{{ sr.baseline_gfcri.toFixed(0) }}</span>
               <span class="text-[var(--muted)]">→</span>
-              <span class="font-mono text-lg" :style="{ color: sr.stressed_gfcri >= 75 ? 'var(--red)' : sr.stressed_gfcri >= 50 ? 'var(--orange)' : 'var(--yellow)' }">
+              <span class="font-mono text-lg" :style="{ color: sr.stressed_gfcri >= 60 ? 'var(--red)' : sr.stressed_gfcri >= 45 ? 'var(--orange)' : 'var(--yellow)' }">
                 {{ sr.stressed_gfcri.toFixed(0) }}
               </span>
             </div>

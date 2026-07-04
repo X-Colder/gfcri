@@ -518,8 +518,8 @@ const trendChartOption = computed(() => {
         lineStyle: { type: 'dashed' },
         data: [
           { yAxis: 25, lineStyle: { color: COLORS.green + '60' } },
-          { yAxis: 50, lineStyle: { color: COLORS.yellow + '60' } },
-          { yAxis: 75, lineStyle: { color: COLORS.red + '60' } },
+          { yAxis: 45, lineStyle: { color: COLORS.orange + '60' } },
+          { yAxis: 60, lineStyle: { color: COLORS.red + '60' } },
         ],
       },
     }],

@@ -58,7 +58,7 @@ function analogyText(text: string): string {
 
 const currentColor = computed(() => {
   const v = props.currentGfcri
-  return v >= 75 ? '#ef4444' : v >= 50 ? '#f97316' : v >= 25 ? '#fbbf24' : '#34d399'
+  return v >= 60 ? '#ef4444' : v >= 45 ? '#f97316' : v >= 25 ? '#fbbf24' : '#34d399'
 })
 
 const historicalPoints = [

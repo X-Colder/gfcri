@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from src.models.graph import MacroRiskCausalGraph
 
 
+ALERT_THRESHOLDS = {
+    "yellow": 25.0,
+    "orange": 45.0,
+    "red": 60.0,
+}
+
+
 # Absolute-level benchmarks: (danger_direction, normal, crisis)
 # "high" = rising is dangerous; "low" = falling is dangerous
 ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
@@ -893,10 +900,10 @@ class GFCRIEngine:
 
     @staticmethod
     def _alert_level(gfcri: float) -> str:
-        if gfcri >= 75:
+        if gfcri >= ALERT_THRESHOLDS["red"]:
             return "red"
-        if gfcri >= 50:
+        if gfcri >= ALERT_THRESHOLDS["orange"]:
             return "orange"
-        if gfcri >= 25:
+        if gfcri >= ALERT_THRESHOLDS["yellow"]:
             return "yellow"
         return "green"

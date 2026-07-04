@@ -26,8 +26,8 @@ import re
 
 
 def _color(score: float) -> str:
-    if score >= 75: return "#ff7a8a"
-    if score >= 50: return "#ffb86b"
+    if score >= 60: return "#ff7a8a"
+    if score >= 45: return "#ffb86b"
     if score >= 25: return "#ffd66b"
     return "#5de4c7"
 
@@ -118,10 +118,10 @@ def generate_wechat_html(
     if gfcri < 25:
         level_desc = "安全区间"
         level_color = "#52c41a"
-    elif gfcri < 50:
+    elif gfcri < 45:
         level_desc = "关注区间"
         level_color = "#faad14"
-    elif gfcri < 75:
+    elif gfcri < 60:
         level_desc = "警告区间"
         level_color = "#fa8c16"
     else:
@@ -142,9 +142,9 @@ body {{ font-family:-apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neu
   {change_html}
   <div style="margin-top:12px">
     <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#f6ffed;color:#52c41a;{'font-weight:700;border:1px solid #52c41a' if gfcri < 25 else ''}">0-25 安全</span>
-    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fffbe6;color:#faad14;{'font-weight:700;border:1px solid #faad14' if 25 <= gfcri < 50 else ''}">25-50 关注</span>
-    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fff7e6;color:#fa8c16;{'font-weight:700;border:1px solid #fa8c16' if 50 <= gfcri < 75 else ''}">50-75 警告</span>
-    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fff1f0;color:#ff4d4f;{'font-weight:700;border:1px solid #ff4d4f' if gfcri >= 75 else ''}">75-100 危险</span>
+    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fffbe6;color:#faad14;{'font-weight:700;border:1px solid #faad14' if 25 <= gfcri < 45 else ''}">25-45 关注</span>
+    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fff7e6;color:#fa8c16;{'font-weight:700;border:1px solid #fa8c16' if 45 <= gfcri < 60 else ''}">45-60 警告</span>
+    <span style="display:inline-block;font-size:12px;margin:0 3px;padding:3px 10px;border-radius:3px;background:#fff1f0;color:#ff4d4f;{'font-weight:700;border:1px solid #ff4d4f' if gfcri >= 60 else ''}">60-100 危险</span>
   </div>
 </div>
 """

@@ -49,8 +49,8 @@ def _get_font():
 
 
 def _score_color(s: float) -> str:
-    if s >= 75: return _RED
-    if s >= 50: return _ORANGE
+    if s >= 60: return _RED
+    if s >= 45: return _ORANGE
     if s >= 25: return _YELLOW
     return _GREEN
 

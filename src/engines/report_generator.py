@@ -170,9 +170,9 @@ def render_gfcri_report(
 
     if gfcri < 25:
         lines.append("> 目前全球金融系统运行平稳，没有明显的系统性风险信号。")
-    elif gfcri < 50:
+    elif gfcri < 45:
         lines.append("> 部分市场出现异常波动，需要保持关注，但尚未构成系统性威胁。")
-    elif gfcri < 75:
+    elif gfcri < 60:
         lines.append("> **多个市场同时出现异常信号**，风险正在积累，建议减少风险敞口。")
     else:
         lines.append("> **危险！** 全球金融系统承受极大压力，多条风险传导链同时激活，需要立即采取防御措施。")

@@ -284,8 +284,8 @@ const topIndicators = computed(() => {
 })
 
 function factorColor(value: number): string {
-  if (value >= 75) return COLORS.red
-  if (value >= 50) return COLORS.orange
+  if (value >= 60) return COLORS.red
+  if (value >= 45) return COLORS.orange
   if (value >= 25) return COLORS.yellow
   return COLORS.green
 }

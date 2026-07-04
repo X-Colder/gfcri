@@ -64,6 +64,23 @@ Important changes:
 - 2010 Eurozone debt crisis is close to orange but does not cross the 50 threshold in this replay.
 - 1997 Asian crisis reaches high yellow but not orange under current production-node coverage.
 
+## Calibrated Alert Thresholds
+
+The directional model uses cleaner but lower scores than the previous absolute-z-score model. The first calibrated threshold set is:
+
+```text
+green   < 25
+yellow  25-45
+orange  45-60
+red     >= 60
+```
+
+Rationale:
+
+- `45+` captures modern high-pressure windows such as 2000, 2020, and 2022.
+- `60+` is reserved for crisis-grade pressure after directional false positives are removed.
+- The old `50/75` orange/red thresholds were calibrated on a noisier absolute-z-score model and are too high for the directional model.
+
 ## Current Limitations
 
 1. Historical coverage is uneven.
@@ -93,4 +110,3 @@ Important changes:
    - 2020 COVID panic
    - 2022 rate-hike shock
 5. Update the Backtest UI so users understand that directional GFCRI values are lower but cleaner.
-

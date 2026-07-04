@@ -177,16 +177,16 @@
           <!-- Background zones -->
           <div class="absolute inset-0 flex rounded-full overflow-hidden">
             <div class="h-full" style="width:25%;background:rgba(52,211,153,0.08)"></div>
-            <div class="h-full" style="width:25%;background:rgba(251,191,36,0.08)"></div>
-            <div class="h-full" style="width:25%;background:rgba(249,115,22,0.08)"></div>
-            <div class="h-full" style="width:25%;background:rgba(239,68,68,0.08)"></div>
+            <div class="h-full" style="width:20%;background:rgba(251,191,36,0.08)"></div>
+            <div class="h-full" style="width:15%;background:rgba(249,115,22,0.08)"></div>
+            <div class="h-full" style="width:40%;background:rgba(239,68,68,0.08)"></div>
           </div>
           <!-- Zone labels -->
           <div class="absolute -bottom-6 w-full flex text-[9px] text-[var(--muted)]">
-            <span class="w-1/4 text-center">{{ t('common.safe') }} 0-25</span>
-            <span class="w-1/4 text-center">{{ t('alert.yellow') }} 25-50</span>
-            <span class="w-1/4 text-center">{{ t('alert.orange') }} 50-75</span>
-            <span class="w-1/4 text-center">{{ t('alert.red') }} 75-100</span>
+            <span style="width:25%" class="text-center">{{ t('common.safe') }} 0-25</span>
+            <span style="width:20%" class="text-center">{{ t('alert.yellow') }} 25-45</span>
+            <span style="width:15%" class="text-center">{{ t('alert.orange') }} 45-60</span>
+            <span style="width:40%" class="text-center">{{ t('alert.red') }} 60-100</span>
           </div>
           <!-- Historical crisis markers -->
           <div v-for="c in crises" :key="'marker-'+c.name"
@@ -760,8 +760,8 @@ function alertTextStyle(level: string): Record<string, string> {
 
 const currentColor = computed(() => {
   const v = currentGfcri.value
-  if (v >= 75) return '#ef4444'
-  if (v >= 50) return '#f97316'
+  if (v >= 60) return '#ef4444'
+  if (v >= 45) return '#f97316'
   if (v >= 25) return '#fbbf24'
   return '#34d399'
 })
@@ -999,8 +999,8 @@ const peakChartOption = computed(() => {
       data: sorted.map(c => ({
         value: c.peakGfcri,
         itemStyle: {
-          color: c.peakGfcri >= 75 ? '#ef4444'
-            : c.peakGfcri >= 50 ? '#f97316'
+          color: c.peakGfcri >= 60 ? '#ef4444'
+            : c.peakGfcri >= 45 ? '#f97316'
             : c.peakGfcri >= 25 ? '#fbbf24'
             : '#34d399',
           borderRadius: [0, 4, 4, 0],
