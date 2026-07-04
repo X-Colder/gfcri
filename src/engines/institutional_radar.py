@@ -121,7 +121,7 @@ _REQUEST_HEADERS = {
 def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> dict[str, Any]:
     now = time.time()
     if not force_refresh and _CACHE["data"] and now - float(_CACHE["ts"]) < _TTL_SECONDS:
-        return _CACHE["data"]
+        return _limited_response(_CACHE["data"], limit)
 
     items: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
@@ -133,8 +133,6 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
             errors.append({"source": source.name, "error": str(exc)})
 
     items.sort(key=lambda x: x.get("published_at") or "", reverse=True)
-    items = items[:limit]
-    theme_summary = _theme_summary(items)
 
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -142,7 +140,7 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
         "item_count": len(items),
         "sources": [source.__dict__ for source in SOURCES],
         "items": items,
-        "theme_summary": theme_summary,
+        "theme_summary": _theme_summary(items),
         "errors": errors,
         "methodology": (
             "Institutional Radar v1 fetches public RSS/Atom metadata from official institutional sources "
@@ -152,7 +150,16 @@ def latest_institutional_radar(limit: int = 30, force_refresh: bool = False) -> 
     }
     _CACHE["ts"] = now
     _CACHE["data"] = data
-    return data
+    return _limited_response(data, limit)
+
+
+def _limited_response(data: dict[str, Any], limit: int) -> dict[str, Any]:
+    items = list(data.get("items") or [])[:limit]
+    response = dict(data)
+    response["items"] = items
+    response["item_count"] = len(items)
+    response["theme_summary"] = _theme_summary(items)
+    return response
 
 
 def _fetch_source(source: RadarSource) -> list[dict[str, Any]]:
