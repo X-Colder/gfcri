@@ -23,6 +23,7 @@ HIGH_IS_WORSE = {
     "sofr_effr_spread",
     "fred_all_loan_delinquency",
     "fred_baa10y_spread",
+    "cn_lpr_1y",
     "us_recession_prob",
     "kr_cds_5y",
     "orcl_cds",
@@ -49,6 +50,8 @@ LOW_IS_WORSE = {
     "btc",
     "consumer_stress",
     "global_liqd",
+    "cn_social_finance_yoy",
+    "cn_m1_yoy",
 }
 
 TWO_SIDED = {
@@ -76,4 +79,3 @@ def stress_score_from_zscore(node_id: str, zscore: float | None) -> float:
     else:
         pressure_z = abs(z)
     return min(1.0, pressure_z / 4.0)
-

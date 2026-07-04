@@ -38,6 +38,9 @@ ABS_BENCHMARKS: dict[str, tuple[str, float, float]] = {
     "sofr_effr_spread": ("high", 0.0, 75.0),
     "fred_all_loan_delinquency": ("high", 1.5, 6.0),
     "fred_baa10y_spread": ("high", 1.5, 5.0),
+    "cn_social_finance_yoy": ("low", 10.0, -10.0),
+    "cn_m1_yoy": ("low", 5.0, -5.0),
+    "cn_lpr_1y": ("high", 3.0, 5.0),
     "oil_wti":          ("high", 70, 120),
     "gold":             ("high", 1900, 3000),
     "krw_usd":          ("high", 1250, 1550),
@@ -196,12 +199,12 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
     "us_corporate_credit": {
         "name": "美国企业信用",
         "nodes": ["fred_hy_spread", "fred_bbb_spread", "fred_ic_spread", "hyg", "lqd"],
-        "weight": 0.32,
+        "weight": 0.20,
     },
     "em_sovereign_credit": {
         "name": "新兴市场/主权信用",
         "nodes": ["emb", "kr_cds_5y"],
-        "weight": 0.18,
+        "weight": 0.15,
     },
     "europe_credit": {
         "name": "欧洲企业信用",
@@ -216,6 +219,11 @@ CREDIT_DIMENSIONS: dict[str, dict[str, Any]] = {
     "default_downgrade_cycle": {
         "name": "违约/降级周期",
         "nodes": ["fred_all_loan_delinquency", "fred_baa10y_spread"],
+        "weight": 0.15,
+    },
+    "china_credit": {
+        "name": "中国信用",
+        "nodes": ["cn_social_finance_yoy", "cn_m1_yoy", "cn_lpr_1y"],
         "weight": 0.15,
     },
     "ai_cloud_credit": {

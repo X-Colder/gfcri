@@ -82,6 +82,7 @@ Current nodes:
 - FRED `SOFR` and computed `SOFR - EFFR` have been added as the first Bank Funding dimension signals.
 - FRED `DRALACBS` and `BAA10Y` have been added as the first Default / Downgrade Cycle signals, combining realized bank-loan delinquency with Baa credit-risk pricing.
 - `anomaly_score` is now directional rather than absolute. Risk-improving anomalies no longer automatically add pressure to sub-indices.
+- China Credit dimension now uses AKShare/PBOC-facing macro proxies: social financing YoY, M1 YoY, and 1Y LPR.
 
 Current online example:
 
@@ -124,7 +125,7 @@ Keep the product label `Global Credit & Default Pressure`, but make the model wo
 | Bank funding | SOFR and SOFR-EFFR spread now implemented; SOFR-IORB, bank CDS, senior financial spreads, cross-currency basis planned | Funding market stress |
 | Sovereign credit | US, Italy, UK, Japan, China proxy, Korea CDS | Sovereign confidence and refinancing stress |
 | Default/downgrade cycle | US bank loan delinquency and Baa-10Y spread now implemented; HY default rates, distressed ratios, rating downgrades, bankruptcy filings planned | Realized credit damage |
-| China credit | credit impulse, total social financing, property bond spreads, LGFV stress | Non-US credit channel |
+| China credit | Social financing YoY, M1 YoY, and 1Y LPR now implemented; property bond spreads, LGFV stress, bank lending rates planned | Non-US credit channel |
 
 ### Target Formula
 
