@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from api.dependencies import get_graph
 from src.engines.causal_expansion import CausalExpansionEngine
 from src.engines.causal_promotion import CausalPromotionGate
+from src.engines.causal_validation import causal_validation_report
 from src.engines.crisis_taxonomy import CrisisRegimeAssessmentEngine
 from src.storage.database import (
     get_causal_candidates,
@@ -45,6 +46,11 @@ def current_causal_discovery():
 @router.get("/candidates")
 def causal_candidates(limit: int = 50):
     return get_causal_candidates(limit=limit)
+
+
+@router.get("/validation")
+def causal_validation(limit: int = 50):
+    return causal_validation_report(limit=limit)
 
 
 @router.patch("/candidates/{candidate_id}")

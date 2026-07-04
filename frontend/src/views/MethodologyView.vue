@@ -101,6 +101,43 @@
     </section>
 
     <section class="terminal-card">
+      <p class="terminal-kicker">{{ t('institutional.causalRigor') }}</p>
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
+        <div class="terminal-metric">
+          <span>Candidate Edges</span>
+          <strong>{{ readiness?.causal_validation?.candidate_count ?? '-' }}</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>Validated</span>
+          <strong>{{ readiness?.causal_validation?.validated_count ?? '-' }}</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>Promotion Ready</span>
+          <strong>{{ readiness?.causal_validation?.promotion_ready_count ?? '-' }}</strong>
+        </div>
+      </div>
+      <p class="terminal-copy mt-4">{{ readiness?.causal_validation?.methodology || t('causal.desc') }}</p>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-[var(--muted)] border-b border-[var(--border)]">
+              <th class="text-left py-2 pr-3">Candidate</th>
+              <th class="text-left py-2 px-3">Stage</th>
+              <th class="text-right py-2 pl-3">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in causalRows" :key="row.candidate_id" class="border-b border-[var(--border)]/40">
+              <td class="py-2 pr-3 text-white">{{ row.title }}</td>
+              <td class="py-2 px-3 text-[var(--muted)]">{{ row.stage }}</td>
+              <td class="py-2 pl-3 text-right font-mono">{{ Math.round(row.validation_score * 100) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="terminal-card">
       <p class="terminal-kicker">{{ t('trust.formulas') }}</p>
       <div class="mt-4 grid gap-3 lg:grid-cols-2">
         <div v-for="item in formulas" :key="item.name" class="method-block">
@@ -173,10 +210,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { fetchModelFoundation } from '@/api/modelFoundation'
+import { fetchCommercialReadiness } from '@/api/commercialReadiness'
 import type { ModelFoundation } from '@/api/types'
 
 const { t, tx } = useI18n()
 const foundation = ref<ModelFoundation | null>(null)
+const readiness = ref<any | null>(null)
 
 onMounted(async () => {
   try {
@@ -184,10 +223,16 @@ onMounted(async () => {
   } catch {
     foundation.value = null
   }
+  try {
+    readiness.value = await fetchCommercialReadiness()
+  } catch {
+    readiness.value = null
+  }
 })
 
 const coverageSummary = computed(() => foundation.value?.coverage_summary || null)
 const upgradePriorities = computed(() => foundation.value?.upgrade_priorities || [])
+const causalRows = computed(() => readiness.value?.causal_validation?.candidates?.slice(0, 8) ?? [])
 
 const formulas = [
   {

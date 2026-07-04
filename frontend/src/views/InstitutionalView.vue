@@ -68,6 +68,53 @@
       </div>
     </section>
 
+    <section class="terminal-section p-5">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p class="terminal-kicker">{{ t('institutional.commercialReadiness') }}</p>
+          <h2 class="mt-1 text-base font-medium text-white">{{ t('institutional.readinessScore') }}</h2>
+          <p class="terminal-copy mt-2 max-w-3xl">{{ readiness?.readiness_score?.interpretation || t('institutional.pilotReady') }}</p>
+        </div>
+        <div class="terminal-metric lg:min-w-[160px]">
+          <span>{{ t('institutional.readinessScore') }}</span>
+          <strong>{{ readiness?.readiness_score?.score ?? '-' }}</strong>
+        </div>
+      </div>
+      <div class="mt-5 grid gap-3 lg:grid-cols-5">
+        <article v-for="item in readinessCards" :key="item.title" class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+          <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ item.title }}</p>
+          <strong class="mt-2 block font-mono text-xl font-medium text-white">{{ item.metric }}</strong>
+          <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">{{ item.detail }}</p>
+        </article>
+      </div>
+      <div class="mt-5 grid gap-3 lg:grid-cols-3">
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+          <p class="text-sm font-medium text-white">{{ t('trust.upgradePriorities') }}</p>
+          <div class="mt-3 space-y-2">
+            <p v-for="node in dataUpgradeNodes" :key="node.node_id" class="text-xs leading-relaxed text-[var(--muted)]">
+              {{ node.display_name }} · Tier {{ node.source_tier }}
+            </p>
+          </div>
+        </div>
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+          <p class="text-sm font-medium text-white">{{ t('institutional.privateDelivery') }}</p>
+          <div class="mt-3 space-y-2">
+            <p v-for="mode in privateModes" :key="mode.id" class="text-xs leading-relaxed text-[var(--muted)]">
+              {{ mode.name }} · {{ mode.status }}
+            </p>
+          </div>
+        </div>
+        <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+          <p class="text-sm font-medium text-white">{{ t('institutional.reportQuality') }}</p>
+          <div class="mt-3 space-y-2">
+            <p v-for="section in reportSections" :key="section.id" class="text-xs leading-relaxed text-[var(--muted)]">
+              {{ section.title }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.8fr)]">
       <div class="terminal-section p-5">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -223,7 +270,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { fetchInstitutionalRadar } from '@/api/institutionalRadar'
 import { fetchCoreThemes } from '@/api/coreThemes'
-import type { CoreThemes, InstitutionalRadar } from '@/api/types'
+import { fetchCommercialReadiness } from '@/api/commercialReadiness'
+import type { CommercialReadiness, CoreThemes, InstitutionalRadar } from '@/api/types'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 
 const { t, lang } = useI18n()
@@ -233,6 +281,7 @@ const loading = ref(true)
 const refreshing = ref(false)
 const error = ref('')
 const coreThemes = ref<CoreThemes | null>(null)
+const readiness = ref<CommercialReadiness | null>(null)
 
 const themeLabels: Record<string, { zh: string; en: string }> = {
   'AI Capex / Tech Bubble': { zh: 'AI 资本开支 / 科技泡沫', en: 'AI Capex / Tech Bubble' },
@@ -325,6 +374,39 @@ const topItems = computed(() => radar.value?.items.slice(0, 10) ?? [])
 const topThemes = computed(() => radar.value?.theme_summary.slice(0, 6) ?? [])
 const errorSources = computed(() => radar.value?.errors.map((item) => item.source).join(', ') ?? '')
 const topCoreThemes = computed(() => coreThemes.value?.themes.slice(0, 3) ?? [])
+const readinessCards = computed(() => {
+  const r = readiness.value
+  return [
+    {
+      title: t('institutional.dataDepth'),
+      metric: `${r?.data_quality?.tier_a_b_share ?? '-'}%`,
+      detail: `${r?.data_quality?.node_count ?? '-'} nodes; ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} upgrade candidates surfaced.`,
+    },
+    {
+      title: t('institutional.causalRigor'),
+      metric: `${r?.causal_validation?.validated_count ?? 0}/${r?.causal_validation?.candidate_count ?? 0}`,
+      detail: `${r?.causal_validation?.promotion_ready_count ?? 0} promotion-ready candidates under governance checks.`,
+    },
+    {
+      title: t('institutional.reportQuality'),
+      metric: r?.institutional_report?.quality_controls?.evidence_table ? 'V2' : '-',
+      detail: 'Evidence table, falsification section, source links, and compliance footer.',
+    },
+    {
+      title: t('institutional.conversion'),
+      metric: `${r?.subscription_packaging?.plans?.length ?? '-'}`,
+      detail: r?.subscription_packaging?.conversion_principle || '-',
+    },
+    {
+      title: t('institutional.privateDelivery'),
+      metric: `${r?.private_deployment?.deployment_modes?.length ?? '-'}`,
+      detail: `${r?.private_deployment?.capabilities?.length ?? '-'} delivery capabilities documented.`,
+    },
+  ]
+})
+const dataUpgradeNodes = computed(() => readiness.value?.data_quality?.low_tier_or_proxy_nodes?.slice(0, 5) ?? [])
+const privateModes = computed(() => readiness.value?.private_deployment?.deployment_modes ?? [])
+const reportSections = computed(() => readiness.value?.institutional_report?.sections ?? [])
 
 async function loadRadar(refresh = false) {
   error.value = ''
@@ -345,6 +427,14 @@ async function loadCoreThemes() {
     coreThemes.value = await fetchCoreThemes(3, false)
   } catch {
     coreThemes.value = null
+  }
+}
+
+async function loadReadiness() {
+  try {
+    readiness.value = await fetchCommercialReadiness()
+  } catch {
+    readiness.value = null
   }
 }
 
@@ -396,5 +486,6 @@ function formatScore(value: number | null | undefined): string {
 onMounted(() => {
   loadRadar(false)
   loadCoreThemes()
+  loadReadiness()
 })
 </script>

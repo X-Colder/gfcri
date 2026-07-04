@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.dependencies import init_cache, shutdown_cache
-from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth, regime_assessment, causal_discovery, model_foundation, institutional_radar, core_themes
+from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth, regime_assessment, causal_discovery, model_foundation, institutional_radar, core_themes, commercial_readiness
 
 
 @asynccontextmanager
@@ -47,3 +47,4 @@ app.include_router(causal_discovery.router, prefix="/api")
 app.include_router(model_foundation.router, prefix="/api")
 app.include_router(institutional_radar.router, prefix="/api")
 app.include_router(core_themes.router, prefix="/api")
+app.include_router(commercial_readiness.router, prefix="/api")

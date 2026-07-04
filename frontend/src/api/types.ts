@@ -212,3 +212,12 @@ export interface CoreThemes {
   radar_context: Record<string, any>
   causal: Record<string, any>
 }
+
+export interface CommercialReadiness {
+  data_quality: Record<string, any>
+  causal_validation: Record<string, any>
+  institutional_report: Record<string, any>
+  subscription_packaging: Record<string, any>
+  private_deployment: Record<string, any>
+  readiness_score: Record<string, any>
+}

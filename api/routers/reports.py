@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
 from src.storage.database import get_latest_report
-from api.models.report import ReportResponse
+from api.models.report import ReportResponse, InstitutionalReportV2Response
+from src.engines.institutional_report_v2 import institutional_report_v2
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -20,3 +21,8 @@ def latest_report():
         llm_narrative=data.get("llm_narrative"),
         generation_time_ms=data.get("generation_time_ms"),
     )
+
+
+@router.get("/institutional-v2/latest", response_model=InstitutionalReportV2Response)
+def latest_institutional_report_v2():
+    return institutional_report_v2()
