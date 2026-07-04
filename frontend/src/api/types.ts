@@ -106,3 +106,51 @@ export interface ModelFoundation {
   sub_index_receipts: Record<string, SubIndexReceipt>
   data_dictionary: Record<string, Record<string, any>>
 }
+
+export interface InstitutionalRadarSource {
+  id: string
+  name: string
+  tier: string
+  url: string
+  source_type: string
+}
+
+export interface InstitutionalRadarItem {
+  id: string
+  source: string
+  source_id: string
+  source_tier: string
+  title: string
+  summary: string
+  url: string
+  published_at: string | null
+  risk_themes: string[]
+  affected_nodes: string[]
+  affected_chains: string[]
+  risk_direction: string
+  confidence: number
+}
+
+export interface InstitutionalThemeSummary {
+  theme: string
+  count: number
+  sources: string[]
+  affected_nodes: string[]
+  affected_chains: string[]
+}
+
+export interface InstitutionalRadarError {
+  source: string
+  error: string
+}
+
+export interface InstitutionalRadar {
+  generated_at: string
+  source_count: number
+  item_count: number
+  sources: InstitutionalRadarSource[]
+  items: InstitutionalRadarItem[]
+  theme_summary: InstitutionalThemeSummary[]
+  errors: InstitutionalRadarError[]
+  methodology: string
+}
