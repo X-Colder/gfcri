@@ -9,34 +9,37 @@
         <div class="w-10 h-10 rounded-full bg-[var(--accent)]/10 flex items-center justify-center mx-auto mb-4">
           <span class="text-lg">🔒</span>
         </div>
-        <h3 class="text-white font-medium mb-2">{{ title || t('common.upgrade') }}</h3>
-        <p class="text-xs text-[var(--muted)] mb-5 leading-relaxed">{{ description || t('common.upgradeDesc') }}</p>
+        <h3 class="text-white font-medium mb-2">{{ paywallTitle }}</h3>
+        <p class="text-xs text-[var(--muted)] mb-5 leading-relaxed">{{ paywallDescription }}</p>
         <p v-if="trialError" class="text-[10px] text-[var(--red)] mb-3">{{ trialError }}</p>
         <button
+          v-if="!isInstitutional"
           @click="handleUpgrade"
           :disabled="loading"
           class="px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/90 transition-colors disabled:opacity-50"
         >
           {{ loading ? t('common.loading') : t('trial.start') }}
         </button>
-        <p class="text-[10px] text-[var(--muted)]/50 mt-3">{{ t('trial.note') }}</p>
+        <p v-if="!isInstitutional" class="text-[10px] text-[var(--muted)]/50 mt-3">{{ t('trial.note') }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { useAuth } from '@/composables/useAuth'
+import { useProductMode } from '@/composables/useProductMode'
 
 const { t, tx } = useI18n()
 const { isLoggedIn, startTrial, loading } = useAuth()
+const { isInstitutional } = useProductMode()
 const router = useRouter()
 const trialError = ref('')
 
-defineProps<{
+const props = defineProps<{
   blurred: boolean
   title?: string
   description?: string
@@ -44,7 +47,16 @@ defineProps<{
 
 const emit = defineEmits(['upgrade'])
 
+const paywallTitle = computed(() =>
+  isInstitutional.value ? t('account.institutionalRequired') : (props.title || t('common.upgrade'))
+)
+
+const paywallDescription = computed(() =>
+  isInstitutional.value ? t('account.institutionalRequiredDesc') : (props.description || t('common.upgradeDesc'))
+)
+
 async function handleUpgrade() {
+  if (isInstitutional.value) return
   trialError.value = ''
   emit('upgrade')
   if (!isLoggedIn.value) {

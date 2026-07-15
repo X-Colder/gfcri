@@ -11,7 +11,38 @@ from src.storage.database import (
     save_inference_log,
     save_risk_index,
     save_daily_report,
+    save_risk_index_quality_event,
 )
+
+
+CRITICAL_MARKET_NODES = {
+    "vix",
+    "spx",
+    "dxy",
+    "hyg",
+    "lqd",
+    "kospi",
+    "ust_10y",
+    "ust_2y",
+    "cny_usd",
+    "jpy_usd",
+}
+
+
+def _market_data_quality(node_values: dict, node_zscores: dict) -> dict:
+    missing_nodes = sorted(n for n in CRITICAL_MARKET_NODES if n not in node_values)
+    missing_zscores = sorted(n for n in CRITICAL_MARKET_NODES if n not in node_zscores)
+    available = len(CRITICAL_MARKET_NODES) - len(missing_nodes)
+    coverage = available / len(CRITICAL_MARKET_NODES)
+    ok = coverage >= 0.8 and not missing_zscores
+    return {
+        "ok": ok,
+        "coverage": round(coverage, 4),
+        "critical_count": len(CRITICAL_MARKET_NODES),
+        "available_critical_count": available,
+        "missing_critical_nodes": missing_nodes,
+        "missing_critical_zscores": missing_zscores,
+    }
 
 
 def _adapt_prev_risk(prev_risk: dict | None) -> dict | None:
@@ -83,6 +114,37 @@ def run_daily_analysis():
 
         fred_current = getattr(collector, '_fred_current', {})
         node_values.update(fred_current)
+
+        quality = _market_data_quality(node_values, node_zscores)
+        if not quality["ok"]:
+            message = (
+                "今日核心行情数据不完整，风险指数暂停更新；页面保留上一期可靠指数。"
+            )
+            save_risk_index_quality_event(
+                run_date=today,
+                status="blocked",
+                message=message,
+                details={
+                    **quality,
+                    "policy": "official_index_not_updated_when_critical_market_data_missing",
+                },
+            )
+            logger.error(
+                "Risk index update blocked by data quality gate before computation: "
+                f"coverage={quality['coverage']:.0%}, "
+                f"missing={quality['missing_critical_nodes']}, "
+                f"missing_zscores={quality['missing_critical_zscores']}"
+            )
+            return
+        save_risk_index_quality_event(
+            run_date=today,
+            status="ok",
+            message="核心行情数据已恢复，风险指数已正式更新。",
+            details={
+                **quality,
+                "policy": "official_index_updated_with_sufficient_market_data",
+            },
+        )
 
         # --- Phase 2: GFCRI computation ---
         logger.info("Computing GFCRI risk index...")
@@ -338,6 +400,27 @@ def run_daily_analysis():
         report_gen_ms = int((time.time() - report_gen_start) * 1000)
 
         # --- Phase 8: Persist everything ---
+        if not quality["ok"]:
+            message = (
+                "今日核心行情数据不完整，风险指数暂停更新；页面保留上一期可靠指数。"
+            )
+            save_risk_index_quality_event(
+                run_date=today,
+                status="blocked",
+                message=message,
+                details={
+                    **quality,
+                    "policy": "official_index_not_updated_when_critical_market_data_missing",
+                },
+            )
+            logger.error(
+                "Risk index update blocked by data quality gate: "
+                f"coverage={quality['coverage']:.0%}, "
+                f"missing={quality['missing_critical_nodes']}, "
+                f"missing_zscores={quality['missing_critical_zscores']}"
+            )
+            return
+
         save_daily_state(
             state_date=today,
             graph_version=graph.version,

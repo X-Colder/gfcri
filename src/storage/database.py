@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 import psycopg2
-from psycopg2.extras import Json, RealDictCursor
+from psycopg2.extras import Json, RealDictCursor, execute_values
 from loguru import logger
 
 from src.config import settings
@@ -31,6 +31,171 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0):
             logger.warning(f"Database not ready, retrying ({i + 1}/{max_retries})...")
             time.sleep(delay)
     raise RuntimeError("Could not connect to database")
+
+
+def ensure_market_data_daily_table(cur) -> None:
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS market_data_daily (
+            id              BIGSERIAL PRIMARY KEY,
+            ticker          VARCHAR(50) NOT NULL,
+            trade_date      DATE NOT NULL,
+            close_price     NUMERIC(20, 6) NOT NULL,
+            volume          BIGINT,
+            collected_at    TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(ticker, trade_date)
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_market_data_ticker_date
+            ON market_data_daily(ticker, trade_date DESC)
+        """
+    )
+
+
+def save_market_data_batch(rows: list[tuple]):
+    """Persist daily market closes as the canonical raw price cache.
+
+    Rows are (ticker, trade_date, close_price, volume). This table is shared by
+    GFCRI and EHS so external market APIs are only used to fill missing cache
+    ranges, not repeatedly queried during every calculation.
+    """
+    if not rows:
+        return
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            ensure_market_data_daily_table(cur)
+            execute_values(
+                cur,
+                """
+                INSERT INTO market_data_daily (ticker, trade_date, close_price, volume)
+                VALUES %s
+                ON CONFLICT (ticker, trade_date) DO UPDATE SET
+                    close_price = EXCLUDED.close_price,
+                    volume = EXCLUDED.volume,
+                    collected_at = NOW()
+                """,
+                rows,
+            )
+        conn.commit()
+        logger.info(f"Market data cache saved: {len(rows)} rows")
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def save_risk_index_quality_event(
+    run_date: str,
+    status: str,
+    message: str,
+    details: dict,
+) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS risk_index_quality_events (
+                    run_date DATE PRIMARY KEY,
+                    status VARCHAR(30) NOT NULL,
+                    message TEXT NOT NULL,
+                    details JSONB,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                INSERT INTO risk_index_quality_events
+                    (run_date, status, message, details)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (run_date) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    message = EXCLUDED.message,
+                    details = EXCLUDED.details,
+                    updated_at = NOW()
+                """,
+                (run_date, status, message, Json(details)),
+            )
+        conn.commit()
+        logger.warning(f"Risk index quality event saved for {run_date}: {status}")
+    finally:
+        conn.close()
+
+
+def get_latest_risk_index_quality_event() -> Optional[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS risk_index_quality_events (
+                    run_date DATE PRIMARY KEY,
+                    status VARCHAR(30) NOT NULL,
+                    message TEXT NOT NULL,
+                    details JSONB,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                SELECT * FROM risk_index_quality_events
+                ORDER BY run_date DESC, updated_at DESC
+                LIMIT 1
+                """
+            )
+            row = cur.fetchone()
+            conn.commit()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_market_data_daily(
+    tickers: list[str],
+    start_date: date | str,
+    end_date: date | str | None = None,
+) -> list[dict]:
+    """Read cached daily market closes for the requested tickers/date range."""
+    if not tickers:
+        return []
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            ensure_market_data_daily_table(cur)
+            if end_date is None:
+                cur.execute(
+                    """
+                    SELECT ticker, trade_date, close_price, volume
+                    FROM market_data_daily
+                    WHERE ticker = ANY(%s) AND trade_date >= %s
+                    ORDER BY ticker, trade_date
+                    """,
+                    (tickers, start_date),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT ticker, trade_date, close_price, volume
+                    FROM market_data_daily
+                    WHERE ticker = ANY(%s)
+                      AND trade_date >= %s
+                      AND trade_date <= %s
+                    ORDER BY ticker, trade_date
+                    """,
+                    (tickers, start_date, end_date),
+                )
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 def save_daily_state(

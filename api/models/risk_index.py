@@ -21,3 +21,7 @@ class RiskIndexResponse(BaseModel):
     undercurrent_boost: Optional[float] = None
     trade_spillover: Optional[dict[str, Any]] = None
     trade_spillover_boost: Optional[float] = None
+    data_quality_status: Optional[str] = None
+    data_quality_message: Optional[str] = None
+    data_quality_details: Optional[dict[str, Any]] = None
+    latest_blocked_run_date: Optional[date] = None

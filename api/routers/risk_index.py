@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Query, HTTPException
 
-from src.storage.database import get_latest_risk_index, get_risk_index_history
+from src.storage.database import (
+    get_latest_risk_index,
+    get_latest_risk_index_quality_event,
+    get_risk_index_history,
+)
 from api.models.risk_index import RiskIndexResponse
 
 router = APIRouter(prefix="/risk-index", tags=["risk-index"])
@@ -29,6 +33,12 @@ def latest_risk_index():
     data = get_latest_risk_index()
     if not data:
         raise HTTPException(status_code=404, detail="No risk index data available")
+    quality = get_latest_risk_index_quality_event()
+    if quality and (
+        quality.get("status") == "ok"
+        or quality.get("run_date") <= data.get("index_date")
+    ):
+        quality = None
     return RiskIndexResponse(
         index_date=data["index_date"],
         gfcri_value=float(data["gfcri_value"]),
@@ -47,6 +57,10 @@ def latest_risk_index():
         undercurrent_boost=float(data["undercurrent_boost"]) if data.get("undercurrent_boost") is not None else None,
         trade_spillover=_trade_spillover(data),
         trade_spillover_boost=_trade_spillover_boost(data),
+        data_quality_status=quality.get("status") if quality else None,
+        data_quality_message=quality.get("message") if quality else None,
+        data_quality_details=quality.get("details") if quality else None,
+        latest_blocked_run_date=quality.get("run_date") if quality else None,
     )
 
 

@@ -150,7 +150,7 @@
             <div v-for="(p, i) in chainDetail.impact_paths.slice(0, 8)" :key="i" class="flex items-center gap-1 flex-wrap">
               <template v-for="(node, j) in p.path" :key="j">
                 <span class="px-1.5 py-0.5 bg-accent/10 text-accent text-[10px] rounded">{{ tx(node) }}</span>
-                <span v-if="j < p.path.length - 1" class="text-muted text-[10px]">→</span>
+                <span v-if="toNumber(j) < p.path.length - 1" class="text-muted text-[10px]">→</span>
               </template>
             </div>
           </div>
@@ -181,11 +181,11 @@
         <table class="w-full text-xs">
           <thead><tr class="text-muted border-b border-border"><th class="text-left py-1.5">{{ t('industry.asset') }}</th><th class="text-right py-1.5">{{ t('industry.price') }}</th><th class="text-right py-1.5">{{ t('industry.monthlyChange') }}</th><th class="text-right py-1.5">{{ t('industry.momentum') }}</th></tr></thead>
           <tbody>
-            <tr v-for="t in selectedIndustry.ticker_details" :key="t.ticker" class="border-b border-border/30">
-              <td class="py-1.5"><span class="font-mono text-muted">{{ t.ticker }}</span> {{ tx(t.name) }}</td>
-              <td class="text-right font-mono">{{ t.price }}</td>
-              <td class="text-right font-mono" :class="t.change_1m > 0 ? 'text-alert-green' : 'text-alert-red'">{{ t.change_1m > 0 ? '+' : '' }}{{ t.change_1m }}%</td>
-              <td class="text-right font-mono" :style="{ color: scoreColor(t.momentum) }">{{ t.momentum }}</td>
+            <tr v-for="asset in selectedIndustry.ticker_details" :key="asset.ticker" class="border-b border-border/30">
+              <td class="py-1.5"><span class="font-mono text-muted">{{ asset.ticker }}</span> {{ tx(asset.name) }}</td>
+              <td class="text-right font-mono">{{ asset.price }}</td>
+              <td class="text-right font-mono" :class="toNumber(asset.change_1m) > 0 ? 'text-alert-green' : 'text-alert-red'">{{ toNumber(asset.change_1m) > 0 ? '+' : '' }}{{ asset.change_1m }}%</td>
+              <td class="text-right font-mono" :style="{ color: scoreColor(toNumber(asset.momentum)) }">{{ asset.momentum }}</td>
             </tr>
           </tbody>
         </table>
@@ -293,6 +293,11 @@ function formatDate(value: string): string {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
   return d.toLocaleString()
+}
+
+function toNumber(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 function scoreColor(s: number): string {

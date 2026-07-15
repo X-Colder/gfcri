@@ -8,6 +8,7 @@ from loguru import logger
 from src.config import settings
 from src.storage.database import wait_for_db
 from src.scheduler.daily_job import run_daily_analysis
+from src.scheduler.market_data_job import refresh_market_data_cache
 
 
 def main():
@@ -23,6 +24,13 @@ def main():
 
     wait_for_db()
 
+    if settings.market_data_refresh_enabled and settings.market_data_refresh_on_startup:
+        logger.info("Running initial market data cache refresh on startup...")
+        try:
+            refresh_market_data_cache()
+        except Exception as e:
+            logger.error(f"Initial market data refresh failed (non-fatal): {e}")
+
     logger.info("Running initial analysis on startup...")
     try:
         run_daily_analysis()
@@ -30,6 +38,23 @@ def main():
         logger.error(f"Initial analysis failed (non-fatal): {e}")
 
     scheduler = BlockingScheduler(timezone="Asia/Shanghai")
+    if settings.market_data_refresh_enabled:
+        scheduler.add_job(
+            refresh_market_data_cache,
+            "cron",
+            hour=settings.market_data_refresh_hour,
+            minute=settings.market_data_refresh_minute,
+            id="market_data_refresh",
+            name="Historical Market Data Cache Refresh",
+            misfire_grace_time=3600,
+            max_instances=1,
+        )
+        logger.info(
+            "Market data refresh configured: daily run at "
+            f"{settings.market_data_refresh_hour:02d}:"
+            f"{settings.market_data_refresh_minute:02d}"
+        )
+
     scheduler.add_job(
         run_daily_analysis,
         "cron",

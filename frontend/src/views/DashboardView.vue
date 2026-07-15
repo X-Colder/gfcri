@@ -45,10 +45,19 @@
                 </div>
               </div>
               <span class="score-delta" :class="trendDelta >= 0 ? 'score-delta-up' : 'score-delta-down'">
-                {{ trendDelta >= 0 ? '+' : '' }}{{ trendDelta.toFixed(1) }} 30D
+                {{ trendDelta >= 0 ? '+' : '' }}{{ trendDelta.toFixed(1) }} 1Y
               </span>
             </div>
             <p class="terminal-copy score-summary">{{ heroSummary }}</p>
+            <div v-if="qualityBlocked" class="quality-alert">
+              <strong>{{ qualityAlertTitle }}</strong>
+              <span>{{ qualityAlertDetail }}</span>
+            </div>
+            <div class="mode-lens">
+              <strong>{{ productLens.title }}</strong>
+              <span>{{ productLens.body }}</span>
+              <router-link :to="productLens.to">{{ productLens.action }}</router-link>
+            </div>
 
             <div class="regime-stack">
               <div class="regime-line">
@@ -67,6 +76,7 @@
 
             <div class="score-actions">
               <router-link to="/analysis">{{ t('dash.openAnalysis') }}</router-link>
+              <router-link v-if="!isInstitutional" to="/pricing">{{ t('pricing.viewPlans') }}</router-link>
               <router-link to="/methodology">{{ t('nav.methodology') }}</router-link>
             </div>
           </aside>
@@ -162,12 +172,12 @@
                   <p class="terminal-kicker">{{ t('dash.trendWindow') }}</p>
                   <h2 class="terminal-subtitle">{{ t('analysis.trend') }}</h2>
                 </div>
-                <span class="text-[10px] text-[var(--muted)] font-mono">30D</span>
+                <span class="text-[10px] text-[var(--muted)] font-mono">1Y</span>
               </div>
               <v-chart :option="trendChartOption" style="height: 230px" autoresize />
             </div>
             <RiskWatch compact class="mt-4" />
-            <AlertSubscription class="mt-4" />
+            <AlertSubscription v-if="!isInstitutional" class="mt-4" />
           </aside>
         </div>
 
@@ -252,7 +262,7 @@
       </section>
 
       <!-- ── Signal Cards ── -->
-      <Paywall :blurred="!isPro" :title="t('dash.anomalous')" :description="t('common.upgradeDesc')">
+      <Paywall :blurred="!hasFullAccess" :title="t('dash.anomalous')" :description="t('common.upgradeDesc')">
       <div class="cards-grid fade-in fade-in-delay-1">
 
         <!-- Anomalous Indicators -->
@@ -346,6 +356,7 @@ import { useRiskStore } from '@/stores/risk'
 import { COLORS, getAlertColor } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
+import { useProductMode } from '@/composables/useProductMode'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Paywall from '@/components/common/Paywall.vue'
 import GlobeNetwork from '@/components/charts/GlobeNetwork.vue'
@@ -362,13 +373,14 @@ use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRender
 const riskStore = useRiskStore()
 const { isPro } = useAuth()
 const { t, tx, lang: currentLang } = useI18n()
+const { isInstitutional } = useProductMode()
 const coreThemes = ref<CoreThemes | null>(null)
 const coreThemeLoading = ref(false)
 const coreThemeError = ref('')
 
 onMounted(() => {
   riskStore.loadLatest()
-  riskStore.loadHistory()
+  riskStore.loadHistory(365)
   loadCoreThemes()
 })
 
@@ -385,6 +397,40 @@ async function loadCoreThemes() {
 }
 
 const topCoreThemes = computed(() => coreThemes.value?.themes.slice(0, 3) ?? [])
+const hasFullAccess = computed(() => isPro.value || isInstitutional.value)
+
+const qualityBlocked = computed(() => riskStore.latest?.data_quality_status === 'blocked')
+
+const qualityAlertTitle = computed(() => {
+  const runDate = riskStore.latest?.latest_blocked_run_date
+  return currentLang.value === 'zh'
+    ? `${runDate || '今日'} 指数暂停更新`
+    : `${runDate || 'Today'} index update paused`
+})
+
+const qualityAlertDetail = computed(() => {
+  const fallback = currentLang.value === 'zh'
+    ? '核心行情数据缺失，当前显示上一期可靠风险指数。'
+    : 'Critical market data is missing. Showing the last reliable risk index.'
+  return riskStore.latest?.data_quality_message || fallback
+})
+
+const productLens = computed(() => {
+  if (isInstitutional.value) {
+    return {
+      title: t('dash.institutionalLensTitle'),
+      body: t('dash.institutionalLensBody'),
+      action: t('dash.openInstitutional'),
+      to: '/institutional',
+    }
+  }
+  return {
+    title: t('dash.personalLensTitle'),
+    body: t('dash.personalLensBody'),
+    action: t('dash.openPersonalAnalysis'),
+    to: '/analysis',
+  }
+})
 
 const anomalyCount = computed(() => {
   const nc = riskStore.latest?.node_contributions
@@ -601,11 +647,73 @@ function hiddenRiskStatusLabel(status: string): string {
 
 function hiddenDetailText(detail: any): string {
   if (!detail) return t('analysis.hiddenNone')
-  if (detail.detail) return tx(detail.detail)
+  if (currentLang.value === 'zh' && detail.detail) return detail.detail
   if (detail.type === 'policy_mask') return t('dash.hiddenPolicyMask')
-  if (detail.type === 'zscore_desensitized') return t('dash.hiddenDesensitized')
+  if (detail.type === 'zscore_desensitized') return hiddenDesensitizedText(detail)
   if (detail.type === 'surface_calm_deep_stress') return t('dash.hiddenSurfaceCalm')
+  if (detail.type === 'speculative_overextension') return hiddenSpeculativeText(detail)
+  if (detail.type === 'yen_depreciation_pressure') return hiddenYenPressureText(detail)
+  if (detail.type === 'korea_equity_fx_divergence') return hiddenKoreaFxText(detail)
+  if (detail.detail) return tx(detail.detail)
   return tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+}
+
+function hiddenDesensitizedText(detail: any): string {
+  const items = (detail.desensitized_indicators || [])
+    .slice(0, 4)
+    .map((id: string) => hiddenIndicatorEvidence(id))
+    .filter(Boolean)
+  return items.length
+    ? `These indicators remain in a dangerous absolute-stress range, but their recent rate of change has normalized after staying elevated: ${items.join('; ')}. Risk has not disappeared.`
+    : t('dash.hiddenDesensitized')
+}
+
+function hiddenSpeculativeText(detail: any): string {
+  const items = (detail.indicators || [])
+    .slice(0, 4)
+    .map((item: any) => {
+      const label = tx(item.label || item.id)
+      const z = Number(item.zscore)
+      const anomaly = Number(item.anomaly)
+      const parts = []
+      if (Number.isFinite(z)) parts.push(`z-score ${z.toFixed(1)}`)
+      if (Number.isFinite(anomaly)) parts.push(`directional pressure ${anomaly.toFixed(0)}%`)
+      return parts.length ? `${label} (${parts.join(', ')})` : label
+    })
+  return items.length
+    ? `AI, semiconductor, or equity-index momentum is extended. Rising prices are not a crisis by themselves, but crowded narratives can understate drawdown risk: ${items.join('; ')}.`
+    : 'AI, semiconductor, or equity-index momentum is extended. Crowded narratives can understate drawdown risk.'
+}
+
+function hiddenYenPressureText(detail: any): string {
+  const value = Number(detail.current_value)
+  const abs = Number(detail.abs_score)
+  const parts = []
+  if (Number.isFinite(value)) parts.push(`USD/JPY is near ${value.toFixed(1)}`)
+  if (Number.isFinite(abs)) parts.push(`absolute stress ${abs.toFixed(0)}%`)
+  return `${parts.length ? `${parts.join(', ')}. ` : ''}Persistent yen weakness may support Japanese exporters temporarily, but it also raises intervention, imported-inflation, and carry-trade reversal risk.`
+}
+
+function hiddenKoreaFxText(detail: any): string {
+  const kospi = Number(detail.kospi_zscore)
+  const krw = Number(detail.krw_zscore)
+  const krwAbs = Number(detail.krw_abs_score)
+  const parts = []
+  if (Number.isFinite(kospi)) parts.push(`KOSPI z-score ${kospi.toFixed(1)}`)
+  if (Number.isFinite(krw)) parts.push(`KRW/USD z-score ${krw.toFixed(1)}`)
+  if (Number.isFinite(krwAbs)) parts.push(`KRW absolute stress ${krwAbs.toFixed(0)}%`)
+  return `${parts.length ? `${parts.join(', ')}. ` : ''}Korean equities are elevated while FX or external-funding channels remain under pressure, a fragile combination for export-sensitive markets.`
+}
+
+function hiddenIndicatorEvidence(id: string): string {
+  const info: any = riskStore.latest?.node_contributions?.[id]
+  const label = tx(info?.display_name || id)
+  const abs = info?.abs_score === null || info?.abs_score === undefined ? null : Number(info.abs_score)
+  const z = Number(info?.zscore)
+  const parts = []
+  if (abs !== null && Number.isFinite(abs)) parts.push(`absolute stress ${(abs * 100).toFixed(0)}%`)
+  if (Number.isFinite(z)) parts.push(`rate-of-change ${Math.abs(z).toFixed(1)}x`)
+  return parts.length ? `${label} (${parts.join(', ')})` : label
 }
 
 function formatThemeValue(value: number | null | undefined): string {
@@ -1364,6 +1472,50 @@ function lt(value: unknown): string {
 .trust-dot {
   font-size: 11px;
   color: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+
+.quality-alert {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.quality-alert strong {
+  color: #fca5a5;
+  font-size: 12px;
+}
+
+.mode-lens {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.016);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mode-lens strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.mode-lens span {
+  color: var(--muted);
+}
+
+.mode-lens a {
+  color: var(--accent);
+  font-size: 11px;
+  width: fit-content;
 }
 
 /* ── Empty state ── */

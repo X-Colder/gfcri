@@ -1,7 +1,14 @@
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 gcc python3-dev libpq-dev && \
+RUN set -eux; \
+    sed -i \
+      -e "s|http://deb.debian.org/debian|http://mirrors.tuna.tsinghua.edu.cn/debian|g" \
+      -e "s|http://deb.debian.org/debian-security|http://mirrors.tuna.tsinghua.edu.cn/debian-security|g" \
+      /etc/apt/sources.list.d/debian.sources; \
+    apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update && \
+    apt-get install -y --no-install-recommends \
+    libpq5 gcc python3-dev libpq-dev fonts-noto-cjk fontconfig && \
+    fc-cache -fv && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

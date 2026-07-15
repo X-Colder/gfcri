@@ -3,14 +3,44 @@
     <LoadingSpinner v-if="riskStore.loading && !riskStore.latest" />
 
     <template v-else-if="riskStore.latest">
+      <div class="analysis-mode-bar fade-in">
+        <div>
+          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-1">
+            {{ isInstitutional ? t('product.institutionalMode') : t('product.globalMode') }}
+          </p>
+          <h2 class="text-lg font-light text-white">{{ analysisModeTitle }}</h2>
+        </div>
+        <div class="analysis-mode-tabs">
+          <button
+            type="button"
+            :class="{ 'analysis-mode-tab-active': analysisMode === 'brief' }"
+            @click="analysisMode = 'brief'"
+          >
+            {{ t('analysis.briefMode') }}
+          </button>
+          <button
+            type="button"
+            :class="{ 'analysis-mode-tab-active': analysisMode === 'evidence' }"
+            @click="analysisMode = 'evidence'"
+          >
+            {{ t('analysis.evidenceMode') }}
+          </button>
+        </div>
+      </div>
 
       <!-- Section 1: Judgment -->
-      <div class="mb-12 fade-in">
+      <div v-if="analysisMode === 'brief'" class="mb-12 fade-in">
         <div v-if="riskStore.latest" class="min-w-0">
           <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('analysis.aiKicker') }}</p>
           <h2 class="text-lg font-light text-white mb-6">{{ t("analysis.aiTitle") }}</h2>
           <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 lg:p-7 card-hover">
-            <div v-if="isPro" class="prose prose-invert prose-sm max-w-none judgment-markdown" v-html="renderedNarrative"></div>
+            <div v-if="hasFullAccess" class="judgment-brief-list">
+              <article v-for="item in judgmentBriefItems" :key="item.title" class="judgment-brief-item">
+                <p>{{ item.kicker }}</p>
+                <h3>{{ item.title }}</h3>
+                <div class="judgment-brief-body" v-html="md.render(item.body)"></div>
+              </article>
+            </div>
             <div v-else>
               <div class="prose prose-invert prose-sm max-w-none judgment-markdown" v-html="truncatedNarrative"></div>
               <div class="relative mt-4">
@@ -22,6 +52,38 @@
             </div>
 
             <div class="judgment-workbench">
+              <div class="brief-decision-grid">
+                <div class="brief-decision-card">
+                  <span>{{ t('analysis.executiveBrief') }}</span>
+                  <strong>{{ riskStore.latest.gfcri_value.toFixed(1) }} · {{ t(`alert.${riskStore.latest.alert_level}`) }}</strong>
+                  <p>{{ currentRealizedDamageLabel }}</p>
+                </div>
+                <div class="brief-decision-card">
+                  <span>{{ t('analysis.whatChanged') }}</span>
+                  <strong>{{ topBriefDrivers }}</strong>
+                  <p>{{ currentDamageAnchor }}</p>
+                </div>
+                <div class="brief-decision-card">
+                  <span>{{ t('analysis.whyItMatters') }}</span>
+                  <strong>{{ hiddenRisk.statusLabel }} · +{{ hiddenRisk.undercurrent.toFixed(1) }}</strong>
+                  <p>{{ hiddenRisk.primaryDetail }}</p>
+                </div>
+                <div class="brief-decision-card brief-decision-card-wide">
+                  <span>{{ t('analysis.watchNext') }}</span>
+                  <strong>{{ t('dash.nextWatch') }}</strong>
+                  <p>{{ currentNextWatch }}</p>
+                </div>
+              </div>
+
+              <div class="brief-section-head">
+                <div>
+                  <p class="text-[10px] uppercase tracking-[3px] text-[var(--muted)]">{{ t('analysis.evidenceSummary') }}</p>
+                  <h3>{{ t('analysis.evidenceSummaryTitle') }}</h3>
+                </div>
+                <button type="button" class="plain-link" @click="analysisMode = 'evidence'">
+                  {{ t('analysis.openEvidence') }}
+                </button>
+              </div>
               <div class="explain-grid">
                 <div v-for="card in todayEvidenceCards" :key="card.id" class="explain-card">
                   <div class="explain-card-head">
@@ -41,7 +103,7 @@
                 </div>
               </div>
 
-              <div class="action-workbench">
+              <div v-if="false" class="action-workbench">
                 <div class="action-panel">
                   <div class="action-head">
                     <div>
@@ -76,15 +138,15 @@
                     <div class="indicator-metrics">
                       <div>
                         <span>{{ t('analysis.current') }}</span>
-                        <strong>{{ selectedWatchItem.currentDisplay }}</strong>
+                        <strong>{{ selectedWatchItem?.currentDisplay }}</strong>
                       </div>
                       <div>
                         <span>{{ t('analysis.zscore') }}</span>
-                        <strong>{{ selectedWatchItem.zscoreDisplay }}</strong>
+                        <strong>{{ selectedWatchItem?.zscoreDisplay }}</strong>
                       </div>
                       <div>
                         <span>{{ t('analysis.absScore') }}</span>
-                        <strong>{{ selectedWatchItem.absScoreDisplay }}</strong>
+                        <strong>{{ selectedWatchItem?.absScoreDisplay }}</strong>
                       </div>
                     </div>
                     <v-chart v-if="selectedWatchTrend.length > 1" :option="selectedWatchTrendOption" style="height: 180px" autoresize />
@@ -104,7 +166,7 @@
       </div>
 
       <!-- Section 2: Model Logic Breakdown -->
-      <div class="mb-12 fade-in fade-in-delay-1">
+      <div v-if="analysisMode === 'evidence'" class="mb-12 fade-in fade-in-delay-1">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('analysis.explainabilityKicker') }}</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.modelLogic') }}</h2>
 
@@ -330,7 +392,7 @@
       </div>
 
       <!-- Section 2: Transmission Chains — Pro only -->
-      <Paywall :blurred="!isPro" :title="t('analysis.unlockChain')" :description="t('analysis.unlockChainDesc')">
+      <Paywall v-if="analysisMode === 'evidence' && !isInstitutional" :blurred="!hasFullAccess" :title="t('analysis.unlockChain')" :description="t('analysis.unlockChainDesc')">
       <div class="mb-12 fade-in fade-in-delay-1">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Risk Transmission</p>
         <h2 class="text-lg font-light text-white mb-6">
@@ -375,7 +437,7 @@
       </Paywall>
 
       <!-- Section 3: Anomalous Indicators — Pro only -->
-      <Paywall :blurred="!isPro" :title="t('analysis.unlockAnomaly')" :description="t('analysis.unlockAnomalyDesc')">
+      <Paywall v-if="analysisMode === 'evidence' && !isInstitutional" :blurred="!hasFullAccess" :title="t('analysis.unlockAnomaly')" :description="t('analysis.unlockAnomalyDesc')">
       <!-- Section 3: Anomalous Indicators — WHAT is abnormal -->
       <div class="mb-12 fade-in fade-in-delay-2">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Anomaly Detection</p>
@@ -419,7 +481,7 @@
       </Paywall>
 
       <!-- Section 4: Full Report — Chinese publishing format only -->
-      <div class="mb-12 fade-in fade-in-delay-3" v-if="lang === 'zh' && reportStore.latest">
+      <div class="mb-12 fade-in fade-in-delay-3" v-if="analysisMode === 'evidence' && lang === 'zh' && reportStore.latest">
         <div class="flex items-center justify-between mb-6">
           <div>
             <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Full Report</p>
@@ -442,7 +504,7 @@
       </div>
 
       <!-- Section 6: Share & Export -->
-      <div v-if="lang === 'zh'" class="mb-12 fade-in">
+      <div v-if="analysisMode === 'evidence' && lang === 'zh'" class="mb-12 fade-in">
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">Share & Export</p>
         <h2 class="text-lg font-light text-white mb-6">{{ t('analysis.share') }}</h2>
 
@@ -503,7 +565,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { BarChart, LineChart } from 'echarts/charts'
@@ -516,6 +578,7 @@ import { useReportStore } from '@/stores/report'
 import { COLORS } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
+import { useProductMode } from '@/composables/useProductMode'
 import { useRiskWatch, type RiskWatchType } from '@/composables/useRiskWatch'
 import { fetchModelFoundation } from '@/api/modelFoundation'
 import type { ModelFoundation, SubIndexReceipt } from '@/api/types'
@@ -533,6 +596,7 @@ const riskStore = useRiskStore()
 const reportStore = useReportStore()
 const { isPro } = useAuth()
 const { t, tx, lang } = useI18n()
+const { isInstitutional } = useProductMode()
 const showFullReport = ref(false)
 const activeExport = ref('')
 const copied = ref(false)
@@ -544,6 +608,17 @@ const watchItems = riskWatch.items
 const watchedIndicatorIds = riskWatch.watchedIndicatorIds
 const modelFoundation = ref<ModelFoundation | null>(null)
 const selectedSubIndexId = ref('SI_CREDIT')
+const hasFullAccess = computed(() => isPro.value || isInstitutional.value)
+const analysisMode = ref<'brief' | 'evidence'>('brief')
+
+const analysisModeTitle = computed(() =>
+  analysisMode.value === 'brief' ? t('analysis.briefTitle') : t('analysis.evidenceTitle')
+)
+
+const topBriefDrivers = computed(() => {
+  const top = topNodeContributions.value.slice(0, 3).map(item => item.name)
+  return top.length ? top.join(' / ') : t('dash.noDriver')
+})
 
 onMounted(async () => {
   riskStore.loadLatest()
@@ -580,11 +655,6 @@ const nodeNames: Record<string, string> = {
   ai_capex: 'AI投资', dram_spot: 'DRAM', nand_spot: 'NAND',
   natgas: '天然气', wheat: '小麦', bdry: '干散货',
 }
-
-const renderedNarrative = computed(() => {
-  const narr = currentJudgmentMarkdown.value
-  return narr ? md.render(narr) : ''
-})
 
 const truncatedNarrative = computed(() => {
   const narr = currentJudgmentMarkdown.value
@@ -732,6 +802,89 @@ const currentJudgmentMarkdown = computed(() => {
     '',
     `**Next watch:** ${nextWatch}`,
   ].join('\n')
+})
+
+const judgmentBriefItems = computed(() => {
+  const risk = riskStore.latest
+  if (!risk) {
+    return [{
+      kicker: t('analysis.executiveBrief'),
+      title: lang.value === 'zh' ? '暂无风险数据' : 'No risk data',
+      body: lang.value === 'zh' ? '暂无风险数据。' : 'No risk data is available.',
+    }]
+  }
+
+  const active = activeChains.value.length
+  const anomalies = anomalousNodes.value.length
+  const driver = topNodeContributions.value[0]
+  const chain = activeChains.value[0]
+  const hidden = hiddenRisk.value
+  const topSub = subIndexRows.value.slice(0, 3)
+  const topSubText = topSub.map(s => `${s.name} ${s.score.toFixed(1)}`).join(lang.value === 'zh' ? '、' : ', ')
+  const chainName = chain ? tx(chain.name) : (lang.value === 'zh' ? '暂无活跃传导链' : 'no active transmission channel')
+  const chainStress = chain ? Number(chain.stress || 0).toFixed(0) : '-'
+  const driverName = driver?.name || (lang.value === 'zh' ? '暂无单一主导指标' : 'no dominant single indicator')
+  const driverDetail = driver
+    ? `${driverName} Z=${driver.zscore.toFixed(2)}, ${t('analysis.absScore')} ${driver.absScoreDisplay}`
+    : driverName
+
+  if (lang.value === 'zh') {
+    return [
+      {
+        kicker: t('analysis.executiveBrief'),
+        title: `${risk.gfcri_value.toFixed(1)} / 100 · ${t(`alert.${risk.alert_level}`)}`,
+        body: '当前不是“已经发生危机”的读数，而是“前瞻压力偏高、实际损害尚未充分兑现”的状态。应主要解读为风险压力和传导概率上升，而不是事后损害等级已经升高。',
+      },
+      {
+        kicker: t('analysis.whatChanged'),
+        title: currentRealizedDamageLabel.value,
+        body: `${currentDamageAnchor.value} 因此，当前更接近“压力累积/隐藏风险暴露前阶段”，不能简单等同于 2008 或 2020 式已经兑现的系统性损害。`,
+      },
+      {
+        kicker: t('analysis.whyItMatters'),
+        title: `${active} 条传导链 · ${anomalies} 个异常指标`,
+        body: `信号一致性为 **${(risk.coherence_multiplier || 1).toFixed(2)}x**。统计异常不等于风险压力，系统只把“朝风险方向移动”的异常计入压力。主要压力来自 **${topSubText || '暂无显著子指数'}**；首要驱动为 **${driverDetail}**；首要传导链为 **${chainName}（压力 ${chainStress}）**。`,
+      },
+      {
+        kicker: t('analysis.hiddenRisk'),
+        title: `${hidden.statusLabel} · +${hidden.undercurrent.toFixed(1)}`,
+        body: `深层压力 ${hidden.deepAvgDisplay}，表层压力 ${hidden.surfaceAvgDisplay}，缺口 ${hidden.gapDisplay}。部分风险可能被低波动、政策缓冲或市场拥挤交易掩盖，尤其需要关注日元、黄金、AI/半导体和信用/银行链条是否从“估值压力”转化为“现金流/融资损害”。`,
+      },
+      {
+        kicker: t('analysis.watchNext'),
+        title: t('dash.nextWatch'),
+        body: currentNextWatch.value,
+      },
+    ]
+  }
+
+  return [
+    {
+      kicker: t('analysis.executiveBrief'),
+      title: `${risk.gfcri_value.toFixed(1)} / 100 · ${t(`alert.${risk.alert_level}`)}`,
+      body: 'This is not a reading that a crisis has already materialized. It is a high forward-pressure state with limited realized damage so far. Read it as rising pressure and transmission probability, not as proof that realized damage has already reached crisis levels.',
+    },
+    {
+      kicker: t('analysis.whatChanged'),
+      title: currentRealizedDamageLabel.value,
+      body: `${currentDamageAnchor.value} The current state is closer to pressure accumulation before full damage realization than to a 2008- or 2020-style systemic damage event.`,
+    },
+    {
+      kicker: t('analysis.whyItMatters'),
+      title: `${active} active channels · ${anomalies} anomalous indicators`,
+      body: `Signal coherence is **${(risk.coherence_multiplier || 1).toFixed(2)}x**. Statistical anomaly is not the same as risk pressure: the model only adds pressure when the move is in the risk direction. The main pressure pockets are **${topSubText || 'no dominant sub-index'}**. The top driver is **${driverDetail}** and the leading channel is **${chainName} (stress ${chainStress})**.`,
+    },
+    {
+      kicker: t('analysis.hiddenRisk'),
+      title: `${hidden.statusLabel} · +${hidden.undercurrent.toFixed(1)}`,
+      body: `Deep stress is ${hidden.deepAvgDisplay}, surface stress is ${hidden.surfaceAvgDisplay}, and the gap is ${hidden.gapDisplay}. Some risk may be masked by low volatility, policy buffers, or crowded momentum trades. Watch JPY, gold, AI/semiconductors, and credit/banking channels for conversion from valuation pressure into cash-flow or funding damage.`,
+    },
+    {
+      kicker: t('analysis.watchNext'),
+      title: t('dash.nextWatch'),
+      body: currentNextWatch.value,
+    },
+  ]
 })
 
 const sortedChains = computed(() => {
@@ -1116,6 +1269,12 @@ function estimateDivergence() {
 }
 
 function hiddenRiskStatusLabel(status: string): string {
+  if (lang.value === 'zh') {
+    if (status === 'critical') return t('dash.hiddenCritical')
+    if (status === 'significant') return t('dash.hiddenSignificant')
+    if (status === 'mild') return t('dash.hiddenMild')
+    return t('dash.hiddenNoneStatus')
+  }
   if (status === 'critical') return 'Critical'
   if (status === 'significant') return 'Significant'
   if (status === 'mild') return 'Mild'
@@ -1123,7 +1282,7 @@ function hiddenRiskStatusLabel(status: string): string {
 }
 
 function hiddenRiskDetail(detail: any) {
-  const title = tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+  const title = hiddenRiskTitle(detail)
   if (lang.value === 'zh') {
     return { title, detail: detail.detail || '' }
   }
@@ -1144,13 +1303,81 @@ function hiddenRiskDetail(detail: any) {
     }
   }
   if (detail.type === 'zscore_desensitized') {
-    const ids = (detail.desensitized_indicators || []).slice(0, 4).map((id: string) => tx(nodeNames[id] || id)).join(', ')
+    const ids = (detail.desensitized_indicators || [])
+      .slice(0, 4)
+      .map((id: string) => hiddenRiskIndicatorEvidence(id))
+      .join('; ')
     return {
       title,
-      detail: `Some indicators remain dangerous by absolute level even though their recent rate of change has normalized. ${ids ? `Desensitized indicators: ${ids}.` : ''}`,
+      detail: ids
+        ? `These indicators remain in a dangerous absolute-stress range, but their recent rate of change has normalized after staying elevated: ${ids}. Risk has not disappeared.`
+        : 'Some indicators remain dangerous by absolute level even though their recent rate of change has normalized.',
+    }
+  }
+  if (detail.type === 'speculative_overextension') {
+    const items = (detail.indicators || []).slice(0, 4).map((item: any) => {
+      const label = tx(item.label || item.id)
+      const z = Number(item.zscore)
+      const anomaly = Number(item.anomaly)
+      const parts = []
+      if (Number.isFinite(z)) parts.push(`z-score ${z.toFixed(1)}`)
+      if (Number.isFinite(anomaly)) parts.push(`directional pressure ${anomaly.toFixed(0)}%`)
+      return parts.length ? `${label} (${parts.join(', ')})` : label
+    }).join('; ')
+    return {
+      title,
+      detail: items
+        ? `AI, semiconductor, or equity-index momentum is extended. Rising prices are not a crisis by themselves, but crowded narratives can understate drawdown risk: ${items}.`
+        : 'AI, semiconductor, or equity-index momentum is extended. Crowded narratives can understate drawdown risk.',
+    }
+  }
+  if (detail.type === 'yen_depreciation_pressure') {
+    const value = Number(detail.current_value)
+    const abs = Number(detail.abs_score)
+    const parts = []
+    if (Number.isFinite(value)) parts.push(`USD/JPY is near ${value.toFixed(1)}`)
+    if (Number.isFinite(abs)) parts.push(`absolute stress ${abs.toFixed(0)}%`)
+    return {
+      title,
+      detail: `${parts.length ? `${parts.join(', ')}. ` : ''}Persistent yen weakness may support Japanese exporters temporarily, but it also raises intervention, imported-inflation, and carry-trade reversal risk.`,
+    }
+  }
+  if (detail.type === 'korea_equity_fx_divergence') {
+    const kospi = Number(detail.kospi_zscore)
+    const krw = Number(detail.krw_zscore)
+    const krwAbs = Number(detail.krw_abs_score)
+    const parts = []
+    if (Number.isFinite(kospi)) parts.push(`KOSPI z-score ${kospi.toFixed(1)}`)
+    if (Number.isFinite(krw)) parts.push(`KRW/USD z-score ${krw.toFixed(1)}`)
+    if (Number.isFinite(krwAbs)) parts.push(`KRW absolute stress ${krwAbs.toFixed(0)}%`)
+    return {
+      title,
+      detail: `${parts.length ? `${parts.join(', ')}. ` : ''}Korean equities are elevated while FX or external-funding channels remain under pressure, a fragile combination for export-sensitive markets.`,
     }
   }
   return { title, detail: tx(detail.detail || '') }
+}
+
+function hiddenRiskTitle(detail: any): string {
+  if (lang.value === 'zh') return tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+  if (detail.type === 'policy_mask') return 'Policy-sensitive calm, structural stress unresolved'
+  if (detail.type === 'surface_calm_deep_stress') return 'Calm surface, weaker underlying stress'
+  if (detail.type === 'zscore_desensitized') return 'Absolute stress desensitization'
+  if (detail.type === 'speculative_overextension') return 'Crowded momentum pressure'
+  if (detail.type === 'yen_depreciation_pressure') return 'Yen depreciation and carry-trade fragility'
+  if (detail.type === 'korea_equity_fx_divergence') return 'Korea equity strength with FX pressure'
+  return tx(detail.title || detail.type || t('analysis.hiddenRisk'))
+}
+
+function hiddenRiskIndicatorEvidence(id: string): string {
+  const info: any = riskStore.latest?.node_contributions?.[id]
+  const label = tx(info?.display_name || nodeNames[id] || id)
+  const abs = info?.abs_score === null || info?.abs_score === undefined ? null : Number(info.abs_score)
+  const z = Number(info?.zscore)
+  const parts = []
+  if (abs !== null && Number.isFinite(abs)) parts.push(`absolute stress ${(abs * 100).toFixed(0)}%`)
+  if (Number.isFinite(z)) parts.push(`rate-of-change ${Math.abs(z).toFixed(1)}x`)
+  return parts.length ? `${label} (${parts.join(', ')})` : label
 }
 
 function avg(values: number[]): number {
@@ -1293,7 +1520,18 @@ function toggleWatchCard(card: EvidenceCard) {
   })
 }
 
-function scrollToSection(id: string) {
+const evidenceSectionIds = new Set([
+  'hidden-risk-section',
+  'sub-index-breakdown',
+  'node-contribution',
+  'chain-pressure',
+])
+
+async function scrollToSection(id: string) {
+  if (evidenceSectionIds.has(id) && analysisMode.value !== 'evidence') {
+    analysisMode.value = 'evidence'
+    await nextTick()
+  }
   const el = document.getElementById(id)
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -1466,10 +1704,146 @@ function scoreColor(score: number): string {
 </script>
 
 <style scoped>
+.analysis-mode-bar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.analysis-mode-tabs {
+  align-items: center;
+  background: rgba(255,255,255,0.018);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.analysis-mode-tabs button {
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 92px;
+  padding: 7px 12px;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.analysis-mode-tabs button:hover,
+.analysis-mode-tab-active {
+  background: rgba(0, 200, 255, 0.1);
+  color: var(--accent) !important;
+}
+
+.judgment-brief-list {
+  display: grid;
+  gap: 10px;
+}
+
+.judgment-brief-item {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-left: 3px solid rgba(0, 200, 255, 0.45);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.judgment-brief-item p:first-child {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.judgment-brief-item h3 {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-bottom: 7px;
+}
+
+.judgment-brief-body {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.judgment-brief-body :deep(p) {
+  margin: 0;
+}
+
+.judgment-brief-body :deep(strong) {
+  color: var(--text);
+  font-weight: 500;
+}
+
 .judgment-workbench {
   border-top: 1px solid var(--border);
   margin-top: 22px;
   padding-top: 18px;
+}
+
+.brief-decision-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.brief-decision-card {
+  background: rgba(255,255,255,0.014);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 128px;
+  padding: 14px;
+}
+
+.brief-decision-card-wide {
+  grid-column: 1 / -1;
+  min-height: 96px;
+}
+
+.brief-decision-card span {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.brief-decision-card strong {
+  color: var(--text);
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.brief-decision-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.brief-section-head {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin: 18px 0 12px;
+}
+
+.brief-section-head h3 {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 3px;
 }
 
 .explain-grid {
@@ -1785,6 +2159,7 @@ function scoreColor(score: number): string {
 }
 
 @media (max-width: 1180px) {
+  .brief-decision-grid,
   .explain-grid,
   .action-workbench {
     grid-template-columns: 1fr;
@@ -1792,6 +2167,24 @@ function scoreColor(score: number): string {
 }
 
 @media (max-width: 720px) {
+  .analysis-mode-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .analysis-mode-tabs {
+    width: 100%;
+  }
+
+  .analysis-mode-tabs button {
+    flex: 1;
+  }
+
+  .brief-section-head {
+    align-items: start;
+    flex-direction: column;
+  }
+
   .indicator-metrics {
     grid-template-columns: 1fr;
   }

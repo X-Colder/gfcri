@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <Paywall :blurred="!isPro" :title="t('forward.unlockTitle')" :description="t('forward.unlockDesc')">
+    <Paywall :blurred="!hasFullAccess" :title="t('forward.unlockTitle')" :description="t('forward.unlockDesc')">
 
       <!-- Section 1: Crisis Distance — How far from crisis? -->
       <div class="mb-12 fade-in">
@@ -142,11 +142,14 @@ import { ref, computed, onMounted } from 'vue'
 import { COLORS } from '@/composables/useTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
+import { useProductMode } from '@/composables/useProductMode'
 import Paywall from '@/components/common/Paywall.vue'
 import client from '@/api/client'
 
 const { isPro } = useAuth()
 const { t, tx } = useI18n()
+const { isInstitutional } = useProductMode()
+const hasFullAccess = computed(() => isPro.value || isInstitutional.value)
 const crisisData = ref<any>(null)
 const stressResults = ref<any[]>([])
 const crisisLoading = ref(false)

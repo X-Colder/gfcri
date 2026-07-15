@@ -28,7 +28,14 @@
 
     <!-- Center: 3D Globe -->
     <div class="globe-container" ref="globeRef">
-      <v-chart ref="chartRef" :option="globeOption" style="width:100%;height:100%" autoresize />
+      <v-chart
+        :key="globeChartKey"
+        ref="chartRef"
+        :option="globeOption"
+        :update-options="globeUpdateOptions"
+        style="width:100%;height:100%"
+        autoresize
+      />
 
       <!-- HTML overlay labels by region (because scatter3D label doesn't render in WebGL) -->
       <div class="region-label region-us">
@@ -115,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts'
 import 'echarts-gl'
 import VChart from 'vue-echarts'
@@ -124,13 +131,21 @@ import { getAlertColor } from '@/composables/useTheme'
 import { useI18n } from '@/composables/useI18n'
 
 const riskStore = useRiskStore()
-const { t, tx } = useI18n()
-const chartRef = ref()
-const globeRef = ref()
+const { t, tx, lang } = useI18n()
 
 // Register world map and create base texture
+const chartRef = ref<InstanceType<typeof VChart> | null>(null)
 const baseTextureReady = ref(false)
-const baseTextureCanvas = ref<HTMLCanvasElement | null>(null)
+const baseTextureCanvas = shallowRef<HTMLCanvasElement | null>(null)
+const globeUpdateOptions = { notMerge: true, lazyUpdate: false }
+const globeChartKey = computed(() => `globe-${lang.value}-${baseTextureReady.value ? 'texture' : 'fallback'}`)
+let textureChart: echarts.ECharts | null = null
+
+async function refreshGlobeChart() {
+  await nextTick()
+  chartRef.value?.setOption(globeOption.value, globeUpdateOptions)
+  chartRef.value?.resize()
+}
 
 onMounted(async () => {
   try {
@@ -142,8 +157,8 @@ onMounted(async () => {
     const canvas = document.createElement('canvas')
     canvas.width = 2048
     canvas.height = 1024
-    const mapChart = echarts.init(canvas, undefined, { width: 2048, height: 1024 })
-    mapChart.setOption({
+    textureChart = echarts.init(canvas, undefined, { width: 2048, height: 1024 })
+    textureChart.setOption({
       backgroundColor: '#0a1628',
       geo: {
         type: 'map',
@@ -158,13 +173,23 @@ onMounted(async () => {
         emphasis: { disabled: true },
         silent: true,
       },
-    })
-    baseTextureCanvas.value = canvas
+    }, globeUpdateOptions)
+    baseTextureCanvas.value = markRaw(canvas)
     baseTextureReady.value = true
+    refreshGlobeChart()
   } catch (e) {
     console.warn('World map load failed:', e)
     baseTextureReady.value = true
   }
+})
+
+watch(lang, () => {
+  refreshGlobeChart()
+})
+
+onBeforeUnmount(() => {
+  textureChart?.dispose()
+  textureChart = null
 })
 
 const NODE_LABELS: Record<string, string> = {

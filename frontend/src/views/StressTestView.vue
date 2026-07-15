@@ -142,19 +142,19 @@
               <p class="text-xs font-medium text-muted mb-3">{{ t('stress.steps') }}</p>
               <div class="space-y-0">
                 <div v-for="(step, i) in r.propagation_chain" :key="i">
-                  <div v-if="i > 0" class="pl-6 py-0.5"><div class="w-px h-3 bg-border"></div></div>
+                  <div v-if="toNumber(i) > 0" class="pl-6 py-0.5"><div class="w-px h-3 bg-border"></div></div>
                   <div class="flex items-start gap-2.5">
-                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5" :style="{ backgroundColor: impactColor(Math.abs(step.delta)*3) + '20', color: impactColor(Math.abs(step.delta)*3) }">{{ i+1 }}</div>
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5" :style="{ backgroundColor: impactColor(Math.abs(toNumber(step.delta))*3) + '20', color: impactColor(Math.abs(toNumber(step.delta))*3) }">{{ toNumber(i)+1 }}</div>
                     <div class="flex-1 bg-bg rounded-lg p-2.5">
                       <div class="flex items-center gap-1.5 mb-1">
                         <span class="text-[11px] text-muted">{{ tx(step.caused_by_name) }}</span>
                         <svg class="w-2.5 h-2.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         <span class="text-[11px] font-medium">{{ tx(step.name) }}</span>
-                        <span class="text-[9px] px-1 py-0.5 rounded ml-auto" :class="step.confidence > 0.5 ? 'bg-alert-green/10 text-alert-green' : 'bg-alert-yellow/10 text-alert-yellow'">{{ (step.confidence*100).toFixed(0) }}%</span>
+                        <span class="text-[9px] px-1 py-0.5 rounded ml-auto" :class="toNumber(step.confidence) > 0.5 ? 'bg-alert-green/10 text-alert-green' : 'bg-alert-yellow/10 text-alert-yellow'">{{ (toNumber(step.confidence)*100).toFixed(0) }}%</span>
                       </div>
                       <p class="text-xs font-mono">
-                        {{ step.baseline_price }} <span :style="{color: impactColor(Math.abs(step.delta)*3)}">→ {{ step.stressed_price }}</span> {{ step.unit }}
-                        <span class="ml-1.5" :style="{color: step.delta>0?'#f85149':'#2ea043'}">{{ step.delta>0?'↑':'↓' }}{{ Math.abs(step.delta).toFixed(1) }}σ</span>
+                        {{ step.baseline_price }} <span :style="{color: impactColor(Math.abs(toNumber(step.delta))*3)}">→ {{ step.stressed_price }}</span> {{ step.unit }}
+                        <span class="ml-1.5" :style="{color: toNumber(step.delta)>0?'#f85149':'#2ea043'}">{{ toNumber(step.delta)>0?'↑':'↓' }}{{ Math.abs(toNumber(step.delta)).toFixed(1) }}σ</span>
                       </p>
                       <p class="text-[10px] text-muted mt-0.5">{{ tx(step.explanation) }}</p>
                     </div>
@@ -225,6 +225,11 @@ function distColor(d: number): string {
 }
 function tierLabel(tier: number): string {
   return { 1: t('forward.tier1'), 2: t('forward.tier2'), 3: t('forward.tier3') }[tier] || ''
+}
+
+function toNumber(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 function buildFlowChart(r: any) {

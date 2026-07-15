@@ -9,14 +9,14 @@
           :class="mode === 'global' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
           @click="setMode('global')"
         >
-          Global
+          {{ t('product.personalSwitch') }}
         </button>
         <button
           class="rounded-md px-2 py-1.5 text-[10px] transition-colors"
           :class="mode === 'institutional' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
           @click="setMode('institutional')"
         >
-          Institution
+          {{ t('product.institutionalSwitch') }}
         </button>
       </div>
     </div>
@@ -45,16 +45,19 @@
           </div>
           <div class="min-w-0">
             <span class="block text-xs text-[var(--muted)] truncate">{{ user?.display_name || user?.email }}</span>
-            <span class="text-[9px]" :class="isPro ? 'text-[var(--accent)]' : 'text-[var(--muted)]/60'">
+            <span class="block text-[9px] text-[var(--muted)]/60">
+              {{ t('account.type') }} · {{ accountTypeLabel }}
+            </span>
+            <span v-if="!isInstitutional" class="block text-[9px]" :class="isPro ? 'text-[var(--accent)]' : 'text-[var(--muted)]/60'">
               {{ planLabel }}
             </span>
           </div>
         </div>
         <button @click="logout" class="text-[9px] text-[var(--muted)] hover:text-white">{{ t('auth.logout') }}</button>
       </div>
-      <router-link v-else to="/auth"
+      <router-link v-else :to="authLink"
                    class="block w-full text-center px-3 py-2 rounded-lg text-xs bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors">
-        {{ t('auth.login') }} / {{ t('auth.register') }}
+        {{ isInstitutional ? t('account.institutionalAccess') : `${t('auth.login')} / ${t('auth.register')}` }}
       </router-link>
 
       <!-- Language toggle -->
@@ -65,7 +68,7 @@
       </button>
 
       <p class="text-[10px] text-[var(--muted)]/40 leading-relaxed">
-        38 indicators · 12 chains<br/>Updated daily 06:00 UTC
+        49 indicators · 12 chains<br/>Updated daily 06:00 UTC
       </p>
     </div>
   </aside>
@@ -77,7 +80,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
 import { useProductMode } from '@/composables/useProductMode'
 
-const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, logout } = useAuth()
+const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, accountType, logout } = useAuth()
 const { t, lang, toggleLang } = useI18n()
 const { mode, isInstitutional, setMode } = useProductMode()
 
@@ -91,6 +94,14 @@ const modeLabel = computed(() =>
   isInstitutional.value ? t('product.institutionalMode') : t('product.globalMode')
 )
 
+const accountTypeLabel = computed(() =>
+  accountType.value === 'institutional' ? t('account.institutional') : t('account.personal')
+)
+
+const authLink = computed(() =>
+  isInstitutional.value ? { path: '/auth' } : { path: '/auth' }
+)
+
 const navItems = computed(() => {
   const base = [
     { path: '/', icon: '◉', label: t('nav.dashboard') },
@@ -100,6 +111,8 @@ const navItems = computed(() => {
   ]
   if (isInstitutional.value) {
     base.splice(1, 0, { path: '/institutional', icon: '▣', label: t('nav.institutional') })
+  } else {
+    base.push({ path: '/pricing', icon: '◆', label: t('nav.pricing') })
   }
   base.push({ path: '/methodology', icon: '◇', label: t('nav.methodology') })
   return base

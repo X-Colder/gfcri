@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.dependencies import init_cache, shutdown_cache
-from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth, regime_assessment, causal_discovery, model_foundation, institutional_radar, core_themes, commercial_readiness
+from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth, billing, regime_assessment, causal_discovery, model_foundation, institutional_radar, core_themes, commercial_readiness
 
 
 @asynccontextmanager
@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="GFCRI API",
     description="Global Financial Crisis Risk Index REST API",
-    version="1.0.0",
+    version="0.1.0",
     lifespan=lifespan,
 )
 
@@ -42,6 +42,7 @@ app.include_router(stress_test.router, prefix="/api")
 app.include_router(crisis_distance.router, prefix="/api")
 app.include_router(intraday.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(billing.router, prefix="/api")
 app.include_router(regime_assessment.router, prefix="/api")
 app.include_router(causal_discovery.router, prefix="/api")
 app.include_router(model_foundation.router, prefix="/api")

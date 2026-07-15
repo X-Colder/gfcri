@@ -17,6 +17,7 @@ const router = createRouter({
         { path: 'analysis', name: 'analysis', component: () => import('@/views/AnalysisView.vue') },
         { path: 'forward', name: 'forward', component: () => import('@/views/ForwardView.vue') },
         { path: 'backtest', name: 'backtest', component: () => import('@/views/BacktestView.vue') },
+        { path: 'pricing', name: 'pricing', component: () => import('@/views/PricingView.vue') },
         { path: 'methodology', name: 'methodology', component: () => import('@/views/MethodologyView.vue') },
         // Legacy redirects
         { path: 'briefing', redirect: '/analysis' },

@@ -1,10 +1,12 @@
 import { ref, computed } from 'vue'
 import client from '@/api/client'
+import { fetchBillingStatus } from '@/api/billing'
 
 interface User {
   id: number
   email: string
   display_name: string
+  account_type?: string
   plan: string
   trial_started_at?: string | null
   trial_expires_at?: string | null
@@ -22,6 +24,7 @@ if (token.value) {
       id: payload.user_id,
       email: payload.email,
       display_name: '',
+      account_type: payload.account_type || 'personal',
       plan: payload.plan,
       trial_expires_at: payload.trial_expires_at || null,
     }
@@ -43,7 +46,11 @@ function trialDaysRemaining(u: User | null): number {
 export function useAuth() {
   const isLoggedIn = computed(() => !!token.value && !!user.value)
   const isTrialActive = computed(() => isTrialCurrentlyActive(user.value))
-  const isPro = computed(() => user.value?.plan === 'pro' || isTrialActive.value)
+  const accountType = computed(() => {
+    return user.value?.account_type === 'institutional' ? 'institutional' : 'personal'
+  })
+  const isInstitutionalAccount = computed(() => accountType.value === 'institutional')
+  const isPro = computed(() => user.value?.plan === 'pro' || isTrialActive.value || isInstitutionalAccount.value)
   const trialDaysLeft = computed(() => trialDaysRemaining(user.value))
   const effectivePlan = computed(() => {
     if (user.value?.plan === 'pro') return 'pro'
@@ -113,6 +120,20 @@ export function useAuth() {
     }
   }
 
+  async function refreshBillingStatus(): Promise<string | null> {
+    if (!isLoggedIn.value) return 'AUTH_REQUIRED'
+    loading.value = true
+    try {
+      const data = await fetchBillingStatus()
+      if (data.token && data.user) applyAuthResponse(data)
+      return null
+    } catch (e: any) {
+      return e.response?.data?.detail || 'Unable to refresh billing status'
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Set auth header if token exists
   if (token.value) {
     client.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
@@ -124,12 +145,15 @@ export function useAuth() {
     isPro,
     isTrialActive,
     trialDaysLeft,
+    accountType,
+    isInstitutionalAccount,
     effectivePlan,
     loading: computed(() => loading.value),
     login,
     register,
     logout,
     startTrial,
+    refreshBillingStatus,
     setPro,
     togglePro,
   }

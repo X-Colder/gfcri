@@ -16,6 +16,10 @@ export interface RiskIndex {
   undercurrent_boost?: number | null
   trade_spillover?: Record<string, any> | null
   trade_spillover_boost?: number | null
+  data_quality_status?: string | null
+  data_quality_message?: string | null
+  data_quality_details?: Record<string, any> | null
+  latest_blocked_run_date?: string | null
 }
 
 export interface DailyState {
@@ -215,6 +219,7 @@ export interface CoreThemes {
 
 export interface CommercialReadiness {
   data_quality: Record<string, any>
+  data_freshness: Record<string, any>
   causal_validation: Record<string, any>
   institutional_report: Record<string, any>
   subscription_packaging: Record<string, any>

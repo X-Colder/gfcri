@@ -241,6 +241,7 @@ CREATE TABLE IF NOT EXISTS users (
     email             VARCHAR(255) NOT NULL UNIQUE,
     password_hash     VARCHAR(255) NOT NULL,
     display_name      VARCHAR(100),
+    account_type      VARCHAR(20) NOT NULL DEFAULT 'personal',
     plan              VARCHAR(20) NOT NULL DEFAULT 'free',
     trial_started_at  TIMESTAMPTZ,
     trial_expires_at  TIMESTAMPTZ,

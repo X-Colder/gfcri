@@ -16,7 +16,7 @@ def private_deployment_readiness() -> dict:
             "Private `.env` configuration",
             "Institutional radar and report refresh script",
             "Model/data coverage audit",
-            "Causal candidate registry and promotion gate",
+            "Transmission hypothesis registry and promotion gate",
             "Rollback via source backup archive",
         ],
         "gaps_to_close": [
@@ -24,7 +24,7 @@ def private_deployment_readiness() -> dict:
             "SAML/SSO integration for enterprise identity",
             "Per-client private data connector sandbox",
             "Operational dashboards for job health and data freshness",
-            "Signed PDF report export and report approval workflow",
+            "Signed report export and report approval workflow",
         ],
         "pilot_acceptance": [
             "Deploys inside client network without external write dependency except configured public data sources.",

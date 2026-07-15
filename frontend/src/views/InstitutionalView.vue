@@ -1,5 +1,70 @@
 <template>
   <div class="space-y-6">
+    <section class="terminal-section fade-in p-5">
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <div>
+          <p class="terminal-kicker">{{ t('institutional.kicker') }}</p>
+          <h1 class="terminal-title">{{ t('dash.commandBrief') }}</h1>
+          <p class="terminal-copy mt-2 max-w-4xl">{{ t('institutional.subtitle') }}</p>
+          <div class="mt-5 grid gap-3 md:grid-cols-3">
+            <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">GFCRI</p>
+              <strong class="mt-2 block font-mono text-3xl font-medium" :style="{ color: riskColor }">{{ latestRisk?.gfcri_value?.toFixed(1) ?? '-' }}</strong>
+              <p class="mt-1 text-xs text-[var(--muted)]">{{ latestRisk?.index_date || '-' }} · {{ latestRisk ? t(`alert.${latestRisk.alert_level}`) : '-' }}</p>
+            </div>
+            <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('institutional.marketFreshness') }}</p>
+              <strong class="mt-2 block font-mono text-2xl font-medium text-white">{{ freshnessStatus }}</strong>
+              <p class="mt-1 text-xs text-[var(--muted)]">{{ t('institutional.latestTradeDate') }} {{ readiness?.data_freshness?.latest_trade_date || '-' }}</p>
+            </div>
+            <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('institutional.readinessScore') }}</p>
+              <strong class="mt-2 block font-mono text-2xl font-medium text-white">{{ readiness?.readiness_score?.score ?? '-' }}</strong>
+              <p class="mt-1 text-xs text-[var(--muted)]">{{ lt(readiness?.readiness_score?.stage || '-') }}</p>
+            </div>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-2">
+            <router-link to="/analysis" class="rounded-lg bg-[var(--accent)]/15 px-4 py-2 text-xs font-medium text-[var(--accent)] transition hover:bg-[var(--accent)]/25">{{ t('nav.analysis') }}</router-link>
+            <router-link to="/methodology" class="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)]">{{ t('nav.methodology') }}</router-link>
+            <button
+              class="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="loading || refreshing"
+              @click="loadRadar(true)"
+            >
+              {{ refreshing ? t('common.loading') : t('institutional.refresh') }}
+            </button>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+            <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('dash.coreThemes') }}</p>
+            <h2 class="mt-2 text-base font-medium text-white">{{ topInstitutionalTheme?.title || '-' }}</h2>
+            <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">{{ topInstitutionalTheme?.detail || t('common.noData') }}</p>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('dash.topEvidence') }}</p>
+              <div class="mt-3 space-y-2">
+                <p v-for="driver in topRiskDrivers" :key="driver.id" class="text-xs leading-relaxed text-white">
+                  {{ driver.name }} · {{ driver.score }}
+                </p>
+                <p v-if="!topRiskDrivers.length" class="text-xs text-[var(--muted)]">{{ t('common.noData') }}</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+              <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('analysis.hiddenRisk') }}</p>
+              <strong class="mt-2 block text-sm font-medium text-white">{{ hiddenRiskSummary.status }}</strong>
+              <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">{{ hiddenRiskSummary.detail }}</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-[var(--border)] bg-white/[0.012] p-4">
+            <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t('dash.nextWatch') }}</p>
+            <p class="mt-2 text-xs leading-relaxed text-white">{{ nextWatchSummary }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="terminal-section fade-in">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
@@ -253,11 +318,6 @@
             </div>
           </div>
         </div>
-
-        <div class="terminal-section p-5">
-          <p class="terminal-kicker">{{ t('institutional.positioning') }}</p>
-          <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{{ t('institutional.positioningBody') }}</p>
-        </div>
       </div>
     </section>
 
@@ -268,6 +328,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { useRiskStore } from '@/stores/risk'
 import { fetchInstitutionalRadar } from '@/api/institutionalRadar'
 import { fetchCoreThemes } from '@/api/coreThemes'
 import { fetchCommercialReadiness } from '@/api/commercialReadiness'
@@ -276,6 +337,7 @@ import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
 import { localizeDomainText } from '@/composables/useDomainLabels'
 
 const { t, lang } = useI18n()
+const riskStore = useRiskStore()
 
 const radar = ref<InstitutionalRadar | null>(null)
 const loading = ref(true)
@@ -375,8 +437,71 @@ const topItems = computed(() => radar.value?.items.slice(0, 10) ?? [])
 const topThemes = computed(() => radar.value?.theme_summary.slice(0, 6) ?? [])
 const errorSources = computed(() => radar.value?.errors.map((item) => item.source).join(', ') ?? '')
 const topCoreThemes = computed(() => coreThemes.value?.themes.slice(0, 3) ?? [])
+const latestRisk = computed(() => riskStore.latest)
+const freshnessStatus = computed(() => {
+  const status = String(readiness.value?.data_freshness?.status || '-')
+  return lt(status)
+})
+const riskColor = computed(() => {
+  const level = latestRisk.value?.alert_level
+  if (level === 'red') return 'var(--red)'
+  if (level === 'orange') return 'var(--orange)'
+  if (level === 'yellow') return 'var(--yellow)'
+  return 'var(--green)'
+})
+const topInstitutionalTheme = computed(() => {
+  const theme = topCoreThemes.value[0]
+  if (!theme) return null
+  return {
+    title: lt(theme.title),
+    detail: lt(theme.why_it_matters || theme.description),
+  }
+})
+const topRiskDrivers = computed(() => {
+  const nc = latestRisk.value?.node_contributions || {}
+  return Object.entries(nc)
+    .map(([id, info]: [string, any]) => {
+      const zscore = Number(info.zscore || 0)
+      const anomaly = Number(info.anomaly_score || 0)
+      const abs = info.abs_score === null || info.abs_score === undefined ? 0 : Number(info.abs_score)
+      return {
+        id,
+        name: lt(info.display_name || nodeLabel(id)),
+        score: `Z=${zscore.toFixed(2)} · ${Math.max(anomaly, abs) > 0 ? (Math.max(anomaly, abs) * 100).toFixed(0) : '0'}`,
+        sortScore: Math.max(Math.abs(zscore) / 4, anomaly, abs),
+      }
+    })
+    .sort((a, b) => b.sortScore - a.sortScore)
+    .slice(0, 3)
+})
+const hiddenRiskSummary = computed(() => {
+  const risk = latestRisk.value
+  const divergence = risk?.divergence || {}
+  const status = String(divergence.status || hiddenStatusFromBoost(Number(risk?.undercurrent_boost || 0)))
+  const rawDetails = Array.isArray(divergence.details) ? divergence.details : []
+  const detail = rawDetails[0]
+  return {
+    status: hiddenStatusLabel(status),
+    detail: hiddenDetailText(detail, Number(risk?.undercurrent_boost || 0)),
+  }
+})
+const nextWatchSummary = computed(() => {
+  const risk = latestRisk.value
+  const activeChains = Array.isArray(risk?.chain_details)
+    ? risk?.chain_details.filter((chain: any) => chain.active).length
+    : Object.values(risk?.chain_details || {}).filter((chain: any) => (chain as any).active).length
+  const anomalyCount = Object.values(risk?.node_contributions || {}).filter((node: any) => (node as any).is_anomalous).length
+  const hiddenBoost = Number(risk?.undercurrent_boost || 0)
+  if (hiddenBoost >= 15) return t('dash.watchHidden')
+  if (activeChains >= 4) return t('dash.watchTransmission')
+  if (anomalyCount >= 6) return t('dash.watchAnomalies')
+  return t('dash.watchNormal')
+})
 const readinessCards = computed(() => {
   const r = readiness.value
+  const freshness = r?.data_freshness || {}
+  const criticalGapCount = Number(freshness?.critical_missing_tickers?.length || 0) +
+    Number(freshness?.critical_stale_tickers?.length || 0)
   return [
     {
       title: t('institutional.dataDepth'),
@@ -384,6 +509,13 @@ const readinessCards = computed(() => {
       detail: lang.value === 'zh'
         ? `${r?.data_quality?.node_count ?? '-'} 个指标；已识别 ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} 个待升级数据项。`
         : `${r?.data_quality?.node_count ?? '-'} nodes; ${r?.data_quality?.low_tier_or_proxy_nodes?.length ?? '-'} upgrade candidates surfaced.`,
+    },
+    {
+      title: t('institutional.marketFreshness'),
+      metric: freshness?.coverage_pct !== undefined ? `${freshness.coverage_pct}%` : '-',
+      detail: lang.value === 'zh'
+        ? `${t('institutional.latestTradeDate')} ${freshness?.latest_trade_date || '-'}；${t('institutional.criticalGaps')} ${criticalGapCount}。`
+        : `${t('institutional.latestTradeDate')}: ${freshness?.latest_trade_date || '-'}; ${t('institutional.criticalGaps')}: ${criticalGapCount}.`,
     },
     {
       title: t('institutional.causalRigor'),
@@ -396,11 +528,6 @@ const readinessCards = computed(() => {
       title: t('institutional.reportQuality'),
       metric: r?.institutional_report?.quality_controls?.evidence_table ? 'V2' : '-',
       detail: lt('Evidence table, falsification section, source links, and compliance footer.'),
-    },
-    {
-      title: t('institutional.conversion'),
-      metric: `${r?.subscription_packaging?.plans?.length ?? '-'}`,
-      detail: lt(r?.subscription_packaging?.conversion_principle || '-'),
     },
     {
       title: t('institutional.privateDelivery'),
@@ -490,11 +617,56 @@ function formatScore(value: number | null | undefined): string {
   return value === null || value === undefined ? '-' : Number(value).toFixed(0)
 }
 
+function hiddenStatusFromBoost(boost: number): string {
+  if (boost >= 15) return 'critical'
+  if (boost >= 8) return 'significant'
+  if (boost > 0) return 'mild'
+  return 'none'
+}
+
+function hiddenStatusLabel(status: string): string {
+  if (status === 'critical') return t('dash.hiddenCritical')
+  if (status === 'significant') return t('dash.hiddenSignificant')
+  if (status === 'mild') return t('dash.hiddenMild')
+  return t('dash.hiddenNoneStatus')
+}
+
+function hiddenDetailText(detail: any, boost: number): string {
+  if (!detail) {
+    return boost > 0
+      ? t('dash.hiddenRiskDetected', { boost: boost.toFixed(1) })
+      : t('analysis.hiddenNone')
+  }
+  if (lang.value === 'zh' && detail.detail) return detail.detail
+  if (detail.type === 'policy_mask') return t('dash.hiddenPolicyMask')
+  if (detail.type === 'surface_calm_deep_stress') return t('dash.hiddenSurfaceCalm')
+  if (detail.type === 'zscore_desensitized') {
+    const names = (detail.desensitized_indicators || []).slice(0, 4).map((id: string) => nodeLabel(id)).join(', ')
+    return names
+      ? `These indicators remain in a dangerous absolute-stress range while their rate of change has normalized: ${names}.`
+      : t('dash.hiddenDesensitized')
+  }
+  if (detail.type === 'speculative_overextension') {
+    const names = (detail.indicators || []).slice(0, 4).map((item: any) => lt(item.label || item.id)).join(', ')
+    return names
+      ? `Crowded momentum risk is elevated in ${names}.`
+      : 'Crowded momentum risk is elevated.'
+  }
+  if (detail.type === 'yen_depreciation_pressure') {
+    return 'Persistent yen weakness raises intervention, imported-inflation, and carry-trade reversal risk.'
+  }
+  if (detail.type === 'korea_equity_fx_divergence') {
+    return 'Korean equities remain elevated while FX or external-funding channels are under pressure.'
+  }
+  return lt(detail.detail || detail.title || detail.type)
+}
+
 function lt(value: unknown): string {
   return localizeDomainText(value, lang.value)
 }
 
 onMounted(() => {
+  riskStore.loadLatest()
   loadRadar(false)
   loadCoreThemes()
   loadReadiness()

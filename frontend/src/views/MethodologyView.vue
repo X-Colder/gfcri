@@ -37,7 +37,7 @@
       <div class="mt-4 grid gap-3 md:grid-cols-4">
         <div class="terminal-metric">
           <span>{{ t('dash.indicatorCount') }}</span>
-          <strong>38</strong>
+          <strong>49</strong>
         </div>
         <div class="terminal-metric">
           <span>{{ t('dash.chainCount') }}</span>

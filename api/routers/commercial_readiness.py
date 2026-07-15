@@ -4,6 +4,7 @@ from api.models.commercial_readiness import CommercialReadinessResponse
 from src.engines.causal_validation import causal_validation_report
 from src.engines.commercial_readiness import commercial_readiness
 from src.engines.data_quality import data_quality_assessment
+from src.engines.market_data_freshness import market_data_freshness
 from src.engines.private_deployment import private_deployment_readiness
 from src.engines.product_packaging import product_packaging
 
@@ -18,6 +19,11 @@ def latest_commercial_readiness():
 @router.get("/data-quality")
 def data_quality():
     return data_quality_assessment()
+
+
+@router.get("/data-freshness")
+def data_freshness():
+    return market_data_freshness()
 
 
 @router.get("/causal-validation")
