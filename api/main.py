@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="GFCRI API",
     description="Global Financial Crisis Risk Index REST API",
-    version="0.1.0",
+    version="0.1.1",
     lifespan=lifespan,
 )
 

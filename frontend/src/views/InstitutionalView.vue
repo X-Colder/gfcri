@@ -65,6 +65,8 @@
       </div>
     </section>
 
+    <TradeRiskAtlas v-if="lang === 'zh'" />
+
     <section class="terminal-section fade-in">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
@@ -334,6 +336,7 @@ import { fetchCoreThemes } from '@/api/coreThemes'
 import { fetchCommercialReadiness } from '@/api/commercialReadiness'
 import type { CommercialReadiness, CoreThemes, InstitutionalRadar } from '@/api/types'
 import CrisisRegimePanel from '@/components/common/CrisisRegimePanel.vue'
+import TradeRiskAtlas from '@/components/institutional/TradeRiskAtlas.vue'
 import { localizeDomainText } from '@/composables/useDomainLabels'
 
 const { t, lang } = useI18n()
