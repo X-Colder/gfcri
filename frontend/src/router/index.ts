@@ -14,6 +14,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'dashboard', component: () => import('@/views/DashboardView.vue') },
         { path: 'institutional', name: 'institutional', component: () => import('@/views/InstitutionalView.vue') },
+        { path: 'data-sources', name: 'data-sources', component: () => import('@/views/DataSourcesView.vue') },
         { path: 'analysis', name: 'analysis', component: () => import('@/views/AnalysisView.vue') },
         { path: 'forward', name: 'forward', component: () => import('@/views/ForwardView.vue') },
         { path: 'backtest', name: 'backtest', component: () => import('@/views/BacktestView.vue') },

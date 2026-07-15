@@ -111,6 +111,7 @@ const navItems = computed(() => {
   ]
   if (isInstitutional.value) {
     base.splice(1, 0, { path: '/institutional', icon: '▣', label: t('nav.institutional') })
+    base.splice(2, 0, { path: '/data-sources', icon: '☷', label: t('nav.dataSources') })
   } else {
     base.push({ path: '/pricing', icon: '◆', label: t('nav.pricing') })
   }

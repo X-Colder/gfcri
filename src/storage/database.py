@@ -629,6 +629,91 @@ def get_institutional_radar_source_health() -> list[dict]:
         conn.close()
 
 
+def _ensure_trade_source_health_table(cur):
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS trade_data_source_health (
+            source_id TEXT PRIMARY KEY,
+            source_name TEXT NOT NULL,
+            source_tier TEXT NOT NULL,
+            status TEXT NOT NULL,
+            last_checked_at TIMESTAMPTZ,
+            last_success_at TIMESTAMPTZ,
+            last_error TEXT,
+            record_count INTEGER DEFAULT 0,
+            latency_ms INTEGER DEFAULT 0,
+            latest_period TEXT,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        """
+    )
+
+
+def save_trade_source_health(rows: list[dict]) -> None:
+    if not rows:
+        return
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _ensure_trade_source_health_table(cur)
+            for row in rows:
+                cur.execute(
+                    """
+                    INSERT INTO trade_data_source_health
+                        (source_id, source_name, source_tier, status,
+                         last_checked_at, last_success_at, last_error,
+                         record_count, latency_ms, latest_period, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT (source_id) DO UPDATE SET
+                        source_name = EXCLUDED.source_name,
+                        source_tier = EXCLUDED.source_tier,
+                        status = EXCLUDED.status,
+                        last_checked_at = EXCLUDED.last_checked_at,
+                        last_success_at = CASE
+                            WHEN EXCLUDED.status = 'ok' THEN EXCLUDED.last_success_at
+                            ELSE trade_data_source_health.last_success_at
+                        END,
+                        last_error = EXCLUDED.last_error,
+                        record_count = EXCLUDED.record_count,
+                        latency_ms = EXCLUDED.latency_ms,
+                        latest_period = EXCLUDED.latest_period,
+                        updated_at = NOW()
+                    """,
+                    (
+                        row.get("source_id"),
+                        row.get("source_name"),
+                        row.get("source_tier"),
+                        row.get("status"),
+                        row.get("last_checked_at"),
+                        row.get("last_success_at"),
+                        row.get("last_error"),
+                        int(row.get("record_count") or 0),
+                        int(row.get("latency_ms") or 0),
+                        row.get("latest_period"),
+                    ),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_trade_source_health() -> list[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_trade_source_health_table(cur)
+            cur.execute(
+                """
+                SELECT *
+                FROM trade_data_source_health
+                ORDER BY source_tier, source_name
+                """
+            )
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def save_causal_candidates(
     run_date: str,
     trigger: dict,

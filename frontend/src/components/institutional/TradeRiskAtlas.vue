@@ -19,7 +19,11 @@
         </div>
         <div class="terminal-metric">
           <span>数据模式</span>
-          <strong>v0.1</strong>
+          <strong>{{ atlasStatusLabel }}</strong>
+        </div>
+        <div class="terminal-metric">
+          <span>数据源</span>
+          <strong>{{ atlasSourceCount }}</strong>
         </div>
       </div>
     </div>
@@ -50,6 +54,16 @@
               {{ risk.label }}
             </button>
           </div>
+        </div>
+
+        <div class="trade-source-strip">
+          <div>
+            <span :class="tradeAtlasError ? 'status-dot warning' : 'status-dot ok'"></span>
+            {{ tradeAtlasError ? '后端贸易数据暂不可用，正在使用前端 fallback。' : atlasSourceSummary }}
+          </div>
+          <button type="button" :disabled="tradeAtlasLoading" @click="loadTradeAtlas(true)">
+            {{ tradeAtlasLoading ? '刷新中' : '刷新源状态' }}
+          </button>
         </div>
 
         <div v-if="activeView === 'map'" class="trade-map-shell">
@@ -227,7 +241,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { fetchTradeRiskAtlas } from '@/api/tradeRisk'
 
 type ViewKey = 'map' | 'flow' | 'shock' | 'evidence'
 type RiskKey = 'all' | 'tariff' | 'shipping' | 'energy' | 'fx' | 'demand' | 'tech' | 'ai' | 'commodity'
@@ -245,6 +260,7 @@ interface TradeNode {
   summary: string
   exposure: string
   watch: string
+  source_ids?: string[]
 }
 
 interface TradeCorridor {
@@ -261,6 +277,7 @@ interface TradeCorridor {
   exposure: string
   watch: string
   reroute?: boolean
+  source_ids?: string[]
 }
 
 interface ShockScenario {
@@ -279,7 +296,7 @@ const viewModes: Array<{ id: ViewKey; label: string }> = [
   { id: 'evidence', label: '证据' },
 ]
 
-const riskFilters: Array<{ id: RiskKey; label: string; color: string }> = [
+const riskFilters = ref<Array<{ id: RiskKey; label: string; color: string }>>([
   { id: 'all', label: '全部', color: '#58a6ff' },
   { id: 'tariff', label: '关税', color: '#ef4444' },
   { id: 'shipping', label: '航运', color: '#f97316' },
@@ -289,9 +306,9 @@ const riskFilters: Array<{ id: RiskKey; label: string; color: string }> = [
   { id: 'tech', label: '技术管制', color: '#a78bfa' },
   { id: 'ai', label: 'AI硬件', color: '#14b8a6' },
   { id: 'commodity', label: '大宗商品', color: '#eab308' },
-]
+])
 
-const tradeNodes: TradeNode[] = [
+const tradeNodes = ref<TradeNode[]>([
   {
     id: 'us',
     name: '美国',
@@ -446,9 +463,9 @@ const tradeNodes: TradeNode[] = [
     exposure: '资源出口对中国地产/工业周期、全球钢铁需求和 LNG 价格敏感。',
     watch: '铁矿石价格、中国钢材需求、LNG 价格和澳元。'
   },
-]
+])
 
-const tradeCorridors: TradeCorridor[] = [
+const tradeCorridors = ref<TradeCorridor[]>([
   {
     id: 'china-us',
     from: 'china',
@@ -576,9 +593,9 @@ const tradeCorridors: TradeCorridor[] = [
     exposure: '铜、粮食和能源价格会向新兴市场外部压力传导。',
     watch: '铜价、粮价、美元指数、巴西雷亚尔和中国进口量。'
   },
-]
+])
 
-const shockScenarios: ShockScenario[] = [
+const shockScenarios = ref<ShockScenario[]>([
   {
     id: 'us-tariff',
     label: '美国关税冲击',
@@ -603,9 +620,9 @@ const shockScenarios: ShockScenario[] = [
     summary: '能源和海运冲击会以成本形式穿透到欧洲、亚洲制造链，并重新推高通胀预期。',
     steps: ['红海/霍尔木兹风险抬升保险费', '油气与化工原料价格上行', '欧洲和亚洲进口成本上升', '终端需求和利润率同时受压']
   },
-]
+])
 
-const evidenceBlocks = [
+const evidenceBlocks = ref([
   {
     kicker: 'Source Tier',
     title: '当前版本使用结构化静态配置',
@@ -626,7 +643,7 @@ const evidenceBlocks = [
     title: '风险监测用途',
     body: '该模块用于宏观贸易风险监测和机构研究沟通，不构成投资建议、贸易建议、法律建议或任何证券买卖建议。'
   },
-]
+])
 
 const flowStages = [
   { id: 'resource', label: '资源 / 零部件', nodes: ['australia', 'latam', 'middle_east', 'east_asia'] },
@@ -639,18 +656,28 @@ const activeRisk = ref<RiskKey>('all')
 const activeScenario = ref('us-tariff')
 const selectedCorridorId = ref('china-us')
 const selectedNodeId = ref<string | null>(null)
+const tradeAtlasLoading = ref(false)
+const tradeAtlasError = ref('')
+const tradeAtlasMeta = ref<Record<string, any> | null>(null)
 
-const selectedCorridor = computed(() => tradeCorridors.find((item) => item.id === selectedCorridorId.value) || tradeCorridors[0])
-const selectedNode = computed(() => selectedNodeId.value ? tradeNodes.find((item) => item.id === selectedNodeId.value) || null : null)
-const selectedScenario = computed(() => shockScenarios.find((item) => item.id === activeScenario.value) || shockScenarios[0])
+const selectedCorridor = computed(() => tradeCorridors.value.find((item) => item.id === selectedCorridorId.value) || tradeCorridors.value[0])
+const selectedNode = computed(() => selectedNodeId.value ? tradeNodes.value.find((item) => item.id === selectedNodeId.value) || null : null)
+const selectedScenario = computed(() => shockScenarios.value.find((item) => item.id === activeScenario.value) || shockScenarios.value[0])
 const filteredCorridors = computed(() =>
-  tradeCorridors.filter((item) => activeRisk.value === 'all' || item.tags.includes(activeRisk.value))
+  tradeCorridors.value.filter((item) => activeRisk.value === 'all' || item.tags.includes(activeRisk.value))
 )
 const mutedCorridors = computed(() =>
-  activeRisk.value === 'all' ? [] : tradeCorridors.filter((item) => !item.tags.includes(activeRisk.value))
+  activeRisk.value === 'all' ? [] : tradeCorridors.value.filter((item) => !item.tags.includes(activeRisk.value))
 )
 const filteredRankedCorridors = computed(() => [...filteredCorridors.value].sort((a, b) => b.risk - a.risk))
-const highRiskCorridorCount = computed(() => tradeCorridors.filter((item) => item.risk >= 75).length)
+const highRiskCorridorCount = computed(() => tradeCorridors.value.filter((item) => item.risk >= 75).length)
+const atlasStatusLabel = computed(() => String(tradeAtlasMeta.value?.data_version || 'fallback'))
+const atlasSourceCount = computed(() => Number(tradeAtlasMeta.value?.summary?.source_count || 0))
+const atlasSourceSummary = computed(() => {
+  const summary = tradeAtlasMeta.value?.summary || {}
+  if (!tradeAtlasMeta.value) return '使用前端内置贸易图谱，等待后端源状态。'
+  return `独立贸易分析域 · ${summary.ok_sources || 0} 个数据源可用 · 不进入 GFCRI 核心评分`
+})
 const detailTitle = computed(() => selectedNode.value ? selectedNode.value.name : selectedCorridor.value.label)
 const detailRisk = computed(() => selectedNode.value ? selectedNode.value.risk : selectedCorridor.value.risk)
 const detailSummary = computed(() => selectedNode.value ? selectedNode.value.summary : selectedCorridor.value.summary)
@@ -659,7 +686,7 @@ const detailWatch = computed(() => selectedNode.value ? selectedNode.value.watch
 const detailTags = computed(() => selectedNode.value ? selectedNode.value.tags : selectedCorridor.value.tags)
 
 function nodeById(id: string): TradeNode | undefined {
-  return tradeNodes.find((node) => node.id === id)
+  return tradeNodes.value.find((node) => node.id === id)
 }
 
 function corridorPath(corridor: TradeCorridor): string {
@@ -704,8 +731,35 @@ function nodeIsActive(id: string): boolean {
 }
 
 function riskLabel(key: RiskKey): string {
-  return riskFilters.find((item) => item.id === key)?.label || key
+  return riskFilters.value.find((item) => item.id === key)?.label || key
 }
+
+async function loadTradeAtlas(refreshSources = false) {
+  tradeAtlasLoading.value = true
+  tradeAtlasError.value = ''
+  try {
+    const atlas = await fetchTradeRiskAtlas(refreshSources)
+    if (atlas.nodes?.length) tradeNodes.value = atlas.nodes as TradeNode[]
+    if (atlas.corridors?.length) tradeCorridors.value = atlas.corridors as TradeCorridor[]
+    if (atlas.risk_filters?.length) riskFilters.value = atlas.risk_filters as Array<{ id: RiskKey; label: string; color: string }>
+    if (atlas.shock_scenarios?.length) shockScenarios.value = atlas.shock_scenarios
+    if (atlas.evidence_blocks?.length) evidenceBlocks.value = atlas.evidence_blocks
+    tradeAtlasMeta.value = {
+      data_version: atlas.data_version,
+      status: atlas.status,
+      summary: atlas.summary,
+      generated_at: atlas.generated_at,
+    }
+  } catch (err: any) {
+    tradeAtlasError.value = err?.message || 'load failed'
+  } finally {
+    tradeAtlasLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadTradeAtlas(false)
+})
 </script>
 
 <style scoped>
@@ -732,6 +786,62 @@ function riskLabel(key: RiskKey): string {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
+}
+
+.trade-source-strip {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.012);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.trade-source-strip > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.trade-source-strip button {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: #fff;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.trade-source-strip button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.trade-source-strip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.status-dot.ok {
+  background: #34d399;
+}
+
+.status-dot.warning {
+  background: #f59e0b;
 }
 
 .segmented-control {

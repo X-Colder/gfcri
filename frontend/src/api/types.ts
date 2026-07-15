@@ -226,3 +226,116 @@ export interface CommercialReadiness {
   private_deployment: Record<string, any>
   readiness_score: Record<string, any>
 }
+
+export interface TradeRiskSource {
+  source_id: string
+  name: string
+  provider: string
+  tier: string
+  status: string
+  source_type: string
+  access_mode: string
+  update_frequency: string
+  url: string
+  healthcheck_url?: string
+  domains: string[]
+  used_by: string[]
+  affects_core_gfcri: boolean
+  limitations: string
+  next_step: string
+}
+
+export interface TradeSourceHealth {
+  source_id: string
+  source_name: string
+  source_tier: string
+  status: string
+  last_checked_at: string | null
+  last_success_at: string | null
+  last_error: string | null
+  record_count: number
+  latency_ms: number
+  latest_period: string | null
+}
+
+export interface TradeRiskNode {
+  id: string
+  name: string
+  short: string
+  role: string
+  x: number
+  y: number
+  risk: number
+  importance: number
+  tags: string[]
+  summary: string
+  exposure: string
+  watch: string
+  source_ids?: string[]
+}
+
+export interface TradeRiskCorridor {
+  id: string
+  from: string
+  to: string
+  label: string
+  goods: string
+  risk: number
+  volume: number
+  tags: string[]
+  trigger: string
+  summary: string
+  exposure: string
+  watch: string
+  reroute?: boolean
+  source_ids?: string[]
+}
+
+export interface TradeRiskAtlas {
+  generated_at: string
+  data_version: string
+  standalone: boolean
+  affects_core_gfcri: boolean
+  status: string
+  summary: Record<string, any>
+  sources: TradeRiskSource[]
+  source_health: TradeSourceHealth[]
+  risk_filters: Array<{ id: string; label: string; color: string }>
+  nodes: TradeRiskNode[]
+  corridors: TradeRiskCorridor[]
+  shock_scenarios: Array<{ id: string; label: string; title: string; risk: number; summary: string; steps: string[] }>
+  evidence_blocks: Array<{ kicker: string; title: string; body: string }>
+  methodology: string
+}
+
+export interface DataSourceCard {
+  source_id: string
+  name: string
+  provider: string
+  category: string
+  tier: string
+  status: string
+  source_type: string
+  access_mode: string
+  update_frequency: string
+  official: boolean
+  affects_core_gfcri: boolean
+  used_by: string[]
+  domains: string[]
+  latest_observation: string | null
+  coverage_pct: number | null
+  limitations: string
+  next_step: string
+  url?: string
+  health: Record<string, any>
+}
+
+export interface DataSourceOverview {
+  generated_at: string
+  version: string
+  summary: Record<string, any>
+  sources: DataSourceCard[]
+  model_node_sources: Array<Record<string, any>>
+  upgrade_catalog: Array<Record<string, any>>
+  governance: Record<string, any>
+}

@@ -17,6 +17,7 @@ const messages: Record<string, Record<string, string>> = {
   'nav.backtest': { zh: '历史验证', en: 'Backtest' },
   'nav.industries': { zh: '行业研究', en: 'Industries' },
   'nav.institutional': { zh: '机构工作台', en: 'Institutional' },
+  'nav.dataSources': { zh: '数据源管理', en: 'Data Sources' },
   'nav.pricing': { zh: '订阅价格', en: 'Pricing' },
   'nav.methodology': { zh: '方法与信任', en: 'Methodology' },
   // Auth
