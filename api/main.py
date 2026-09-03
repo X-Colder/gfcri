@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.dependencies import init_cache, shutdown_cache
 from api.middleware import ResilienceMiddleware
 from api.routers import notifications
-from api.routers import institutional_data, institutional_analysis, institutional_workspace
+from api.routers import institutional_data, institutional_analysis, institutional_workspace, oidc
 from api.routers import health, risk_index, daily_state, reports, inference, graph, social, alerts, ehs, industry, stress_test, crisis_distance, intraday, auth, billing, regime_assessment, causal_discovery, model_foundation, institutional_radar, core_themes, commercial_readiness, trade_risk, data_sources
 
 
@@ -59,4 +59,5 @@ app.include_router(data_sources.router, prefix="/api")
 app.include_router(institutional_data.router, prefix="/api")
 app.include_router(institutional_analysis.router, prefix="/api")
 app.include_router(institutional_workspace.router, prefix="/api")
+app.include_router(oidc.router)
 app.include_router(notifications.router, prefix="/api")

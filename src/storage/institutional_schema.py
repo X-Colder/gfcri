@@ -158,6 +158,51 @@ def ensure_institutional_schema(conn) -> None:
         """,
         "CREATE INDEX IF NOT EXISTS idx_institutional_audit_org_time ON institutional_audit_events (organization_id, occurred_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_institutional_audit_actor_time ON institutional_audit_events (actor_user_id, occurred_at DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS institutional_identity_providers (
+            id BIGSERIAL PRIMARY KEY,
+            organization_id BIGINT NOT NULL UNIQUE REFERENCES institutional_organizations(id) ON DELETE CASCADE,
+            protocol VARCHAR(20) NOT NULL DEFAULT 'oidc',
+            issuer TEXT NOT NULL,
+            client_id TEXT NOT NULL,
+            client_secret_env VARCHAR(160) NOT NULL,
+            redirect_uri TEXT NOT NULL,
+            scopes JSONB NOT NULL DEFAULT '["openid", "email", "profile"]'::jsonb,
+            allowed_domains JSONB NOT NULL DEFAULT '[]'::jsonb,
+            default_role VARCHAR(30) NOT NULL DEFAULT 'viewer',
+            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS external_identities (
+            id BIGSERIAL PRIMARY KEY,
+            organization_id BIGINT NOT NULL REFERENCES institutional_organizations(id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            issuer TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            claims JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (issuer, subject)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_external_identities_user ON external_identities (user_id)",
+        """
+        CREATE TABLE IF NOT EXISTS auth_transactions (
+            state_hash VARCHAR(128) PRIMARY KEY,
+            organization_id BIGINT NOT NULL REFERENCES institutional_organizations(id) ON DELETE CASCADE,
+            provider_id BIGINT NOT NULL REFERENCES institutional_identity_providers(id) ON DELETE CASCADE,
+            nonce VARCHAR(255) NOT NULL,
+            code_verifier VARCHAR(255) NOT NULL,
+            redirect_uri TEXT NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_auth_transactions_expiry ON auth_transactions (expires_at)",
     )
     with conn.cursor() as cur:
         for statement in statements:
