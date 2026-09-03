@@ -205,6 +205,25 @@ def _issue_session(cur, user_id: int, ip_address: str | None = None, user_agent:
         ),
     )
     return token, expires_at
+def _create_token(
+    user_id: int,
+    email: str,
+    plan: str,
+    trial_expires_at: str | None = None,
+    account_type: str = "personal",
+) -> str:
+    """Issue a session token for legacy billing-status callers."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _ensure_auth_schema(conn)
+            token, _ = _issue_session(cur, user_id)
+            conn.commit()
+            return token
+    finally:
+        conn.close()
+
+
 
 
 def _legacy_password_matches(password: str, encoded: str) -> bool:
