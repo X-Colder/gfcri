@@ -2,9 +2,10 @@ import os
 import json
 import time
 import asyncio
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from api.dependencies import get_graph
+from api.access import require_deep_analysis
 
 router = APIRouter(prefix="/crisis-distance", tags=["crisis-distance"])
 
@@ -14,7 +15,7 @@ OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/output")
 
 
 @router.get("")
-async def get_crisis_distance():
+async def get_crisis_distance(user=Depends(require_deep_analysis)):
     # 1. Try pre-computed cache file (instant)
     cache_file = os.path.join(OUTPUT_DIR, "crisis_distance_cache.json")
     if os.path.exists(cache_file):

@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from src.storage.database import get_latest_report
-from api.models.report import ReportResponse, InstitutionalReportV2Response
+from api.access import require_deep_analysis, require_institutional_data
+from api.models.report import InstitutionalReportV2Response, ReportResponse
 from src.engines.institutional_report_v2 import institutional_report_v2
+from src.storage.database import get_latest_report
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 @router.get("/latest", response_model=ReportResponse)
-def latest_report():
+def latest_report(user=Depends(require_deep_analysis)):
     data = get_latest_report()
     if not data:
         raise HTTPException(status_code=404, detail="No report data available")
@@ -24,5 +25,5 @@ def latest_report():
 
 
 @router.get("/institutional-v2/latest", response_model=InstitutionalReportV2Response)
-def latest_institutional_report_v2():
+def latest_institutional_report_v2(user=Depends(require_institutional_data)):
     return institutional_report_v2()

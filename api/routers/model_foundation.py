@@ -1,6 +1,7 @@
 from collections import Counter
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from api.access import require_deep_analysis
 
 from api.models.model_foundation import (
     ModelFoundationResponse,
@@ -77,7 +78,7 @@ def _build_receipt(si_id: str, details: dict, node_contrib: dict) -> SubIndexRec
 
 
 @router.get("/latest", response_model=ModelFoundationResponse)
-def latest_model_foundation():
+def latest_model_foundation(user=Depends(require_deep_analysis)):
     data = get_latest_risk_index()
     if not data:
         raise HTTPException(status_code=404, detail="No risk index data available")

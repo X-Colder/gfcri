@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 
-from api.commercial_policy import is_institutional_account
 from src.security.passwords import hash_password, verify_password
 from src.security.sessions import (
     hash_session_token,
     new_session_token,
     session_expiry,
 )
+from src.security.entitlements import build_entitlements
 from src.storage.database import get_connection
 from src.storage.institutional_schema import ensure_institutional_schema
 
@@ -86,6 +86,7 @@ def _requested_account_type(value: str) -> str:
 
 
 def _user_payload(user: dict) -> dict:
+    entitlements = build_entitlements(user)
     return {
         "id": user["id"],
         "email": user["email"],
@@ -96,6 +97,10 @@ def _user_payload(user: dict) -> dict:
         "email_verified": bool(user.get("email_verified_at")),
         "trial_started_at": _iso(user.get("trial_started_at")),
         "trial_expires_at": _iso(user.get("trial_expires_at")),
+        "institutional_access": entitlements["institutional_access"],
+        "institutional_memberships": user.get("institutional_memberships", []),
+        "access_level": entitlements["access_level"],
+        "entitlements": entitlements["entitlements"],
     }
 
 
@@ -240,6 +245,30 @@ def _resolve_session(token: str) -> dict | None:
             if not row:
                 return None
             cur.execute(
+                """
+                SELECT o.id, o.org_key, o.name, m.role,
+                       o.subscription_status, o.subscription_plan,
+                       o.subscription_current_period_end
+                FROM institutional_memberships m
+                JOIN institutional_organizations o ON o.id = m.organization_id
+                WHERE m.user_id = %s AND m.status = 'active'
+                ORDER BY o.id
+                """,
+                (row["id"],),
+            )
+            memberships = [
+                {
+                    "organization_id": int(item["id"]),
+                    "org_key": item["org_key"],
+                    "name": item["name"],
+                    "role": item["role"],
+                    "subscription_status": item["subscription_status"] or "active",
+                    "subscription_plan": item["subscription_plan"] or "team",
+                    "subscription_current_period_end": item["subscription_current_period_end"].isoformat() if item["subscription_current_period_end"] else None,
+                }
+                for item in cur.fetchall()
+            ]
+            cur.execute(
                 "UPDATE auth_sessions SET last_seen_at = NOW() WHERE token_hash = %s",
                 (hash_session_token(token),),
             )
@@ -248,6 +277,8 @@ def _resolve_session(token: str) -> dict | None:
             user["user_id"] = user["id"]
             user["auth_method"] = "native"
             user["session_token_hash"] = hash_session_token(token)
+            user["institutional_memberships"] = memberships
+            user["has_institutional_membership"] = bool(memberships)
             return user
     finally:
         conn.close()
@@ -289,7 +320,9 @@ def get_current_user_or_api_key(
                 """
                 SELECT k.id AS api_key_id, o.id AS organization_id,
                        o.owner_user_id, u.email, u.display_name,
-                       u.account_type, u.status, k.scopes, k.expires_at
+                       u.account_type, u.status, k.scopes, k.expires_at,
+                       o.subscription_status, o.subscription_plan,
+                       o.subscription_current_period_end
                 FROM institutional_api_keys k
                 JOIN institutional_organizations o ON o.id = k.organization_id
                 JOIN users u ON u.id = o.owner_user_id
@@ -323,6 +356,12 @@ def get_current_user_or_api_key(
                 "role": "api",
                 "auth_method": "api_key",
                 "api_key_id": row["api_key_id"],
+                "institutional_memberships": [{
+                    "organization_id": row["organization_id"],
+                    "subscription_status": row["subscription_status"] or "active",
+                    "subscription_plan": row["subscription_plan"] or "team",
+                    "subscription_current_period_end": row["subscription_current_period_end"].isoformat() if row["subscription_current_period_end"] else None,
+                }],
                 "api_key_scopes": list(row.get("scopes") or []),
             }
     finally:
@@ -334,14 +373,12 @@ def require_institutional_user(user=Depends(get_current_user_or_api_key)):
         raise HTTPException(status_code=401, detail="Not authenticated")
     if user.get("status", "active") != "active":
         raise HTTPException(status_code=403, detail="Account is not active")
-    if not is_institutional_account(user) and not user.get(
-        "has_institutional_membership", False
-    ):
+    if not build_entitlements(user)["institutional_access"]:
         raise HTTPException(
             status_code=403,
             detail={
-                "code": "INSTITUTIONAL_ACCESS_REQUIRED",
-                "message": "Institutional account required.",
+                "code": "INSTITUTIONAL_SUBSCRIPTION_REQUIRED",
+                "message": "An active institutional subscription is required.",
             },
         )
     return user

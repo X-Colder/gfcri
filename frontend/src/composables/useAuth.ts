@@ -2,12 +2,23 @@ import { ref, computed } from 'vue'
 import client from '@/api/client'
 import { fetchBillingStatus } from '@/api/billing'
 
+interface Membership {
+  organization_id: number
+  org_key: string
+  name: string
+  role: string
+}
+
 interface User {
   id: number
   email: string
   display_name: string
   account_type?: string
   plan: string
+  access_level?: string
+  institutional_access?: boolean
+  institutional_memberships?: Membership[]
+  entitlements?: string[]
   trial_started_at?: string | null
   trial_expires_at?: string | null
 }
@@ -15,21 +26,8 @@ interface User {
 const token = ref<string>(localStorage.getItem('gfcri_token') || '')
 const user = ref<User | null>(null)
 const loading = ref(false)
-
-// Initialize from stored token
-if (token.value) {
-  try {
-    const payload = JSON.parse(atob(token.value.split('.')[0]))
-    user.value = {
-      id: payload.user_id,
-      email: payload.email,
-      display_name: '',
-      account_type: payload.account_type || 'personal',
-      plan: payload.plan,
-      trial_expires_at: payload.trial_expires_at || null,
-    }
-  } catch {}
-}
+const sessionReady = ref(!token.value)
+let hydrationStarted = false
 
 function isTrialCurrentlyActive(u: User | null): boolean {
   if (!u?.trial_expires_at) return false
@@ -43,33 +41,65 @@ function trialDaysRemaining(u: User | null): number {
   return Math.max(1, Math.ceil(diff / 86400000))
 }
 
+function clearAuth() {
+  token.value = ''
+  user.value = null
+  localStorage.removeItem('gfcri_token')
+  delete client.defaults.headers.common['Authorization']
+}
+
+function applyAuthResponse(data: any) {
+  token.value = data.token
+  user.value = data.user
+  localStorage.setItem('gfcri_token', data.token)
+  client.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+}
+
+async function hydrateSession() {
+  if (!token.value || hydrationStarted) return
+  hydrationStarted = true
+  client.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+  try {
+    const res = await client.get('/auth/me')
+    user.value = res.data
+  } catch {
+    clearAuth()
+  } finally {
+    sessionReady.value = true
+  }
+}
+
+if (token.value) {
+  void hydrateSession()
+}
+
 export function useAuth() {
   const isLoggedIn = computed(() => !!token.value && !!user.value)
   const isTrialActive = computed(() => isTrialCurrentlyActive(user.value))
   const accountType = computed(() => {
     return user.value?.account_type === 'institutional' ? 'institutional' : 'personal'
   })
-  const isInstitutionalAccount = computed(() => accountType.value === 'institutional')
-  const isPro = computed(() => user.value?.plan === 'pro' || isTrialActive.value || isInstitutionalAccount.value)
+  const isInstitutionalAccount = computed(() => Boolean(
+    user.value?.institutional_access
+      || user.value?.account_type === 'institutional'
+      || user.value?.institutional_memberships?.length,
+  ))
+  const hasEntitlement = (key: string) => Boolean(user.value?.entitlements?.includes(key))
+  const isPro = computed(() => hasEntitlement('deep_analysis'))
   const trialDaysLeft = computed(() => trialDaysRemaining(user.value))
   const effectivePlan = computed(() => {
+    if (isInstitutionalAccount.value) return 'institutional'
     if (user.value?.plan === 'pro') return 'pro'
     if (isTrialActive.value) return 'trial'
     return 'free'
   })
-
-  function applyAuthResponse(data: any) {
-    token.value = data.token
-    user.value = data.user
-    localStorage.setItem('gfcri_token', data.token)
-    client.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-  }
 
   async function login(email: string, password: string): Promise<string | null> {
     loading.value = true
     try {
       const res = await client.post('/auth/login', { email, password })
       applyAuthResponse(res.data)
+      sessionReady.value = true
       return null
     } catch (e: any) {
       return e.response?.data?.detail || 'Login failed'
@@ -83,6 +113,7 @@ export function useAuth() {
     try {
       const res = await client.post('/auth/register', { email, password, display_name: displayName })
       applyAuthResponse(res.data)
+      sessionReady.value = true
       return null
     } catch (e: any) {
       return e.response?.data?.detail || 'Registration failed'
@@ -92,10 +123,8 @@ export function useAuth() {
   }
 
   function logout() {
-    token.value = ''
-    user.value = null
-    localStorage.removeItem('gfcri_token')
-    delete client.defaults.headers.common['Authorization']
+    clearAuth()
+    sessionReady.value = true
   }
 
   function setPro(value: boolean) {
@@ -134,11 +163,6 @@ export function useAuth() {
     }
   }
 
-  // Set auth header if token exists
-  if (token.value) {
-    client.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-  }
-
   return {
     user: computed(() => user.value),
     isLoggedIn,
@@ -148,6 +172,8 @@ export function useAuth() {
     accountType,
     isInstitutionalAccount,
     effectivePlan,
+    hasEntitlement,
+    sessionReady: computed(() => sessionReady.value),
     loading: computed(() => loading.value),
     login,
     register,

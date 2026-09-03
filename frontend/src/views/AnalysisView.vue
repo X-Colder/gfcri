@@ -5,7 +5,7 @@
     <template v-else-if="riskStore.latest">
       <div class="analysis-mode-bar fade-in">
         <div>
-          <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-1">
+          <p v-if="hasFullAccess" class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-1">
             {{ isInstitutional ? t('product.institutionalMode') : t('product.globalMode') }}
           </p>
           <h2 class="text-lg font-light text-white">{{ analysisModeTitle }}</h2>
@@ -172,7 +172,7 @@
 
         <CrisisRegimePanel class="mb-5" />
 
-        <CausalDiscoveryPanel class="mb-5" />
+        <CausalDiscoveryPanel v-if="isInstitutional" class="mb-5" />
 
         <div id="hidden-risk-section" class="mb-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 card-hover">
           <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -623,7 +623,7 @@ const topBriefDrivers = computed(() => {
 onMounted(async () => {
   riskStore.loadLatest()
   riskStore.loadHistory(30)
-  reportStore.loadLatest()
+  if (hasFullAccess.value) reportStore.loadLatest()
   try {
     const [wRes, zRes] = await Promise.allSettled([
       client.get('/social/wechat/latest'),
@@ -632,9 +632,9 @@ onMounted(async () => {
     if (wRes.status === 'fulfilled') socialContent.value.wechat = wRes.value.data?.content || ''
     if (zRes.status === 'fulfilled') socialContent.value.zsxq = zRes.value.data?.content || ''
   } catch {}
-  try {
-    modelFoundation.value = await fetchModelFoundation()
-  } catch {}
+  if (hasFullAccess.value) {
+    try { modelFoundation.value = await fetchModelFoundation() } catch {}
+  }
 })
 
 function copyText(text: string) {

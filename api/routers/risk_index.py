@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 
+from api.models.risk_index import RiskIndexResponse
+from api.routers.auth import get_current_user
+from src.security.data_visibility import visible_risk_index
 from src.storage.database import (
     get_latest_risk_index,
     get_latest_risk_index_quality_event,
     get_risk_index_history,
 )
-from api.models.risk_index import RiskIndexResponse
 
 router = APIRouter(prefix="/risk-index", tags=["risk-index"])
 
@@ -28,17 +30,8 @@ def _trade_spillover_boost(data: dict):
     return None
 
 
-@router.get("/latest", response_model=RiskIndexResponse)
-def latest_risk_index():
-    data = get_latest_risk_index()
-    if not data:
-        raise HTTPException(status_code=404, detail="No risk index data available")
-    quality = get_latest_risk_index_quality_event()
-    if quality and (
-        quality.get("status") == "ok"
-        or quality.get("run_date") <= data.get("index_date")
-    ):
-        quality = None
+def _risk_response(data: dict, user: dict | None, quality: dict | None = None) -> RiskIndexResponse:
+    visible = visible_risk_index(data, user)
     return RiskIndexResponse(
         index_date=data["index_date"],
         gfcri_value=float(data["gfcri_value"]),
@@ -48,15 +41,23 @@ def latest_risk_index():
         si_equity=float(data["si_equity"]),
         si_credit=float(data["si_credit"]),
         si_sentiment=float(data["si_sentiment"]),
-        sub_index_details=data.get("sub_index_details"),
-        active_chains=data.get("active_chains"),
-        chain_details=data.get("chain_details"),
-        coherence_multiplier=float(data["coherence_multiplier"]) if data.get("coherence_multiplier") else None,
-        node_contributions=data.get("node_contributions"),
-        divergence=data.get("divergence"),
-        undercurrent_boost=float(data["undercurrent_boost"]) if data.get("undercurrent_boost") is not None else None,
-        trade_spillover=_trade_spillover(data),
-        trade_spillover_boost=_trade_spillover_boost(data),
+        sub_index_details=visible.get("sub_index_details"),
+        active_chains=visible.get("active_chains"),
+        chain_details=visible.get("chain_details"),
+        coherence_multiplier=(
+            float(visible["coherence_multiplier"])
+            if visible.get("coherence_multiplier") is not None
+            else None
+        ),
+        node_contributions=visible.get("node_contributions"),
+        divergence=visible.get("divergence"),
+        undercurrent_boost=(
+            float(visible["undercurrent_boost"])
+            if visible.get("undercurrent_boost") is not None
+            else None
+        ),
+        trade_spillover=visible.get("trade_spillover") or _trade_spillover(visible),
+        trade_spillover_boost=_trade_spillover_boost(visible),
         data_quality_status=quality.get("status") if quality else None,
         data_quality_message=quality.get("message") if quality else None,
         data_quality_details=quality.get("details") if quality else None,
@@ -64,28 +65,24 @@ def latest_risk_index():
     )
 
 
+@router.get("/latest", response_model=RiskIndexResponse)
+def latest_risk_index(user=Depends(get_current_user)):
+    data = get_latest_risk_index()
+    if not data:
+        raise HTTPException(status_code=404, detail="No risk index data available")
+    quality = get_latest_risk_index_quality_event()
+    if quality and (
+        quality.get("status") == "ok"
+        or quality.get("run_date") <= data.get("index_date")
+    ):
+        quality = None
+    return _risk_response(data, user, quality)
+
+
 @router.get("/history", response_model=list[RiskIndexResponse])
-def risk_index_history(limit: int = Query(default=30, ge=1, le=365)):
+def risk_index_history(
+    limit: int = Query(default=30, ge=1, le=365),
+    user=Depends(get_current_user),
+):
     rows = get_risk_index_history(limit=limit)
-    return [
-        RiskIndexResponse(
-            index_date=r["index_date"],
-            gfcri_value=float(r["gfcri_value"]),
-            alert_level=r["alert_level"],
-            si_rates=float(r["si_rates"]),
-            si_fx=float(r["si_fx"]),
-            si_equity=float(r["si_equity"]),
-            si_credit=float(r["si_credit"]),
-            si_sentiment=float(r["si_sentiment"]),
-            sub_index_details=r.get("sub_index_details"),
-            active_chains=r.get("active_chains"),
-            chain_details=r.get("chain_details"),
-            coherence_multiplier=float(r["coherence_multiplier"]) if r.get("coherence_multiplier") else None,
-            node_contributions=r.get("node_contributions"),
-            divergence=r.get("divergence"),
-            undercurrent_boost=float(r["undercurrent_boost"]) if r.get("undercurrent_boost") is not None else None,
-            trade_spillover=_trade_spillover(r),
-            trade_spillover_boost=_trade_spillover_boost(r),
-        )
-        for r in rows
-    ]
+    return [_risk_response(row, user) for row in rows]

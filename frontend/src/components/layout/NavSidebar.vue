@@ -2,8 +2,6 @@
   <aside class="w-56 shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col">
     <div class="p-5 border-b border-[var(--border)]">
       <h1 class="text-xl font-extralight tracking-wide text-white">GFCRI</h1>
-      <p class="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-[3px]">{{ modeLabel }}</p>
-
     </div>
     <nav class="flex-1 p-3 space-y-0.5">
       <router-link
@@ -17,12 +15,11 @@
             : 'text-[var(--muted)] hover:text-white hover:bg-white/[0.03]'
         ]"
       >
-        <span class="text-sm opacity-70">{{ item.icon }}</span>
+        <span v-if="item.icon" class="text-sm opacity-70">{{ item.icon }}</span>
         <span>{{ item.label }}</span>
       </router-link>
     </nav>
     <div class="p-4 border-t border-[var(--border)] space-y-3">
-      <!-- User section -->
       <div v-if="isLoggedIn" class="flex items-center justify-between">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-xs text-[var(--accent)]">
@@ -30,30 +27,35 @@
           </div>
           <div class="min-w-0">
             <span class="block text-xs text-[var(--muted)] truncate">{{ user?.display_name || user?.email }}</span>
-            <span class="block text-[9px] text-[var(--muted)]/60">
-              {{ t('account.type') }} · {{ accountTypeLabel }}
-            </span>
-            <span v-if="!isInstitutional" class="block text-[9px]" :class="isPro ? 'text-[var(--accent)]' : 'text-[var(--muted)]/60'">
+            <span
+              v-if="effectivePlan !== 'free'"
+              class="block text-[9px]"
+              :class="effectivePlan === 'institutional' || isPro ? 'text-[var(--accent)]' : 'text-[var(--muted)]/60'"
+            >
               {{ planLabel }}
             </span>
           </div>
         </div>
         <button @click="logout" class="text-[9px] text-[var(--muted)] hover:text-white">{{ t('auth.logout') }}</button>
       </div>
-      <router-link v-else :to="authLink"
-                   class="block w-full text-center px-3 py-2 rounded-lg text-xs bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors">
-        {{ isInstitutional ? t('account.institutionalAccess') : `${t('auth.login')} / ${t('auth.register')}` }}
+      <router-link
+        v-else
+        to="/auth"
+        class="block w-full text-center px-3 py-2 rounded-lg text-xs bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors"
+      >
+        {{ `${t('auth.login')} / ${t('auth.register')}` }}
       </router-link>
 
-      <!-- Language toggle -->
-      <button @click="toggleLang"
-              class="w-full flex items-center justify-between px-3 py-1.5 rounded text-[10px] text-[var(--muted)] hover:text-white transition-colors">
-        <span>🌐 {{ lang === 'zh' ? '中文' : 'English' }}</span>
-        <span class="opacity-40">{{ lang === 'zh' ? 'EN' : '中' }}</span>
+      <button
+        @click="toggleLang"
+        class="w-full flex items-center justify-between px-3 py-1.5 rounded text-[10px] text-[var(--muted)] hover:text-white transition-colors"
+      >
+        <span>{{ lang === 'zh' ? '中文' : 'English' }}</span>
+        <span class="opacity-40">{{ lang === 'zh' ? 'EN' : 'ZH' }}</span>
       </button>
 
       <p class="text-[10px] text-[var(--muted)]/40 leading-relaxed">
-        49 indicators · 12 chains<br/>Updated daily 06:00 UTC
+        49 indicators<br />Updated daily 06:00 UTC
       </p>
     </div>
   </aside>
@@ -64,42 +66,37 @@ import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
 
-const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, accountType, isInstitutionalAccount, logout } = useAuth()
+const {
+  user,
+  isLoggedIn,
+  isPro,
+  trialDaysLeft,
+  effectivePlan,
+  isInstitutionalAccount,
+  logout,
+} = useAuth()
 const { t, lang, toggleLang } = useI18n()
-const isInstitutional = isInstitutionalAccount
 
 const planLabel = computed(() => {
+  if (effectivePlan.value === 'institutional') return t('account.institutionalAccess')
   if (effectivePlan.value === 'pro') return t('plan.pro')
-  if (effectivePlan.value === 'trial') return t('plan.trial', { days: trialDaysLeft.value })
-  return t('plan.free')
+  return t('plan.trial', { days: trialDaysLeft.value })
 })
-
-const modeLabel = computed(() =>
-  isInstitutional.value ? t('product.institutionalMode') : t('product.globalMode')
-)
-
-const accountTypeLabel = computed(() =>
-  accountType.value === 'institutional' ? t('account.institutional') : t('account.personal')
-)
-
-const authLink = computed(() =>
-  isInstitutional.value ? { path: '/auth' } : { path: '/auth' }
-)
 
 const navItems = computed(() => {
   const base = [
-    { path: '/', icon: '◉', label: t('nav.dashboard') },
-    { path: '/analysis', icon: '◈', label: t('nav.analysis') },
-    { path: '/forward', icon: '⚡', label: t('nav.forward') },
-    { path: '/backtest', icon: '⏱', label: t('nav.backtest') },
+    { path: '/', icon: '', label: t('nav.dashboard') },
+    { path: '/analysis', icon: '', label: t('nav.analysis') },
+    { path: '/forward', icon: '', label: t('nav.forward') },
+    { path: '/backtest', icon: '', label: t('nav.backtest') },
   ]
-  if (isInstitutional.value) {
-    base.splice(1, 0, { path: '/institutional', icon: '▣', label: t('nav.institutional') })
-    base.splice(2, 0, { path: '/data-sources', icon: '☷', label: t('nav.dataSources') })
+  if (isInstitutionalAccount.value) {
+    base.splice(1, 0, { path: '/institutional', icon: '', label: t('nav.institutional') })
+    base.splice(2, 0, { path: '/data-sources', icon: '', label: t('nav.dataSources') })
   } else {
-    base.push({ path: '/pricing', icon: '◆', label: t('nav.pricing') })
+    base.push({ path: '/pricing', icon: '', label: t('nav.pricing') })
   }
-  base.push({ path: '/methodology', icon: '◇', label: t('nav.methodology') })
+  base.push({ path: '/methodology', icon: '', label: t('nav.methodology') })
   return base
 })
 </script>

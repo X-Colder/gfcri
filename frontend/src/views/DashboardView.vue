@@ -424,10 +424,18 @@ const productLens = computed(() => {
       to: '/institutional',
     }
   }
+  if (hasFullAccess.value) {
+    return {
+      title: t('dash.personalLensTitle'),
+      body: t('dash.personalLensBody'),
+      action: t('dash.openPersonalAnalysis'),
+      to: '/analysis',
+    }
+  }
   return {
-    title: t('dash.personalLensTitle'),
-    body: t('dash.personalLensBody'),
-    action: t('dash.openPersonalAnalysis'),
+    title: t('dash.title'),
+    body: t('dash.subtitle'),
+    action: t('dash.openAnalysis'),
     to: '/analysis',
   }
 })

@@ -6,7 +6,7 @@
         <p class="text-[11px] text-[var(--muted)] uppercase tracking-[4px] mb-2">{{ t('forward.kicker') }}</p>
         <h2 class="text-lg font-light text-white">{{ t('forward.title') }}</h2>
       </div>
-      <button @click="loadAll" :disabled="loading"
+      <button v-if="hasFullAccess" @click="loadAll" :disabled="loading"
               class="px-4 py-2 rounded-lg bg-[var(--accent)]/15 text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)]/25 transition-colors disabled:opacity-50">
         {{ loading ? t('common.loading') : t('common.refresh') }}
       </button>
@@ -199,6 +199,6 @@ async function loadStress() {
   }
 }
 
-onMounted(() => loadAll())
+onMounted(() => { if (hasFullAccess.value) loadAll() })
 
 </script>

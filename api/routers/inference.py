@@ -2,8 +2,9 @@ import time
 import asyncio
 from functools import partial
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 
+from api.access import require_deep_analysis
 from src.storage.database import get_inference_history
 from api.dependencies import get_reasoning_engine
 from api.models.inference import (
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/inference", tags=["inference"])
 
 
 @router.post("/path-analysis", response_model=InferenceResponse)
-async def path_analysis(req: InferenceRequest):
+async def path_analysis(req: InferenceRequest, user=Depends(require_deep_analysis)):
     start = time.time()
     loop = asyncio.get_event_loop()
     try:
@@ -38,7 +39,7 @@ async def path_analysis(req: InferenceRequest):
 
 
 @router.post("/observational", response_model=InferenceResponse)
-async def observational(req: ObservationalRequest):
+async def observational(req: ObservationalRequest, user=Depends(require_deep_analysis)):
     start = time.time()
     loop = asyncio.get_event_loop()
     try:
@@ -60,7 +61,7 @@ async def observational(req: ObservationalRequest):
 
 
 @router.post("/interventional", response_model=InferenceResponse)
-async def interventional(req: InterventionalRequest):
+async def interventional(req: InterventionalRequest, user=Depends(require_deep_analysis)):
     start = time.time()
     loop = asyncio.get_event_loop()
     try:
@@ -82,7 +83,7 @@ async def interventional(req: InterventionalRequest):
 
 
 @router.post("/confounding", response_model=InferenceResponse)
-async def confounding(req: InferenceRequest):
+async def confounding(req: InferenceRequest, user=Depends(require_deep_analysis)):
     start = time.time()
     loop = asyncio.get_event_loop()
     try:
@@ -108,5 +109,6 @@ def inference_history(
     source: str = Query(default=None),
     target: str = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    user=Depends(require_deep_analysis),
 ):
     return get_inference_history(source_node=source, target_node=target, limit=limit)

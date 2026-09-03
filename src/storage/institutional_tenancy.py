@@ -34,7 +34,9 @@ def ensure_tenant_context(conn, user: dict[str, Any]) -> dict[str, Any]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT o.id, o.org_key, o.name, m.role
+            SELECT o.id, o.org_key, o.name, m.role,
+                   o.subscription_status, o.subscription_plan,
+                   o.subscription_current_period_end
             FROM institutional_memberships m
             JOIN institutional_organizations o ON o.id = m.organization_id
             WHERE m.user_id = %s AND m.status = 'active'
@@ -82,6 +84,9 @@ def ensure_tenant_context(conn, user: dict[str, Any]) -> dict[str, Any]:
                 "org_key": org_key,
                 "organization_name": organization_name,
                 "role": "owner",
+                "subscription_status": "active",
+                "subscription_plan": "team",
+                "subscription_current_period_end": None,
             }
 
         selected = next(row for row in memberships if int(row[0]) == organization_id)
@@ -91,6 +96,11 @@ def ensure_tenant_context(conn, user: dict[str, Any]) -> dict[str, Any]:
             "org_key": selected[1],
             "organization_name": selected[2],
             "role": selected[3],
+            "subscription_status": selected[4] or "active",
+            "subscription_plan": selected[5] or "team",
+            "subscription_current_period_end": (
+                selected[6].isoformat() if selected[6] else None
+            ),
         }
 
 

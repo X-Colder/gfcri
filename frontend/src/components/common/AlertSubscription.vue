@@ -82,7 +82,8 @@ const copy = computed(() => lang.value === 'zh'
       ],
     })
 
-const options = computed(() => copy.value.options)
+type PreferenceKey = keyof typeof preferences
+const options = computed(() => copy.value.options as Array<{ id: PreferenceKey; label: string }>)
 const successMessage = computed(() => copy.value.success)
 
 async function subscribe() {

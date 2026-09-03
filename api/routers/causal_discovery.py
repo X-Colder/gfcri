@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from api.access import require_institutional_data
 
 from api.dependencies import get_graph
 from src.engines.causal_expansion import CausalExpansionEngine
@@ -23,7 +24,7 @@ class CandidateReviewUpdate(BaseModel):
 
 
 @router.get("/current")
-def current_causal_discovery():
+def current_causal_discovery(user=Depends(require_institutional_data)):
     risk_index = get_latest_risk_index()
     if not risk_index:
         raise HTTPException(status_code=404, detail="No risk index data available")
@@ -44,17 +45,17 @@ def current_causal_discovery():
 
 
 @router.get("/candidates")
-def causal_candidates(limit: int = 50):
+def causal_candidates(limit: int = 50, user=Depends(require_institutional_data)):
     return get_causal_candidates(limit=limit)
 
 
 @router.get("/validation")
-def causal_validation(limit: int = 50):
+def causal_validation(limit: int = 50, user=Depends(require_institutional_data)):
     return causal_validation_report(limit=limit)
 
 
 @router.patch("/candidates/{candidate_id}")
-def update_candidate(candidate_id: str, update: CandidateReviewUpdate):
+def update_candidate(candidate_id: str, update: CandidateReviewUpdate, user=Depends(require_institutional_data)):
     try:
         row = update_causal_candidate_review(
             candidate_id=candidate_id,
@@ -70,7 +71,7 @@ def update_candidate(candidate_id: str, update: CandidateReviewUpdate):
 
 
 @router.get("/candidates/{candidate_id}/promotion-check")
-def promotion_check(candidate_id: str):
+def promotion_check(candidate_id: str, user=Depends(require_institutional_data)):
     rows = get_causal_candidates(limit=500)
     row = next((r for r in rows if r.get("candidate_id") == candidate_id), None)
     if not row:

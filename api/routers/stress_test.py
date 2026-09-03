@@ -3,10 +3,11 @@ import json
 import time
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.dependencies import get_graph, get_historical_data
+from api.access import require_deep_analysis
 
 router = APIRouter(prefix="/stress-test", tags=["stress-test"])
 
@@ -31,7 +32,7 @@ def list_scenarios():
 
 
 @router.get("/run-all")
-async def run_all():
+async def run_all(user=Depends(require_deep_analysis)):
     # 1. Try pre-computed cache file (instant, written by daily_job)
     cache_file = os.path.join(OUTPUT_DIR, "stress_test_cache.json")
     if os.path.exists(cache_file):
@@ -67,7 +68,7 @@ async def run_all():
 
 
 @router.post("/run-custom")
-async def run_custom(shock: CustomShock):
+async def run_custom(shock: CustomShock, user=Depends(require_deep_analysis)):
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, _compute_custom, shock)
     return result
