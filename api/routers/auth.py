@@ -412,7 +412,10 @@ def register(req: RegisterRequest):
             _ensure_auth_schema(conn)
             cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email,))
             if cur.fetchone():
-                raise HTTPException(status_code=400, detail="Email already registered")
+                raise HTTPException(
+                    status_code=400,
+                    detail={"code": "EMAIL_ALREADY_REGISTERED", "message": "Email already registered"},
+                )
             try:
                 password_hash = hash_password(req.password)
             except ValueError as exc:
@@ -452,11 +455,17 @@ def login(req: LoginRequest):
             cur.execute("SELECT * FROM users WHERE lower(email) = %s", (email,))
             user = dict(cur.fetchone() or {})
             if not user:
-                raise HTTPException(status_code=401, detail="Invalid email or password")
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "AUTH_INVALID_CREDENTIALS", "message": "Invalid email or password"},
+                )
 
             locked_until = user.get("locked_until")
             if locked_until and locked_until > datetime.now(timezone.utc):
-                raise HTTPException(status_code=429, detail="Account temporarily locked")
+                raise HTTPException(
+                    status_code=429,
+                    detail={"code": "AUTH_ACCOUNT_LOCKED", "message": "Account temporarily locked"},
+                )
 
             stored_hash = str(user.get("password_hash") or "")
             valid = verify_password(req.password, stored_hash)
@@ -487,7 +496,10 @@ def login(req: LoginRequest):
                     (next_failures, lock_until, user["id"]),
                 )
                 conn.commit()
-                raise HTTPException(status_code=401, detail="Invalid email or password")
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "AUTH_INVALID_CREDENTIALS", "message": "Invalid email or password"},
+                )
 
             cur.execute(
                 """

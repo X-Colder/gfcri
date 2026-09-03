@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue'
 import client from '@/api/client'
 import { fetchBillingStatus } from '@/api/billing'
+import { formatAuthError } from './authErrors'
+import { useI18n } from './useI18n'
 
 interface Membership {
   organization_id: number
@@ -74,6 +76,7 @@ if (token.value) {
 }
 
 export function useAuth() {
+  const { lang } = useI18n()
   const isLoggedIn = computed(() => !!token.value && !!user.value)
   const isTrialActive = computed(() => isTrialCurrentlyActive(user.value))
   const accountType = computed(() => {
@@ -102,7 +105,7 @@ export function useAuth() {
       sessionReady.value = true
       return null
     } catch (e: any) {
-      return e.response?.data?.detail || 'Login failed'
+      return formatAuthError(e, lang.value, 'Login failed')
     } finally {
       loading.value = false
     }
@@ -116,7 +119,7 @@ export function useAuth() {
       sessionReady.value = true
       return null
     } catch (e: any) {
-      return e.response?.data?.detail || 'Registration failed'
+      return formatAuthError(e, lang.value, 'Registration failed')
     } finally {
       loading.value = false
     }
@@ -143,7 +146,7 @@ export function useAuth() {
       applyAuthResponse(res.data)
       return null
     } catch (e: any) {
-      return e.response?.data?.detail || 'Unable to start trial'
+      return formatAuthError(e, lang.value, 'Unable to start trial')
     } finally {
       loading.value = false
     }
@@ -157,7 +160,7 @@ export function useAuth() {
       if (data.token && data.user) applyAuthResponse(data)
       return null
     } catch (e: any) {
-      return e.response?.data?.detail || 'Unable to refresh billing status'
+      return formatAuthError(e, lang.value, 'Unable to refresh billing status')
     } finally {
       loading.value = false
     }
