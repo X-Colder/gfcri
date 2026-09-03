@@ -289,12 +289,13 @@ def get_current_user_or_api_key(
                 """
                 SELECT k.id AS api_key_id, o.id AS organization_id,
                        o.owner_user_id, u.email, u.display_name,
-                       u.account_type, u.status
+                       u.account_type, u.status, k.scopes, k.expires_at
                 FROM institutional_api_keys k
                 JOIN institutional_organizations o ON o.id = k.organization_id
                 JOIN users u ON u.id = o.owner_user_id
                 WHERE k.token_hash = %s
                   AND k.revoked_at IS NULL
+                  AND (k.expires_at IS NULL OR k.expires_at > NOW())
                   AND u.status = 'active'
                 """,
                 (token_hash,),
@@ -302,6 +303,11 @@ def get_current_user_or_api_key(
             row = cur.fetchone()
             if not row:
                 return None
+            cur.execute(
+                "UPDATE institutional_api_keys SET last_used_at = NOW() WHERE id = %s",
+                (row["api_key_id"],),
+            )
+            conn.commit()
             if (
                 requested_organization_id is not None
                 and requested_organization_id != int(row["organization_id"])
@@ -317,6 +323,7 @@ def get_current_user_or_api_key(
                 "role": "api",
                 "auth_method": "api_key",
                 "api_key_id": row["api_key_id"],
+                "api_key_scopes": list(row.get("scopes") or []),
             }
     finally:
         conn.close()
