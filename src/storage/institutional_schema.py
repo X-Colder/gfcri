@@ -119,6 +119,42 @@ def ensure_institutional_schema(conn) -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
+        '''ALTER TABLE institutional_api_keys ADD COLUMN IF NOT EXISTS scopes JSONB NOT NULL DEFAULT '[\"analysis:read\", \"analysis:run\", \"data:read\"]'::jsonb''',
+        "ALTER TABLE institutional_api_keys ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ",
+        "ALTER TABLE institutional_api_keys ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ",
+        "ALTER TABLE institutional_api_keys ADD COLUMN IF NOT EXISTS revoked_by_user_id BIGINT",
+        """
+        CREATE TABLE IF NOT EXISTS institutional_invitations (
+            id BIGSERIAL PRIMARY KEY,
+            organization_id BIGINT NOT NULL REFERENCES institutional_organizations(id) ON DELETE CASCADE,
+            email VARCHAR(255) NOT NULL,
+            role VARCHAR(30) NOT NULL,
+            token_hash VARCHAR(128) NOT NULL UNIQUE,
+            invited_by_user_id BIGINT NOT NULL REFERENCES users(id),
+            expires_at TIMESTAMPTZ NOT NULL,
+            accepted_at TIMESTAMPTZ,
+            revoked_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_institutional_invitations_org ON institutional_invitations (organization_id, created_at DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS institutional_audit_events (
+            id BIGSERIAL PRIMARY KEY,
+            organization_id BIGINT,
+            actor_user_id BIGINT,
+            actor_type VARCHAR(30) NOT NULL,
+            action VARCHAR(120) NOT NULL,
+            target_type VARCHAR(80) NOT NULL,
+            target_id VARCHAR(255),
+            outcome VARCHAR(30) NOT NULL,
+            request_id VARCHAR(160),
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_institutional_audit_org_time ON institutional_audit_events (organization_id, occurred_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_institutional_audit_actor_time ON institutional_audit_events (actor_user_id, occurred_at DESC)",
     )
     with conn.cursor() as cur:
         for statement in statements:
