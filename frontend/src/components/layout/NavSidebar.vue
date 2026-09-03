@@ -3,22 +3,7 @@
     <div class="p-5 border-b border-[var(--border)]">
       <h1 class="text-xl font-extralight tracking-wide text-white">GFCRI</h1>
       <p class="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-[3px]">{{ modeLabel }}</p>
-      <div class="mt-4 grid grid-cols-2 gap-1 rounded-lg border border-[var(--border)] bg-black/10 p-1">
-        <button
-          class="rounded-md px-2 py-1.5 text-[10px] transition-colors"
-          :class="mode === 'global' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
-          @click="setMode('global')"
-        >
-          {{ t('product.personalSwitch') }}
-        </button>
-        <button
-          class="rounded-md px-2 py-1.5 text-[10px] transition-colors"
-          :class="mode === 'institutional' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-[var(--muted)] hover:text-white'"
-          @click="setMode('institutional')"
-        >
-          {{ t('product.institutionalSwitch') }}
-        </button>
-      </div>
+
     </div>
     <nav class="flex-1 p-3 space-y-0.5">
       <router-link
@@ -78,11 +63,10 @@
 import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
-import { useProductMode } from '@/composables/useProductMode'
 
-const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, accountType, logout } = useAuth()
+const { user, isLoggedIn, isPro, effectivePlan, trialDaysLeft, accountType, isInstitutionalAccount, logout } = useAuth()
 const { t, lang, toggleLang } = useI18n()
-const { mode, isInstitutional, setMode } = useProductMode()
+const isInstitutional = isInstitutionalAccount
 
 const planLabel = computed(() => {
   if (effectivePlan.value === 'pro') return t('plan.pro')

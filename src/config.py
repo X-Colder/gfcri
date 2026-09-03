@@ -39,6 +39,15 @@ class Settings:
     billing_success_url: str = ""
     billing_cancel_url: str = ""
 
+    waffo_environment: str = "sandbox"
+    waffo_merchant_id: str = ""
+    waffo_api_key: str = ""
+    waffo_private_key: str = ""
+    waffo_public_key: str = ""
+    waffo_monthly_plan_id: str = ""
+    waffo_annual_plan_id: str = ""
+    waffo_notify_url: str = ""
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
@@ -81,6 +90,14 @@ class Settings:
             stripe_annual_price_id=os.getenv("STRIPE_ANNUAL_PRICE_ID", cls.stripe_annual_price_id),
             billing_success_url=os.getenv("BILLING_SUCCESS_URL", cls.billing_success_url),
             billing_cancel_url=os.getenv("BILLING_CANCEL_URL", cls.billing_cancel_url),
+            waffo_environment=os.getenv("WAFFO_ENVIRONMENT", cls.waffo_environment),
+            waffo_merchant_id=os.getenv("WAFFO_MERCHANT_ID", cls.waffo_merchant_id),
+            waffo_api_key=os.getenv("WAFFO_API_KEY", cls.waffo_api_key),
+            waffo_private_key=os.getenv("WAFFO_PRIVATE_KEY", cls.waffo_private_key),
+            waffo_public_key=os.getenv("WAFFO_PUBLIC_KEY", cls.waffo_public_key),
+            waffo_monthly_plan_id=os.getenv("WAFFO_MONTHLY_PLAN_ID", cls.waffo_monthly_plan_id),
+            waffo_annual_plan_id=os.getenv("WAFFO_ANNUAL_PLAN_ID", cls.waffo_annual_plan_id),
+            waffo_notify_url=os.getenv("WAFFO_NOTIFY_URL", cls.waffo_notify_url),
         )
 
     @property

@@ -8,9 +8,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from psycopg2.extras import Json, RealDictCursor
 
+from api.billing.providers.base import normalize_provider_status
+from api.resilience import CircuitBreaker, CircuitOpenError
+from api.billing.providers.waffo import WaffoProvider, WaffoSettings
 from api.routers.auth import (
     _create_token,
     _ensure_auth_schema,
@@ -20,17 +23,36 @@ from api.routers.auth import (
 from src.config import settings
 from src.storage.database import get_connection
 
+from api.commercial_policy import public_billing_catalog, validate_institutional_lead
+
 router = APIRouter(prefix="/billing", tags=["billing"])
+payment_circuit = CircuitBreaker(failure_threshold=3, recovery_seconds=30)
 
 
 class CheckoutRequest(BaseModel):
     plan: str
 
 
+class InstitutionalLeadRequest(BaseModel):
+    company_name: str = Field(min_length=2, max_length=160)
+    work_email: str = Field(min_length=5, max_length=255)
+    full_name: str = Field(default="", max_length=120)
+    role: str = Field(default="", max_length=120)
+    team_size: str = Field(default="", max_length=40)
+    use_case: str = Field(min_length=10, max_length=2000)
+    deployment: str = Field(default="", max_length=80)
+    message: str = Field(default="", max_length=2000)
+    language: str = Field(default="en", max_length=2)
+
+
 def _ensure_billing_schema(conn) -> None:
     _ensure_auth_schema(conn)
     with conn.cursor() as cur:
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_provider TEXT")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_customer_id TEXT")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_subscription_id TEXT")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_price_id TEXT")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan TEXT")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ")
@@ -42,6 +64,24 @@ def _ensure_billing_schema(conn) -> None:
                 provider TEXT NOT NULL DEFAULT 'stripe',
                 payload JSONB,
                 processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS institutional_leads (
+                id BIGSERIAL PRIMARY KEY,
+                company_name VARCHAR(160) NOT NULL,
+                work_email VARCHAR(255) NOT NULL,
+                full_name VARCHAR(120),
+                role VARCHAR(120),
+                team_size VARCHAR(40),
+                use_case TEXT NOT NULL,
+                deployment VARCHAR(80),
+                message TEXT,
+                language VARCHAR(2) NOT NULL DEFAULT 'en',
+                status VARCHAR(30) NOT NULL DEFAULT 'new',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """
         )
@@ -74,6 +114,27 @@ def _billing_configured(plan: str) -> bool:
     )
 
 
+def _waffo_provider() -> WaffoProvider:
+    return WaffoProvider(
+        WaffoSettings(
+            environment=settings.waffo_environment,
+            merchant_id=settings.waffo_merchant_id,
+            api_key=settings.waffo_api_key,
+            private_key=settings.waffo_private_key,
+            public_key=settings.waffo_public_key,
+            monthly_plan_id=settings.waffo_monthly_plan_id,
+            annual_plan_id=settings.waffo_annual_plan_id,
+            notify_url=settings.waffo_notify_url,
+        )
+    )
+
+
+def _personal_billing_configured() -> bool:
+    if settings.billing_provider == "waffo":
+        return _waffo_provider().configured()
+    return _billing_configured("monthly") and _billing_configured("annual")
+
+
 def _default_success_url() -> str:
     return settings.billing_success_url or f"{settings.public_base_url.rstrip('/')}/?checkout=success"
 
@@ -93,11 +154,21 @@ def _stripe_request(path: str, form: dict[str, str]) -> dict[str, Any]:
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
-    try:
+
+    def operation() -> dict[str, Any]:
         with urllib.request.urlopen(req, timeout=20) as resp:
             return json.loads(resp.read().decode())
+
+    try:
+        return payment_circuit.call(operation)
+    except CircuitOpenError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "PAYMENT_PROVIDER_UNAVAILABLE", "message": "Payment provider temporarily unavailable."},
+            headers={"Retry-After": "30"},
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe checkout failed: {exc}")
+        raise HTTPException(status_code=502, detail=f"Stripe checkout failed: {exc}") from exc
 
 
 def _load_user(user_id: int) -> dict | None:
@@ -159,6 +230,75 @@ def _cancel_subscription_for_customer(customer_id: str, status: str = "canceled"
         conn.close()
 
 
+def _activate_provider_subscription(
+    user_id: int,
+    plan: str,
+    status: str,
+    provider: str,
+    customer_id: str | None = None,
+    subscription_id: str | None = None,
+    price_id: str | None = None,
+    period_end: Any = None,
+) -> dict | None:
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_billing_schema(conn)
+            period_end_dt = None
+            if isinstance(period_end, (int, float)):
+                period_end_dt = datetime.fromtimestamp(period_end, tz=timezone.utc)
+            elif isinstance(period_end, str) and period_end:
+                period_end_dt = datetime.fromisoformat(period_end.replace("Z", "+00:00"))
+            cur.execute(
+                """
+                UPDATE users
+                SET plan = CASE WHEN %s IN ('active', 'trialing') THEN 'pro' ELSE plan END,
+                    billing_provider = %s,
+                    provider_customer_id = COALESCE(%s, provider_customer_id),
+                    provider_subscription_id = COALESCE(%s, provider_subscription_id),
+                    provider_price_id = COALESCE(%s, provider_price_id),
+                    subscription_status = %s,
+                    subscription_plan = %s,
+                    subscription_current_period_end = COALESCE(%s, subscription_current_period_end)
+                WHERE id = %s
+                RETURNING *
+                """,
+                (
+                    status,
+                    provider,
+                    customer_id,
+                    subscription_id,
+                    price_id,
+                    status,
+                    plan,
+                    period_end_dt,
+                    user_id,
+                ),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def _cancel_provider_subscription(customer_id: str, provider: str, status: str = "canceled") -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _ensure_billing_schema(conn)
+            cur.execute(
+                """
+                UPDATE users
+                SET plan = 'free', subscription_status = %s
+                WHERE billing_provider = %s AND provider_customer_id = %s
+                """,
+                (status, provider, customer_id),
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
 def _record_event_once(event_id: str, event_type: str, payload: dict) -> bool:
     conn = get_connection()
     try:
@@ -217,7 +357,7 @@ def billing_status(user=Depends(get_current_user)):
         payload.get("account_type", "personal"),
     )
     return {
-        "billing_configured": _billing_configured("monthly") or _billing_configured("annual"),
+        "billing_configured": _personal_billing_configured(),
         "provider": settings.billing_provider,
         "user": payload,
         "token": token,
@@ -227,12 +367,97 @@ def billing_status(user=Depends(get_current_user)):
     }
 
 
+@router.get("/catalog")
+def billing_catalog():
+    configured = _personal_billing_configured()
+    return public_billing_catalog(personal_checkout_configured=configured)
+
+
+@router.post("/institutional-leads", status_code=201)
+def create_institutional_lead(req: InstitutionalLeadRequest):
+    try:
+        lead = validate_institutional_lead(req.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _ensure_billing_schema(conn)
+            cur.execute(
+                """
+                INSERT INTO institutional_leads (
+                    company_name, work_email, full_name, role, team_size,
+                    use_case, deployment, message, language
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    lead["company_name"],
+                    lead["work_email"],
+                    lead["full_name"],
+                    lead["role"],
+                    lead["team_size"],
+                    lead["use_case"],
+                    lead["deployment"],
+                    lead["message"],
+                    lead["language"],
+                ),
+            )
+            lead_id = cur.fetchone()[0]
+            conn.commit()
+            return {"status": "received", "lead_id": lead_id}
+    finally:
+        conn.close()
+
+
 @router.post("/checkout")
 def create_checkout(req: CheckoutRequest, user=Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     if req.plan not in {"monthly", "annual"}:
         raise HTTPException(status_code=400, detail="Invalid billing plan")
+
+    current = _load_user(int(user["user_id"]))
+    if not current:
+        raise HTTPException(status_code=404, detail="User not found")
+    if current.get("account_type") == "institutional":
+        raise HTTPException(status_code=400, detail="Institutional accounts do not use personal checkout")
+
+    if settings.billing_provider == "waffo":
+        provider = _waffo_provider()
+        if not provider.configured():
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "BILLING_NOT_CONFIGURED",
+                    "message": "Waffo billing is not configured for this environment.",
+                },
+            )
+        try:
+            result = payment_circuit.call(lambda: provider.create_subscription_checkout(
+                plan=req.plan,
+                customer_email=current["email"],
+                success_url=_default_success_url(),
+                cancel_url=_default_cancel_url(),
+                management_url=f"{settings.public_base_url.rstrip('/')}/pricing?billing=manage",
+                metadata={"user_id": str(current["id"]), "plan": req.plan},
+            ))
+        except CircuitOpenError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "PAYMENT_PROVIDER_UNAVAILABLE", "message": "Payment provider temporarily unavailable."},
+                headers={"Retry-After": "30"},
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Waffo checkout failed: {exc}") from exc
+        return {
+            "provider": result.provider,
+            "checkout_url": result.checkout_url,
+            "customer_id": result.customer_id,
+            "subscription_id": result.subscription_id,
+        }
+
     if not _billing_configured(req.plan):
         raise HTTPException(
             status_code=503,
@@ -241,12 +466,6 @@ def create_checkout(req: CheckoutRequest, user=Depends(get_current_user)):
                 "message": "Stripe billing is not configured for this environment.",
             },
         )
-
-    current = _load_user(int(user["user_id"]))
-    if not current:
-        raise HTTPException(status_code=404, detail="User not found")
-    if current.get("account_type") == "institutional":
-        raise HTTPException(status_code=400, detail="Institutional accounts do not use personal checkout")
 
     session = _stripe_request(
         "/v1/checkout/sessions",
@@ -271,6 +490,51 @@ def create_checkout(req: CheckoutRequest, user=Depends(get_current_user)):
         "session_id": session.get("id"),
     }
 
+@router.post("/waffo/webhook")
+async def waffo_webhook(request: Request, waffo_signature: str = Header(default="", alias="X-SIGNATURE")):
+    raw = await request.body()
+    try:
+        event = _waffo_provider().verify_webhook(raw, waffo_signature)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid Waffo webhook: {exc}") from exc
+
+    event_id = str(event.get("id") or event.get("eventId") or event.get("notificationId") or hashlib.sha256(raw).hexdigest())
+    event_type = str(event.get("type") or event.get("eventType") or event.get("notificationType") or "unknown")
+    if not _record_event_once(event_id, event_type, event):
+        return {"ok": True, "duplicate": True}
+
+    data = event.get("data") or event.get("payload") or event
+    if not isinstance(data, dict):
+        return {"ok": True, "ignored": True}
+    metadata = data.get("metadata") or {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+    user_id = int(metadata.get("user_id") or data.get("userId") or 0)
+    plan = str(metadata.get("plan") or data.get("plan") or "monthly")
+    status = normalize_provider_status(data.get("status") or data.get("subscriptionStatus") or "active")
+    customer_id = data.get("customerId") or data.get("customer_id")
+    subscription_id = data.get("subscriptionId") or data.get("subscription_id")
+    price_id = data.get("priceId") or data.get("price_id")
+    period_end = data.get("currentPeriodEnd") or data.get("periodEnd") or data.get("subscriptionCurrentPeriodEnd")
+
+    if user_id and status in {"active", "trialing", "past_due", "paused", "canceled", "incomplete"}:
+        _activate_provider_subscription(
+            user_id=user_id,
+            plan=plan,
+            status=status,
+            provider="waffo",
+            customer_id=customer_id,
+            subscription_id=subscription_id,
+            price_id=price_id,
+            period_end=period_end,
+        )
+    elif customer_id and status == "canceled":
+        _cancel_provider_subscription(customer_id, "waffo", status)
+
+    return {"ok": True}
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request, stripe_signature: str = Header(default="", alias="Stripe-Signature")):

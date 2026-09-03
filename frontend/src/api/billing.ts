@@ -9,3 +9,9 @@ export async function fetchBillingStatus(): Promise<Record<string, any>> {
   const { data } = await client.get('/billing/status')
   return data
 }
+
+
+export async function fetchBillingCatalog(): Promise<Record<string, any>> {
+  const { data } = await client.get('/billing/catalog')
+  return data
+}

@@ -9,6 +9,7 @@ from src.config import settings
 from src.storage.database import wait_for_db
 from src.scheduler.daily_job import run_daily_analysis
 from src.scheduler.market_data_job import refresh_market_data_cache
+from src.notifications.outbox import process_email_outbox, queue_scheduled_emails
 
 
 def main():
@@ -55,6 +56,25 @@ def main():
             f"{settings.market_data_refresh_minute:02d}"
         )
 
+    scheduler.add_job(
+        process_email_outbox,
+        "interval",
+        minutes=1,
+        id="email_outbox",
+        name="Email Outbox Delivery",
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        queue_scheduled_emails,
+        "cron",
+        hour=6,
+        minute=15,
+        id="email_schedule_queue",
+        name="Queue Scheduled GFCRI Emails",
+        misfire_grace_time=3600,
+        max_instances=1,
+    )
     scheduler.add_job(
         run_daily_analysis,
         "cron",

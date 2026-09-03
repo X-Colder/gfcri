@@ -13,7 +13,7 @@ const router = createRouter({
       component: () => import('@/components/layout/AppLayout.vue'),
       children: [
         { path: '', name: 'dashboard', component: () => import('@/views/DashboardView.vue') },
-        { path: 'institutional', name: 'institutional', component: () => import('@/views/InstitutionalView.vue') },
+        { path: 'institutional', name: 'institutional', component: () => import('@/views/InstitutionalEntryView.vue') },
         { path: 'data-sources', name: 'data-sources', component: () => import('@/views/DataSourcesView.vue') },
         { path: 'analysis', name: 'analysis', component: () => import('@/views/AnalysisView.vue') },
         { path: 'forward', name: 'forward', component: () => import('@/views/ForwardView.vue') },

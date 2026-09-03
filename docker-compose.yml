@@ -37,6 +37,14 @@ services:
       context: .
       dockerfile: api/Dockerfile
     container_name: gfcri_api
+    command: >
+      sh -c "python -c 'import fastapi, uvicorn, pydantic, multipart, waffo, cryptography' >/dev/null 2>&1 || pip install --no-cache-dir 'fastapi>=0.115' 'uvicorn[standard]>=0.30' 'pydantic>=2.7' 'python-multipart>=0.0.9' 'waffo==0.4.0b0' 'cryptography>=42' -i https://pypi.tuna.tsinghua.edu.cn/simple; exec uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     ports:
       - "8000:8000"
     depends_on:
@@ -56,10 +64,14 @@ services:
     build: ./frontend
     container_name: gfcri_frontend
     ports:
+      - "80:80"
+      - "443:443"
       - "3000:80"
+    volumes:
+      - /opt/gfcri/certs:/etc/letsencrypt:ro
     depends_on:
-      - api
-
+      api:
+        condition: service_healthy
   dashboard:
     build: .
     container_name: gfcri_dashboard

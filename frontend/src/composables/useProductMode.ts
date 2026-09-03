@@ -1,29 +1,27 @@
 import { computed, ref } from 'vue'
+import { useAuth } from './useAuth'
 
 export type ProductMode = 'global' | 'institutional'
 
-function initialMode(): ProductMode {
-  if (typeof window === 'undefined') return 'global'
-  const stored = localStorage.getItem('gfcri_product_mode')
-  return stored === 'institutional' ? 'institutional' : 'global'
-}
-
-const mode = ref<ProductMode>(initialMode())
+const selectedMode = ref<ProductMode>('global')
 
 export function useProductMode() {
+  const { isInstitutionalAccount } = useAuth()
+  const mode = computed<ProductMode>(() => (
+    isInstitutionalAccount.value ? 'institutional' : selectedMode.value
+  ))
+
   function setMode(next: ProductMode) {
-    mode.value = next
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('gfcri_product_mode', next)
-    }
+    selectedMode.value = next === 'global' || isInstitutionalAccount.value ? next : 'global'
   }
 
   function toggleMode() {
+    if (isInstitutionalAccount.value) return
     setMode(mode.value === 'global' ? 'institutional' : 'global')
   }
 
   return {
-    mode: computed(() => mode.value),
+    mode,
     isInstitutional: computed(() => mode.value === 'institutional'),
     setMode,
     toggleMode,
